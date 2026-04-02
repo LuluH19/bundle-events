@@ -200,7 +200,7 @@ export default function TravelMap({
         });
 
         // Click handler
-        map.on("click", "hotels-circle", (e) => {
+        function handleHotelClick(e: mapboxgl.MapMouseEvent & { features?: mapboxgl.GeoJSONFeature[] }) {
           const props = e.features?.[0]?.properties;
           if (props) {
             const h: HotelMapItem = {
@@ -208,22 +208,15 @@ export default function TravelMap({
               name: props.name,
               locationName: props.locationName,
               coords: { lat: props.lat, lng: props.lng },
+              stars: props.stars || undefined,
+              pricePerNight: props.pricePerNight || undefined,
+              currency: props.currency || undefined,
             };
             onHotelSelectRef.current(h);
           }
-        });
-        map.on("click", "hotels-circle-selected", (e) => {
-          const props = e.features?.[0]?.properties;
-          if (props) {
-            const h: HotelMapItem = {
-              id: props.id,
-              name: props.name,
-              locationName: props.locationName,
-              coords: { lat: props.lat, lng: props.lng },
-            };
-            onHotelSelectRef.current(h);
-          }
-        });
+        }
+        map.on("click", "hotels-circle", handleHotelClick);
+        map.on("click", "hotels-circle-selected", handleHotelClick);
 
         // Cursor pointer on hover
         map.on("mouseenter", "hotels-circle", () => { map.getCanvas().style.cursor = "pointer"; });
@@ -236,8 +229,10 @@ export default function TravelMap({
         map.on("mouseenter", "hotels-circle", (e) => {
           const props = e.features?.[0]?.properties;
           if (props) {
+            const priceHtml = props.pricePerNight ? `<br/><strong style="color:#15803d">${props.pricePerNight} ${props.currency || "€"}/nuit</strong>` : "";
+            const starsHtml = props.stars ? `<br/><span style="color:#d97706">${"★".repeat(props.stars)}</span>` : "";
             popup.setLngLat([props.lng, props.lat])
-              .setHTML(`<strong>${props.name}</strong><br/><span style="color:#666;font-size:12px">${props.locationName}</span>`)
+              .setHTML(`<strong>${props.name}</strong>${starsHtml}${priceHtml}<br/><span style="color:#666;font-size:12px">${props.locationName}</span>`)
               .addTo(map);
           }
         });
@@ -255,6 +250,9 @@ export default function TravelMap({
           locationName: h.locationName,
           lat: h.coords.lat,
           lng: h.coords.lng,
+          stars: h.stars || 0,
+          pricePerNight: h.pricePerNight || 0,
+          currency: h.currency || "€",
           selected: h.id === selectedHotelId,
         },
         geometry: {

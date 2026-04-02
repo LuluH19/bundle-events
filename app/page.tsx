@@ -43,6 +43,10 @@ const MODE_ICONS: Record<TransportMode, string> = {
   walking: "🚶", car: "🚗", bus: "🚌", train: "🚄", plane: "✈️",
 };
 
+function getDaysDiff(checkin: string, checkout: string): number {
+  return Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
+}
+
 function toggleMode(current: TransportMode[], mode: TransportMode): TransportMode[] {
   if (current.includes(mode)) {
     const next = current.filter((m) => m !== mode);
@@ -154,6 +158,14 @@ export default function Home() {
   const [hotelResults, setHotelResults] = useState<HotelMapItem[]>([]);
   const [hotelLoading, setHotelLoading] = useState(false);
   const [selectedHotelInfo, setSelectedHotelInfo] = useState<HotelMapItem | null>(null);
+  const [checkin, setCheckin] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  });
+  const [checkout, setCheckout] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 8);
+    return d.toISOString().slice(0, 10);
+  });
 
   const [mapClickTarget, setMapClickTarget] = useState<LocationType | null>(null);
 
@@ -169,20 +181,27 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [depSearch]);
 
-  // Hotels around venue (debounced to avoid Overpass 429)
+  // Hotels around venue (LiteAPI + Overpass, debounced)
   useEffect(() => {
     if (!venue?.id) { setHotelResults([]); return; }
     let cancelled = false;
     setHotelLoading(true);
+    const params = new URLSearchParams({
+      lat: String(venue.coords.lat),
+      lng: String(venue.coords.lng),
+      radius: String(hotelRadius),
+      checkin,
+      checkout,
+    });
     const t = setTimeout(() => {
-      fetch(`/api/hotels/search?lat=${venue.coords.lat}&lng=${venue.coords.lng}&radius=${hotelRadius}`)
+      fetch(`/api/hotels/search?${params}`)
         .then(r => r.ok ? r.json() : [])
         .then(data => { if (!cancelled) setHotelResults(data); })
         .catch(() => { if (!cancelled) setHotelResults([]); })
         .finally(() => { if (!cancelled) setHotelLoading(false); });
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [venue, hotelRadius]);
+  }, [venue, hotelRadius, checkin, checkout]);
 
   // Leg A
   useEffect(() => {
@@ -412,6 +431,13 @@ export default function Home() {
           {!venue?.id && <p className="text-xs text-gray-400 mt-1">Selectionnez d&apos;abord un evenement</p>}
           {venue?.id && (
             <>
+              {/* Dates + Rayon */}
+              <div className="flex gap-2 mt-1">
+                <input type="date" value={checkin} onChange={e => setCheckin(e.target.value)}
+                  className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
+                <input type="date" value={checkout} onChange={e => setCheckout(e.target.value)}
+                  className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-gray-500 whitespace-nowrap">Rayon :</span>
                 <select value={hotelRadius} onChange={e => { setHotelRadius(Number(e.target.value)); }}
@@ -424,22 +450,30 @@ export default function Home() {
               {!hotelLoading && hotelResults.length > 0 && !hotel?.id && (
                 <p className="text-xs text-amber-600 mt-1">{hotelResults.length} hotels sur la carte — cliquez pour selectionner</p>
               )}
-              {hotel?.id && (
+              {hotel?.id && selectedHotelInfo && (
                 <div className="mt-1 p-2 bg-amber-50 rounded-lg text-sm">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium">{hotel.name}</p>
-                      {selectedHotelInfo?.stars && (
+                  <div className="flex items-start gap-2">
+                    {selectedHotelInfo.photo && (
+                      <img src={selectedHotelInfo.photo} alt={hotel.name} className="w-16 h-16 rounded object-cover flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <p className="font-medium truncate">{hotel.name}</p>
+                        <button onClick={() => { setHotel(null); setSelectedHotelInfo(null); }} className="text-xs text-gray-400 hover:text-red-500 ml-1 flex-shrink-0">✕</button>
+                      </div>
+                      {selectedHotelInfo.stars && (
                         <p className="text-xs text-amber-600">{"★".repeat(selectedHotelInfo.stars)}{"☆".repeat(5 - selectedHotelInfo.stars)}</p>
                       )}
-                      {selectedHotelInfo?.type && (
+                      {selectedHotelInfo.pricePerNight && (
+                        <p className="text-xs font-bold text-green-700">{selectedHotelInfo.pricePerNight} {selectedHotelInfo.currency || "€"}/nuit</p>
+                      )}
+                      {selectedHotelInfo.type && (
                         <p className="text-xs text-gray-400 capitalize">{selectedHotelInfo.type === "guest_house" ? "Maison d'hotes" : selectedHotelInfo.type === "hostel" ? "Auberge" : "Hotel"}</p>
                       )}
-                      {hotel.address && <p className="text-xs text-gray-500">{hotel.address}</p>}
+                      {hotel.address && <p className="text-xs text-gray-500 truncate">{hotel.address}</p>}
                     </div>
-                    <button onClick={() => { setHotel(null); setSelectedHotelInfo(null); }} className="text-xs text-gray-400 hover:text-red-500 ml-2">✕</button>
                   </div>
-                  {(selectedHotelInfo?.website || selectedHotelInfo?.phone) && (
+                  {(selectedHotelInfo.website || selectedHotelInfo.phone) && (
                     <div className="mt-1 flex gap-3 text-xs">
                       {selectedHotelInfo.website && (
                         <a href={selectedHotelInfo.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Site web</a>
@@ -449,6 +483,7 @@ export default function Home() {
                       )}
                     </div>
                   )}
+                  {selectedHotelInfo.source === "liteapi" && <p className="text-xs text-gray-300 mt-1">Prix via LiteAPI</p>}
                 </div>
               )}
             </>
@@ -496,6 +531,39 @@ export default function Home() {
             {legBLoading && <p className="text-xs text-gray-400 mt-2">Calcul de l&apos;itineraire...</p>}
             {legBError && <p className="text-xs text-red-500 mt-2">{legBError}</p>}
             {legBRoute && !legBLoading && renderSegments(legBRoute, legBFlights, legBTrains, "B")}
+          </div>
+        )}
+
+        {/* Budget summary */}
+        {(legARoute || selectedHotelInfo?.pricePerNight) && (
+          <div className="pt-3 border-t">
+            <p className="text-sm font-semibold text-gray-700 mb-2">Recapitulatif</p>
+            <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg text-xs space-y-1.5">
+              {legARoute && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Trajet A</span>
+                  <span>{formatDuration(legARoute.totalDurationMinutes)} · {legARoute.totalCo2Kg < 1 ? `${Math.round(legARoute.totalCo2Kg * 1000)}g` : `${legARoute.totalCo2Kg.toFixed(1)}kg`} CO2</span>
+                </div>
+              )}
+              {selectedHotelInfo?.pricePerNight && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Hotel ({getDaysDiff(checkin, checkout)} nuit{getDaysDiff(checkin, checkout) > 1 ? "s" : ""})</span>
+                  <span className="font-bold text-green-700">{selectedHotelInfo.pricePerNight * getDaysDiff(checkin, checkout)} {selectedHotelInfo.currency || "€"}</span>
+                </div>
+              )}
+              {legBRoute && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Trajet B</span>
+                  <span>{formatDuration(legBRoute.totalDurationMinutes)} · {legBRoute.totalCo2Kg < 1 ? `${Math.round(legBRoute.totalCo2Kg * 1000)}g` : `${legBRoute.totalCo2Kg.toFixed(1)}kg`} CO2</span>
+                </div>
+              )}
+              <div className="border-t border-green-200 pt-1.5 flex justify-between font-semibold text-sm">
+                <span>CO2 total</span>
+                <span className="text-amber-700">
+                  {(((legARoute?.totalCo2Kg || 0) + (legBRoute?.totalCo2Kg || 0))).toFixed(1)} kg
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </div>

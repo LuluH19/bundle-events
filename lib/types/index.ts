@@ -41,8 +41,12 @@ export interface HotelMapItem {
   stars?: number;
   website?: string;
   phone?: string;
-  type?: string; // hotel, hostel, guest_house
-  priceRange?: string;
+  type?: string;
+  photo?: string;
+  pricePerNight?: number;
+  currency?: string;
+  rating?: number;
+  source?: "liteapi" | "overpass";
 }
 
 export interface RouteResult {
