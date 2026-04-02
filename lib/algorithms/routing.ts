@@ -1,8 +1,35 @@
 import type { LatLng, RouteResult, RouteSegment, TransportMode } from "@/lib/types";
-import { stations } from "@/lib/data/stations";
 import { airports } from "@/lib/data/airports";
 import { busStations } from "@/lib/data/bus-stations";
-import { findNearestByDistance } from "./dijkstra";
+import { findNearestByDistance, findNearestByDistanceSorted } from "./dijkstra";
+
+// Dynamic station type (fetched from SNCF API)
+interface DynamicStation {
+  id: string;
+  name: string;
+  sncfId: string;
+  coords: LatLng;
+}
+
+// Cache for fetched stations near a point
+const stationCache = new Map<string, DynamicStation[]>();
+
+async function fetchNearbyStations(point: LatLng, radiusKm: number = 80): Promise<DynamicStation[]> {
+  const cacheKey = `${point.lat.toFixed(2)},${point.lng.toFixed(2)},${radiusKm}`;
+  const cached = stationCache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const res = await fetch(`/api/stations?lat=${point.lat}&lng=${point.lng}&radius=${radiusKm}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const stations = data.stations || [];
+    stationCache.set(cacheKey, stations);
+    return stations;
+  } catch {
+    return [];
+  }
+}
 import {
   haversineDistance,
   interpolateGreatCircle,
@@ -156,8 +183,17 @@ export async function computeBusRoute(
   to: { name: string; coords: LatLng },
   allowedAccessModes: ("walking" | "car" | "bus")[]
 ): Promise<RouteResult> {
-  const depBusStation = findNearestByDistance(from.coords, busStations);
-  const arrBusStation = findNearestByDistance(to.coords, busStations);
+  const depCandidates = findNearestByDistanceSorted(from.coords, busStations, 3);
+  const arrCandidates = findNearestByDistanceSorted(to.coords, busStations, 3);
+  let depBusStation = depCandidates[0];
+  let arrBusStation = arrCandidates[0];
+
+  if (depBusStation.id === arrBusStation.id) {
+    if (arrCandidates.length > 1) arrBusStation = arrCandidates[1];
+    if (depBusStation.id === arrBusStation.id && depCandidates.length > 1) {
+      depBusStation = depCandidates[1]; arrBusStation = arrCandidates[0];
+    }
+  }
 
   if (depBusStation.id === arrBusStation.id || haversineDistance(from.coords, to.coords) < 15) {
     const seg = await fetchOSRMSegment(from, to, "bus" as "car");
@@ -185,11 +221,19 @@ export async function computePlaneRoute(
   to: { name: string; coords: LatLng },
   allowedAccessModes: ("walking" | "car" | "bus")[]
 ): Promise<RouteResult> {
-  const depAirport = findNearestByDistance(from.coords, airports);
-  const arrAirport = findNearestByDistance(to.coords, airports);
+  const depCandidates = findNearestByDistanceSorted(from.coords, airports, 3);
+  const arrCandidates = findNearestByDistanceSorted(to.coords, airports, 3);
+  let depAirport = depCandidates[0];
+  let arrAirport = arrCandidates[0];
 
   if (depAirport.id === arrAirport.id) {
-    throw new Error(`Meme aeroport (${depAirport.name}) — l'avion n'est pas adapte pour cette distance`);
+    if (arrCandidates.length > 1) arrAirport = arrCandidates[1];
+    if (depAirport.id === arrAirport.id && depCandidates.length > 1) {
+      depAirport = depCandidates[1]; arrAirport = arrCandidates[0];
+    }
+    if (depAirport.id === arrAirport.id) {
+      throw new Error(`Meme aeroport (${depAirport.name}) — l'avion n'est pas adapte pour cette distance`);
+    }
   }
 
   const depPoint = { name: depAirport.name, coords: depAirport.coords };
@@ -210,11 +254,36 @@ export async function computeTrainRoute(
   to: { name: string; coords: LatLng },
   allowedAccessModes: ("walking" | "car" | "bus")[]
 ): Promise<RouteResult> {
-  const depStation = findNearestByDistance(from.coords, stations);
-  const arrStation = findNearestByDistance(to.coords, stations);
+  // Fetch real SNCF stations near both points
+  const [depStations, arrStations] = await Promise.all([
+    fetchNearbyStations(from.coords),
+    fetchNearbyStations(to.coords),
+  ]);
+
+  if (depStations.length === 0 || arrStations.length === 0) {
+    throw new Error("Aucune gare trouvee a proximite");
+  }
+
+  const depCandidates = depStations.slice(0, 5);
+  const arrCandidates = arrStations.slice(0, 5);
+
+  // Find a pair of different stations
+  let depStation = depCandidates[0];
+  let arrStation = arrCandidates[0];
 
   if (depStation.id === arrStation.id) {
-    throw new Error(`Meme gare (${depStation.name}) — le train n'est pas adapte pour cette distance`);
+    // Try the 2nd closest for arrival
+    if (arrCandidates.length > 1) {
+      arrStation = arrCandidates[1];
+    }
+    // If still same, try 2nd closest for departure
+    if (depStation.id === arrStation.id && depCandidates.length > 1) {
+      depStation = depCandidates[1];
+      arrStation = arrCandidates[0];
+    }
+    if (depStation.id === arrStation.id) {
+      throw new Error(`Pas de gares differentes trouvees — le train n'est pas adapte pour cette distance`);
+    }
   }
 
   const depPoint = { name: depStation.name, coords: depStation.coords };

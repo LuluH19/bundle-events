@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import type { Location, TransportMode, RouteResult, LocationType, LatLng, FlightInfo, HotelMapItem } from "@/lib/types";
 import { computeRoute } from "@/lib/algorithms/routing";
 import { airports } from "@/lib/data/airports";
-import { stations } from "@/lib/data/stations";
 import { findNearestByDistance } from "@/lib/algorithms/dijkstra";
 import { venues } from "@/lib/data/venues";
 import { searchLocation, reverseGeocode } from "@/lib/services/geocoding";
@@ -52,23 +51,52 @@ function toggleMode(current: TransportMode[], mode: TransportMode): TransportMod
   return [...current, mode];
 }
 
+interface TrainDetail {
+  type: string;
+  name: string;
+  number: string;
+  network: string;
+  direction: string;
+  departureStation: string;
+  arrivalStation: string;
+  departureTime: string;
+  arrivalTime: string;
+}
+
 interface TrainInfo {
   durationMinutes: number;
   departureAt: string;
   arrivalAt: string;
   transfers: number;
-  trainType: string;
-  trainLabel: string;
+  trains: TrainDetail[];
   co2Kg?: number;
   price?: number;
+  coordinates: [number, number][];
 }
 
 async function fetchTrainInfo(from: LatLng, to: LatLng): Promise<TrainInfo[]> {
-  const depStation = findNearestByDistance(from, stations);
-  const arrStation = findNearestByDistance(to, stations);
-  if (depStation.id === arrStation.id) return [];
-
   try {
+    // Fetch nearest stations from SNCF API
+    const [depRes, arrRes] = await Promise.all([
+      fetch(`/api/stations?lat=${from.lat}&lng=${from.lng}&radius=50`),
+      fetch(`/api/stations?lat=${to.lat}&lng=${to.lng}&radius=50`),
+    ]);
+    if (!depRes.ok || !arrRes.ok) return [];
+
+    const depData = await depRes.json();
+    const arrData = await arrRes.json();
+    const depStations = depData.stations || [];
+    const arrStations = arrData.stations || [];
+    if (depStations.length === 0 || arrStations.length === 0) return [];
+
+    // Find different stations
+    let depStation = depStations[0];
+    let arrStation = arrStations[0];
+    if (depStation.id === arrStation.id && arrStations.length > 1) {
+      arrStation = arrStations[1];
+    }
+    if (depStation.id === arrStation.id) return [];
+
     const res = await fetch(`/api/trains/search?from=${depStation.sncfId}&to=${arrStation.sncfId}`);
     if (!res.ok) return [];
     const data = await res.json();
@@ -113,6 +141,11 @@ export default function Home() {
   const [legBFlights, setLegBFlights] = useState<FlightInfo[]>([]);
   const [legATrains, setLegATrains] = useState<TrainInfo[]>([]);
   const [legBTrains, setLegBTrains] = useState<TrainInfo[]>([]);
+  const [legASelectedTrain, setLegASelectedTrain] = useState<number>(0);
+  const [legBSelectedTrain, setLegBSelectedTrain] = useState<number>(0);
+  // Keep base route (before train coordinates injection) to re-apply when switching trains
+  const [legABaseRoute, setLegABaseRoute] = useState<RouteResult | null>(null);
+  const [legBBaseRoute, setLegBBaseRoute] = useState<RouteResult | null>(null);
 
   const [depSearch, setDepSearch] = useState("");
   const [depResults, setDepResults] = useState<{ displayName: string; address: string; coords: LatLng }[]>([]);
@@ -153,20 +186,30 @@ export default function Home() {
 
   // Leg A
   useEffect(() => {
-    if (!departure?.id || !hotel?.id) { setLegARoute(null); setLegAFlights([]); setLegATrains([]); return; }
+    if (!departure?.id || !hotel?.id) { setLegARoute(null); setLegABaseRoute(null); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0); return; }
     let cancelled = false;
-    setLegALoading(true); setLegAError(""); setLegAFlights([]); setLegATrains([]);
+    setLegALoading(true); setLegAError(""); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0);
     const from = { name: departure.name, coords: departure.coords };
     const to = { name: hotel.name, coords: hotel.coords };
     computeRoute(from, to, legAModes)
       .then(r => {
         if (cancelled) return;
         setLegARoute(r);
+        setLegABaseRoute(r);
         if (r.segments.some(s => s.mode === "plane")) {
           fetchFlightInfo(departure.coords, hotel.coords).then(f => { if (!cancelled) setLegAFlights(f); });
         }
         if (r.segments.some(s => s.mode === "train")) {
-          fetchTrainInfo(departure.coords, hotel.coords).then(t => { if (!cancelled) setLegATrains(t); });
+          fetchTrainInfo(departure.coords, hotel.coords).then(trains => {
+            if (cancelled) return;
+            setLegATrains(trains);
+            if (trains.length > 0 && trains[0].coordinates.length > 0) {
+              const updated = { ...r, segments: r.segments.map(seg =>
+                seg.mode === "train" ? { ...seg, coordinates: trains[0].coordinates } : seg
+              )};
+              setLegARoute(updated);
+            }
+          });
         }
       })
       .catch(e => { if (!cancelled) { setLegAError(e.message); setLegARoute(null); } })
@@ -176,20 +219,30 @@ export default function Home() {
 
   // Leg B
   useEffect(() => {
-    if (!hotel?.id || !venue?.id) { setLegBRoute(null); setLegBFlights([]); setLegBTrains([]); return; }
+    if (!hotel?.id || !venue?.id) { setLegBRoute(null); setLegBBaseRoute(null); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0); return; }
     let cancelled = false;
-    setLegBLoading(true); setLegBError(""); setLegBFlights([]); setLegBTrains([]);
+    setLegBLoading(true); setLegBError(""); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0);
     const from = { name: hotel.name, coords: hotel.coords };
     const to = { name: venue.name, coords: venue.coords };
     computeRoute(from, to, legBModes)
       .then(r => {
         if (cancelled) return;
         setLegBRoute(r);
+        setLegBBaseRoute(r);
         if (r.segments.some(s => s.mode === "plane")) {
           fetchFlightInfo(hotel.coords, venue.coords).then(f => { if (!cancelled) setLegBFlights(f); });
         }
         if (r.segments.some(s => s.mode === "train")) {
-          fetchTrainInfo(hotel.coords, venue.coords).then(t => { if (!cancelled) setLegBTrains(t); });
+          fetchTrainInfo(hotel.coords, venue.coords).then(trains => {
+            if (cancelled) return;
+            setLegBTrains(trains);
+            if (trains.length > 0 && trains[0].coordinates.length > 0) {
+              const updated = { ...r, segments: r.segments.map(seg =>
+                seg.mode === "train" ? { ...seg, coordinates: trains[0].coordinates } : seg
+              )};
+              setLegBRoute(updated);
+            }
+          });
         }
       })
       .catch(e => { if (!cancelled) { setLegBError(e.message); setLegBRoute(null); } })
@@ -212,7 +265,26 @@ export default function Home() {
     setSelectedHotelInfo(h);
   }, []);
 
-  function renderSegments(route: RouteResult, flights: FlightInfo[], trains: TrainInfo[]) {
+  function selectTrain(leg: "A" | "B", index: number) {
+    const trains = leg === "A" ? legATrains : legBTrains;
+    const baseRoute = leg === "A" ? legABaseRoute : legBBaseRoute;
+    const setRoute = leg === "A" ? setLegARoute : setLegBRoute;
+    const setSelected = leg === "A" ? setLegASelectedTrain : setLegBSelectedTrain;
+
+    if (!baseRoute || !trains[index]) return;
+    setSelected(index);
+
+    const train = trains[index];
+    if (train.coordinates.length > 0) {
+      const updated = { ...baseRoute, segments: baseRoute.segments.map(seg =>
+        seg.mode === "train" ? { ...seg, coordinates: train.coordinates } : seg
+      )};
+      setRoute(updated);
+    }
+  }
+
+  function renderSegments(route: RouteResult, flights: FlightInfo[], trains: TrainInfo[], leg: "A" | "B") {
+    const selectedTrain = leg === "A" ? legASelectedTrain : legBSelectedTrain;
     return (
       <div className="mt-2 space-y-1">
         {route.segments.map((seg, i) => (
@@ -243,19 +315,33 @@ export default function Home() {
             ))}
           </div>
         )}
-        {/* Train details */}
+        {/* Train details — click to switch route */}
         {trains.length > 0 && (
-          <div className="p-2 bg-indigo-50 rounded text-xs space-y-1.5">
-            <p className="font-semibold text-indigo-700">Trains disponibles :</p>
-            {trains.slice(0, 3).map((t, i) => (
-              <div key={i} className="flex justify-between items-center gap-2">
-                <div>
-                  <span className="font-medium">{t.trainType} {t.trainLabel}</span>
-                  {t.transfers > 0 && <span className="text-gray-500"> ({t.transfers} corresp.)</span>}
-                  {t.departureAt && <p className="text-gray-400">Dep. {new Date(t.departureAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} → Arr. {new Date(t.arrivalAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {formatDuration(t.durationMinutes)}</p>}
+          <div className="p-2 bg-indigo-50 rounded text-xs space-y-2">
+            <p className="font-semibold text-indigo-700">Trains disponibles (cliquez pour changer) :</p>
+            {trains.slice(0, 5).map((journey, i) => (
+              <button key={i} onClick={() => selectTrain(leg, i)}
+                className={`w-full text-left border rounded-lg p-2 transition-colors ${selectedTrain === i ? "border-indigo-500 bg-indigo-100" : "border-transparent hover:bg-indigo-100/50"}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className={selectedTrain === i ? "text-indigo-700" : "text-gray-500"}>
+                      {selectedTrain === i && "✓ "}
+                      Dep. {new Date(journey.departureAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} → Arr. {new Date(journey.arrivalAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {formatDuration(journey.durationMinutes)}
+                      {journey.transfers > 0 && ` · ${journey.transfers} corresp.`}
+                    </p>
+                  </div>
+                  {journey.price != null && <span className="font-bold text-green-700 whitespace-nowrap ml-2">{journey.price.toFixed(0)} €</span>}
                 </div>
-                {t.price != null && <span className="font-bold text-green-700 whitespace-nowrap">{t.price.toFixed(0)} €</span>}
-              </div>
+                {journey.trains.map((tr, j) => (
+                  <div key={j} className="mt-1 ml-2 pl-2 border-l-2 border-indigo-300">
+                    <p className="font-medium">{tr.name} <span className="text-gray-400 font-normal">n°{tr.number}</span></p>
+                    <p className="text-gray-500">
+                      {new Date(tr.departureTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} {tr.departureStation} → {new Date(tr.arrivalTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} {tr.arrivalStation}
+                    </p>
+                    {tr.direction && <p className="text-gray-400">Dir. {tr.direction}</p>}
+                  </div>
+                ))}
+              </button>
             ))}
           </div>
         )}
@@ -387,7 +473,7 @@ export default function Home() {
             )}
             {legALoading && <p className="text-xs text-gray-400 mt-2">Calcul de l&apos;itineraire...</p>}
             {legAError && <p className="text-xs text-red-500 mt-2">{legAError}</p>}
-            {legARoute && !legALoading && renderSegments(legARoute, legAFlights, legATrains)}
+            {legARoute && !legALoading && renderSegments(legARoute, legAFlights, legATrains, "A")}
           </div>
         )}
 
@@ -409,7 +495,7 @@ export default function Home() {
             )}
             {legBLoading && <p className="text-xs text-gray-400 mt-2">Calcul de l&apos;itineraire...</p>}
             {legBError && <p className="text-xs text-red-500 mt-2">{legBError}</p>}
-            {legBRoute && !legBLoading && renderSegments(legBRoute, legBFlights, legBTrains)}
+            {legBRoute && !legBLoading && renderSegments(legBRoute, legBFlights, legBTrains, "B")}
           </div>
         )}
       </div>

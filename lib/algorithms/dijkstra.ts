@@ -228,3 +228,15 @@ export function findNearestByDistance<T extends { coords: LatLng }>(
 
   return nearest;
 }
+
+export function findNearestByDistanceSorted<T extends { coords: LatLng }>(
+  point: LatLng,
+  items: T[],
+  count: number = 3
+): T[] {
+  return [...items]
+    .map((item) => ({ item, dist: haversineDistance(point, item.coords) }))
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, count)
+    .map((x) => x.item);
+}
