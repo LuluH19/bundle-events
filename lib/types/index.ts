@@ -21,7 +21,6 @@ export interface RouteSegment {
   coordinates: [number, number][];
   distanceKm: number;
   durationMinutes: number;
-  co2Kg: number;
 }
 
 export interface FlightInfo {
@@ -53,25 +52,7 @@ export interface RouteResult {
   segments: RouteSegment[];
   totalDistanceKm: number;
   totalDurationMinutes: number;
-  totalCo2Kg: number;
   isMultimodal: boolean;
-}
-
-export interface TravelLeg {
-  from: Location;
-  to: Location;
-  mode: TransportMode;
-  route: RouteResult | null;
-  loading: boolean;
-  error?: string;
-}
-
-export interface TravelPlan {
-  departure: Location | null;
-  hotel: Location | null;
-  venue: Location | null;
-  legA: TravelLeg | null;
-  legB: TravelLeg | null;
 }
 
 export interface Station {
@@ -96,25 +77,4 @@ export interface Venue {
   coords: LatLng;
   city: string;
   capacity?: number;
-}
-
-export interface DijkstraNode {
-  id: string;
-  coords: LatLng;
-  type: "departure" | "station" | "airport" | "hotel" | "venue";
-  name: string;
-}
-
-export interface DijkstraEdge {
-  from: string;
-  to: string;
-  mode: TransportMode;
-  weight: number;
-  distanceKm: number;
-}
-
-export interface DijkstraPath {
-  nodes: DijkstraNode[];
-  edges: DijkstraEdge[];
-  totalWeight: number;
 }

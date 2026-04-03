@@ -5,9 +5,9 @@ import dynamic from "next/dynamic";
 import type { Location, TransportMode, RouteResult, LocationType, LatLng, FlightInfo, HotelMapItem } from "@/lib/types";
 import { computeRoute } from "@/lib/algorithms/routing";
 import { airports } from "@/lib/data/airports";
-import { findNearestByDistance } from "@/lib/algorithms/dijkstra";
 import { venues } from "@/lib/data/venues";
 import { searchLocation, reverseGeocode } from "@/lib/services/geocoding";
+import { haversineDistance } from "@/lib/algorithms/geodesic";
 
 const TravelMap = dynamic(() => import("@/app/_components/TravelMap"), {
   ssr: false,
@@ -18,33 +18,18 @@ const TravelMap = dynamic(() => import("@/app/_components/TravelMap"), {
   ),
 });
 
-const ALL_MODES: { mode: TransportMode; label: string; icon: string }[] = [
-  { mode: "walking", label: "A pied", icon: "🚶" },
-  { mode: "car", label: "Voiture", icon: "🚗" },
-  { mode: "bus", label: "Bus", icon: "🚌" },
-  { mode: "train", label: "Train", icon: "🚄" },
-  { mode: "plane", label: "Avion", icon: "✈️" },
+const ALL_MODES: { mode: TransportMode; label: string }[] = [
+  { mode: "walking", label: "A pied" },
+  { mode: "car", label: "Voiture" },
+  { mode: "bus", label: "Bus" },
+  { mode: "train", label: "Train" },
+  { mode: "plane", label: "Avion" },
 ];
 
 const RADIUS_OPTIONS = [5, 10, 20, 25, 50];
 
-function formatDuration(min: number) {
-  if (min < 60) return `${Math.round(min)} min`;
-  const h = Math.floor(min / 60);
-  const m = Math.round(min % 60);
-  return m > 0 ? `${h}h${m}` : `${h}h`;
-}
-
 function formatDistance(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
-}
-
-const MODE_ICONS: Record<TransportMode, string> = {
-  walking: "🚶", car: "🚗", bus: "🚌", train: "🚄", plane: "✈️",
-};
-
-function getDaysDiff(checkin: string, checkout: string): number {
-  return Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
 }
 
 function toggleMode(current: TransportMode[], mode: TransportMode): TransportMode[] {
@@ -59,7 +44,6 @@ interface TrainDetail {
   type: string;
   name: string;
   number: string;
-  network: string;
   direction: string;
   departureStation: string;
   arrivalStation: string;
@@ -68,19 +52,16 @@ interface TrainDetail {
 }
 
 interface TrainInfo {
-  durationMinutes: number;
   departureAt: string;
   arrivalAt: string;
   transfers: number;
   trains: TrainDetail[];
-  co2Kg?: number;
   price?: number;
   coordinates: [number, number][];
 }
 
 async function fetchTrainInfo(from: LatLng, to: LatLng): Promise<TrainInfo[]> {
   try {
-    // Fetch nearest stations from SNCF API
     const [depRes, arrRes] = await Promise.all([
       fetch(`/api/stations?lat=${from.lat}&lng=${from.lng}&radius=50`),
       fetch(`/api/stations?lat=${to.lat}&lng=${to.lng}&radius=50`),
@@ -93,12 +74,9 @@ async function fetchTrainInfo(from: LatLng, to: LatLng): Promise<TrainInfo[]> {
     const arrStations = arrData.stations || [];
     if (depStations.length === 0 || arrStations.length === 0) return [];
 
-    // Find different stations
     let depStation = depStations[0];
     let arrStation = arrStations[0];
-    if (depStation.id === arrStation.id && arrStations.length > 1) {
-      arrStation = arrStations[1];
-    }
+    if (depStation.id === arrStation.id && arrStations.length > 1) arrStation = arrStations[1];
     if (depStation.id === arrStation.id) return [];
 
     const res = await fetch(`/api/trains/search?from=${depStation.sncfId}&to=${arrStation.sncfId}`);
@@ -110,9 +88,15 @@ async function fetchTrainInfo(from: LatLng, to: LatLng): Promise<TrainInfo[]> {
   }
 }
 
+function findNearest<T extends { coords: LatLng; id: string }>(point: LatLng, items: T[]): T {
+  return items.reduce((best, item) =>
+    haversineDistance(point, item.coords) < haversineDistance(point, best.coords) ? item : best
+  );
+}
+
 async function fetchFlightInfo(from: LatLng, to: LatLng): Promise<FlightInfo[]> {
-  const depAirport = findNearestByDistance(from, airports);
-  const arrAirport = findNearestByDistance(to, airports);
+  const depAirport = findNearest(from, airports);
+  const arrAirport = findNearest(to, airports);
   if (depAirport.id === arrAirport.id) return [];
 
   try {
@@ -140,7 +124,6 @@ export default function Home() {
   const [legAError, setLegAError] = useState("");
   const [legBError, setLegBError] = useState("");
 
-  // Transport info
   const [legAFlights, setLegAFlights] = useState<FlightInfo[]>([]);
   const [legBFlights, setLegBFlights] = useState<FlightInfo[]>([]);
   const [legATrains, setLegATrains] = useState<TrainInfo[]>([]);
@@ -155,18 +138,9 @@ export default function Home() {
   const [hotelResults, setHotelResults] = useState<HotelMapItem[]>([]);
   const [hotelLoading, setHotelLoading] = useState(false);
   const [selectedHotelInfo, setSelectedHotelInfo] = useState<HotelMapItem | null>(null);
-  const [checkin, setCheckin] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 7);
-    return d.toISOString().slice(0, 10);
-  });
-  const [checkout, setCheckout] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 8);
-    return d.toISOString().slice(0, 10);
-  });
 
   const [mapClickTarget, setMapClickTarget] = useState<LocationType | null>(null);
 
-  // Departure search (Mapbox Geocoding)
   useEffect(() => {
     if (depSearch.length < 3) { setDepResults([]); return; }
     const t = setTimeout(async () => {
@@ -178,7 +152,6 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [depSearch]);
 
-  // Hotels around venue (LiteAPI + Overpass, debounced)
   useEffect(() => {
     if (!venue?.id) { setHotelResults([]); return; }
     let cancelled = false;
@@ -187,8 +160,6 @@ export default function Home() {
       lat: String(venue.coords.lat),
       lng: String(venue.coords.lng),
       radius: String(hotelRadius),
-      checkin,
-      checkout,
     });
     const t = setTimeout(() => {
       fetch(`/api/hotels/search?${params}`)
@@ -198,54 +169,34 @@ export default function Home() {
         .finally(() => { if (!cancelled) setHotelLoading(false); });
     }, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [venue, hotelRadius, checkin, checkout]);
+  }, [venue, hotelRadius]);
 
-  // Leg A
   useEffect(() => {
     if (!departure?.id || !hotel?.id) { setLegARoute(null); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0); return; }
     let cancelled = false;
     setLegALoading(true); setLegAError(""); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0);
-    const from = { name: departure.name, coords: departure.coords };
-    const to = { name: hotel.name, coords: hotel.coords };
-    computeRoute(from, to, legAModes)
+    computeRoute({ name: departure.name, coords: departure.coords }, { name: hotel.name, coords: hotel.coords }, legAModes)
       .then(r => {
         if (cancelled) return;
         setLegARoute(r);
-
-        if (r.segments.some(s => s.mode === "plane")) {
-          fetchFlightInfo(departure.coords, hotel.coords).then(f => { if (!cancelled) setLegAFlights(f); });
-        }
-        if (r.segments.some(s => s.mode === "train")) {
-          fetchTrainInfo(departure.coords, hotel.coords).then(trains => {
-            if (!cancelled) setLegATrains(trains);
-          });
-        }
+        if (r.segments.some(s => s.mode === "plane")) fetchFlightInfo(departure.coords, hotel.coords).then(f => { if (!cancelled) setLegAFlights(f); });
+        if (r.segments.some(s => s.mode === "train")) fetchTrainInfo(departure.coords, hotel.coords).then(t => { if (!cancelled) setLegATrains(t); });
       })
       .catch(e => { if (!cancelled) { setLegAError(e.message); setLegARoute(null); } })
       .finally(() => { if (!cancelled) setLegALoading(false); });
     return () => { cancelled = true; };
   }, [departure, hotel, legAModes]);
 
-  // Leg B
   useEffect(() => {
     if (!hotel?.id || !venue?.id) { setLegBRoute(null); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0); return; }
     let cancelled = false;
     setLegBLoading(true); setLegBError(""); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0);
-    const from = { name: hotel.name, coords: hotel.coords };
-    const to = { name: venue.name, coords: venue.coords };
-    computeRoute(from, to, legBModes)
+    computeRoute({ name: hotel.name, coords: hotel.coords }, { name: venue.name, coords: venue.coords }, legBModes)
       .then(r => {
         if (cancelled) return;
         setLegBRoute(r);
-
-        if (r.segments.some(s => s.mode === "plane")) {
-          fetchFlightInfo(hotel.coords, venue.coords).then(f => { if (!cancelled) setLegBFlights(f); });
-        }
-        if (r.segments.some(s => s.mode === "train")) {
-          fetchTrainInfo(hotel.coords, venue.coords).then(trains => {
-            if (!cancelled) setLegBTrains(trains);
-          });
-        }
+        if (r.segments.some(s => s.mode === "plane")) fetchFlightInfo(hotel.coords, venue.coords).then(f => { if (!cancelled) setLegBFlights(f); });
+        if (r.segments.some(s => s.mode === "train")) fetchTrainInfo(hotel.coords, venue.coords).then(t => { if (!cancelled) setLegBTrains(t); });
       })
       .catch(e => { if (!cancelled) { setLegBError(e.message); setLegBRoute(null); } })
       .finally(() => { if (!cancelled) setLegBLoading(false); });
@@ -268,8 +219,7 @@ export default function Home() {
   }, []);
 
   function selectTrain(leg: "A" | "B", index: number) {
-    const setSelected = leg === "A" ? setLegASelectedTrain : setLegBSelectedTrain;
-    setSelected(index);
+    (leg === "A" ? setLegASelectedTrain : setLegBSelectedTrain)(index);
   }
 
   function renderSegments(route: RouteResult, flights: FlightInfo[], trains: TrainInfo[], leg: "A" | "B") {
@@ -277,55 +227,40 @@ export default function Home() {
     return (
       <div className="mt-2 space-y-1">
         {route.segments.map((seg, i) => (
-          <div key={i} className="p-2 bg-gray-50 rounded text-xs flex items-start gap-2">
-            <span className="text-base">{MODE_ICONS[seg.mode]}</span>
-            <div className="flex-1">
-              <p className="font-medium">{seg.from.name} → {seg.to.name}</p>
-              <p className="text-gray-500">
-                {formatDistance(seg.distanceKm)} · {formatDuration(seg.durationMinutes)}
-                {seg.co2Kg > 0 && <span className="text-amber-600"> · {seg.co2Kg < 1 ? `${Math.round(seg.co2Kg * 1000)} g` : `${seg.co2Kg.toFixed(1)} kg`} CO2</span>}
-              </p>
-            </div>
+          <div key={i} className="p-2 bg-gray-50 rounded text-xs">
+            <p className="font-medium">{seg.from.name} &rarr; {seg.to.name}</p>
+            <p className="text-gray-500">{formatDistance(seg.distanceKm)} - {seg.mode}</p>
           </div>
         ))}
-        {/* Flight details */}
+
         {flights.length > 0 && (
           <div className="p-2 bg-purple-50 rounded text-xs space-y-1.5">
-            <p className="font-semibold text-purple-700">Vols disponibles :</p>
+            <p className="font-semibold text-purple-700">Vols disponibles</p>
             {flights.slice(0, 3).map((f, i) => (
-              <div key={i} className="flex justify-between items-center gap-2">
-                <div>
-                  <span className="font-medium">{f.airline} {f.flightNumber}</span>
-                  {f.transfers > 0 ? <span className="text-gray-500"> ({f.transfers} escale{f.transfers > 1 ? "s" : ""})</span> : <span className="text-green-600"> direct</span>}
-                  {f.departureAt && <p className="text-gray-400">{new Date(f.departureAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} a {new Date(f.departureAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}{f.durationMinutes > 0 && ` · ${formatDuration(f.durationMinutes)}`}</p>}
-                </div>
-                <span className="font-bold text-green-700 whitespace-nowrap">{f.price} €</span>
+              <div key={i}>
+                <span className="font-medium">{f.airline} {f.flightNumber}</span>
+                {f.transfers > 0 ? <span className="text-gray-500"> ({f.transfers} escale{f.transfers > 1 ? "s" : ""})</span> : <span className="text-green-600"> direct</span>}
+                {f.departureAt && <p className="text-gray-400">{new Date(f.departureAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} {new Date(f.departureAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>}
               </div>
             ))}
           </div>
         )}
-        {/* Train details — click to switch route */}
+
         {trains.length > 0 && (
           <div className="p-2 bg-indigo-50 rounded text-xs space-y-2">
-            <p className="font-semibold text-indigo-700">Trains disponibles (cliquez pour changer) :</p>
+            <p className="font-semibold text-indigo-700">Trains disponibles</p>
             {trains.slice(0, 5).map((journey, i) => (
               <button key={i} onClick={() => selectTrain(leg, i)}
                 className={`w-full text-left border rounded-lg p-2 transition-colors ${selectedTrain === i ? "border-indigo-500 bg-indigo-100" : "border-transparent hover:bg-indigo-100/50"}`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className={selectedTrain === i ? "text-indigo-700" : "text-gray-500"}>
-                      {selectedTrain === i && "✓ "}
-                      Dep. {new Date(journey.departureAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} → Arr. {new Date(journey.arrivalAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {formatDuration(journey.durationMinutes)}
-                      {journey.transfers > 0 && ` · ${journey.transfers} corresp.`}
-                    </p>
-                  </div>
-                  {journey.price != null && <span className="font-bold text-green-700 whitespace-nowrap ml-2">{journey.price.toFixed(0)} €</span>}
-                </div>
+                <p className={selectedTrain === i ? "text-indigo-700" : "text-gray-500"}>
+                  Dep. {new Date(journey.departureAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} &rarr; Arr. {new Date(journey.arrivalAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                  {journey.transfers > 0 && ` - ${journey.transfers} corresp.`}
+                </p>
                 {journey.trains.map((tr, j) => (
                   <div key={j} className="mt-1 ml-2 pl-2 border-l-2 border-indigo-300">
-                    <p className="font-medium">{tr.name} <span className="text-gray-400 font-normal">n°{tr.number}</span></p>
+                    <p className="font-medium">{tr.name} n.{tr.number}</p>
                     <p className="text-gray-500">
-                      {new Date(tr.departureTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} {tr.departureStation} → {new Date(tr.arrivalTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} {tr.arrivalStation}
+                      {new Date(tr.departureTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} {tr.departureStation} &rarr; {new Date(tr.arrivalTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} {tr.arrivalStation}
                     </p>
                     {tr.direction && <p className="text-gray-400">Dir. {tr.direction}</p>}
                   </div>
@@ -334,10 +269,9 @@ export default function Home() {
             ))}
           </div>
         )}
-        {/* Total with CO2 */}
-        <div className="p-2 bg-blue-50 rounded text-xs font-medium flex justify-between">
-          <span>Total : {formatDistance(route.totalDistanceKm)} · {formatDuration(route.totalDurationMinutes)}</span>
-          <span className="text-amber-700">{route.totalCo2Kg < 1 ? `${Math.round(route.totalCo2Kg * 1000)} g` : `${route.totalCo2Kg.toFixed(1)} kg`} CO2</span>
+
+        <div className="p-2 bg-blue-50 rounded text-xs font-medium">
+          Total : {formatDistance(route.totalDistanceKm)}
         </div>
       </div>
     );
@@ -345,7 +279,6 @@ export default function Home() {
 
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
       <div className="w-[380px] overflow-y-auto border-r border-gray-200 p-4 space-y-4 bg-white">
         <h1 className="text-lg font-bold">Bundle Events</h1>
 
@@ -355,7 +288,7 @@ export default function Home() {
             <span className="w-2.5 h-2.5 bg-blue-500 rounded-full" /> Depart
             <button onClick={() => setMapClickTarget(mapClickTarget === "departure" ? null : "departure")}
               className={`ml-auto text-xs ${mapClickTarget === "departure" ? "text-blue-600 font-bold" : "text-gray-400"}`}>
-              📍 Carte
+              Carte
             </button>
           </label>
           <input value={depSearch} onChange={e => setDepSearch(e.target.value)}
@@ -372,7 +305,7 @@ export default function Home() {
               ))}
             </ul>
           )}
-          {departure?.id && <p className="text-xs text-green-600 mt-1">✓ {departure.address || departure.name}</p>}
+          {departure?.id && <p className="text-xs text-green-600 mt-1">{departure.address || departure.name}</p>}
         </div>
 
         {/* Venue */}
@@ -382,15 +315,12 @@ export default function Home() {
           </label>
           <select value={venue?.id || ""} onChange={e => {
             const v = venues.find(v => v.id === e.target.value);
-            if (v) {
-              setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
-              setHotel(null);
-            }
+            if (v) { setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address }); setHotel(null); }
           }} className="w-full mt-1 px-3 py-2 text-sm border rounded-lg">
             <option value="">Choisir un lieu</option>
             {venues.map(v => <option key={v.id} value={v.id}>{v.name} ({v.city})</option>)}
           </select>
-          {venue?.id && <p className="text-xs text-gray-500 mt-1">📍 {venue.address}</p>}
+          {venue?.id && <p className="text-xs text-gray-500 mt-1">{venue.address}</p>}
         </div>
 
         {/* Hotel */}
@@ -401,16 +331,9 @@ export default function Home() {
           {!venue?.id && <p className="text-xs text-gray-400 mt-1">Selectionnez d&apos;abord un evenement</p>}
           {venue?.id && (
             <>
-              {/* Dates + Rayon */}
-              <div className="flex gap-2 mt-1">
-                <input type="date" value={checkin} onChange={e => setCheckin(e.target.value)}
-                  className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
-                <input type="date" value={checkout} onChange={e => setCheckout(e.target.value)}
-                  className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
-              </div>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-gray-500 whitespace-nowrap">Rayon :</span>
-                <select value={hotelRadius} onChange={e => { setHotelRadius(Number(e.target.value)); }}
+                <select value={hotelRadius} onChange={e => setHotelRadius(Number(e.target.value))}
                   className="flex-1 px-2 py-1.5 text-sm border rounded-lg">
                   {RADIUS_OPTIONS.map(r => <option key={r} value={r}>{r} km</option>)}
                 </select>
@@ -418,7 +341,7 @@ export default function Home() {
               {hotelLoading && <p className="text-xs text-gray-400 mt-1">Recherche d&apos;hotels...</p>}
               {!hotelLoading && hotelResults.length === 0 && !hotel?.id && <p className="text-xs text-gray-400 mt-1">Aucun hotel trouve</p>}
               {!hotelLoading && hotelResults.length > 0 && !hotel?.id && (
-                <p className="text-xs text-amber-600 mt-1">{hotelResults.length} hotels sur la carte — cliquez pour selectionner</p>
+                <p className="text-xs text-amber-600 mt-1">{hotelResults.length} hotels sur la carte</p>
               )}
               {hotel?.id && selectedHotelInfo && (
                 <div className="mt-1 p-2 bg-amber-50 rounded-lg text-sm">
@@ -429,31 +352,18 @@ export default function Home() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <p className="font-medium truncate">{hotel.name}</p>
-                        <button onClick={() => { setHotel(null); setSelectedHotelInfo(null); }} className="text-xs text-gray-400 hover:text-red-500 ml-1 flex-shrink-0">✕</button>
+                        <button onClick={() => { setHotel(null); setSelectedHotelInfo(null); }} className="text-xs text-gray-400 hover:text-red-500 ml-1">x</button>
                       </div>
-                      {selectedHotelInfo.stars && (
-                        <p className="text-xs text-amber-600">{"★".repeat(selectedHotelInfo.stars)}{"☆".repeat(5 - selectedHotelInfo.stars)}</p>
-                      )}
-                      {selectedHotelInfo.pricePerNight && (
-                        <p className="text-xs font-bold text-green-700">{selectedHotelInfo.pricePerNight} {selectedHotelInfo.currency || "€"}/nuit</p>
-                      )}
-                      {selectedHotelInfo.type && (
-                        <p className="text-xs text-gray-400 capitalize">{selectedHotelInfo.type === "guest_house" ? "Maison d'hotes" : selectedHotelInfo.type === "hostel" ? "Auberge" : "Hotel"}</p>
-                      )}
+                      {selectedHotelInfo.stars && <p className="text-xs text-amber-600">{selectedHotelInfo.stars} etoiles</p>}
                       {hotel.address && <p className="text-xs text-gray-500 truncate">{hotel.address}</p>}
                     </div>
                   </div>
                   {(selectedHotelInfo.website || selectedHotelInfo.phone) && (
                     <div className="mt-1 flex gap-3 text-xs">
-                      {selectedHotelInfo.website && (
-                        <a href={selectedHotelInfo.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Site web</a>
-                      )}
-                      {selectedHotelInfo.phone && (
-                        <a href={`tel:${selectedHotelInfo.phone}`} className="text-blue-600 hover:underline">{selectedHotelInfo.phone}</a>
-                      )}
+                      {selectedHotelInfo.website && <a href={selectedHotelInfo.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Site web</a>}
+                      {selectedHotelInfo.phone && <a href={`tel:${selectedHotelInfo.phone}`} className="text-blue-600 hover:underline">{selectedHotelInfo.phone}</a>}
                     </div>
                   )}
-                  {selectedHotelInfo.source === "liteapi" && <p className="text-xs text-gray-300 mt-1">Prix via LiteAPI</p>}
                 </div>
               )}
             </>
@@ -463,20 +373,17 @@ export default function Home() {
         {/* Leg A */}
         {departure?.id && hotel?.id && (
           <div className="pt-3 border-t">
-            <p className="text-sm font-semibold text-blue-600 mb-1">Trajet A : Depart → Hotel</p>
+            <p className="text-sm font-semibold text-blue-600 mb-1">Trajet A : Depart &rarr; Hotel</p>
             <p className="text-xs text-gray-400 mb-2">Cliquez plusieurs modes pour du multimodal</p>
             <div className="flex flex-wrap gap-1">
-              {ALL_MODES.map(({ mode, label, icon }) => (
+              {ALL_MODES.map(({ mode, label }) => (
                 <button key={mode} onClick={() => setLegAModes(prev => toggleMode(prev, mode))}
                   className={`px-2.5 py-1 text-xs rounded-full border ${legAModes.includes(mode) ? "bg-blue-600 text-white border-blue-600" : "border-gray-300 hover:border-blue-400"}`}>
-                  {icon} {label}
+                  {label}
                 </button>
               ))}
             </div>
-            {legAModes.length > 1 && (
-              <p className="text-xs text-blue-500 mt-1">Multimodal : {legAModes.map(m => MODE_ICONS[m]).join(" + ")}</p>
-            )}
-            {legALoading && <p className="text-xs text-gray-400 mt-2">Calcul de l&apos;itineraire...</p>}
+            {legALoading && <p className="text-xs text-gray-400 mt-2">Calcul...</p>}
             {legAError && <p className="text-xs text-red-500 mt-2">{legAError}</p>}
             {legARoute && !legALoading && renderSegments(legARoute, legAFlights, legATrains, "A")}
           </div>
@@ -485,73 +392,30 @@ export default function Home() {
         {/* Leg B */}
         {hotel?.id && venue?.id && (
           <div className="pt-3 border-t">
-            <p className="text-sm font-semibold text-orange-600 mb-1">Trajet B : Hotel → Evenement</p>
+            <p className="text-sm font-semibold text-orange-600 mb-1">Trajet B : Hotel &rarr; Evenement</p>
             <p className="text-xs text-gray-400 mb-2">Cliquez plusieurs modes pour du multimodal</p>
             <div className="flex flex-wrap gap-1">
-              {ALL_MODES.map(({ mode, label, icon }) => (
+              {ALL_MODES.map(({ mode, label }) => (
                 <button key={mode} onClick={() => setLegBModes(prev => toggleMode(prev, mode))}
                   className={`px-2.5 py-1 text-xs rounded-full border ${legBModes.includes(mode) ? "bg-orange-500 text-white border-orange-500" : "border-gray-300 hover:border-orange-400"}`}>
-                  {icon} {label}
+                  {label}
                 </button>
               ))}
             </div>
-            {legBModes.length > 1 && (
-              <p className="text-xs text-orange-500 mt-1">Multimodal : {legBModes.map(m => MODE_ICONS[m]).join(" + ")}</p>
-            )}
-            {legBLoading && <p className="text-xs text-gray-400 mt-2">Calcul de l&apos;itineraire...</p>}
+            {legBLoading && <p className="text-xs text-gray-400 mt-2">Calcul...</p>}
             {legBError && <p className="text-xs text-red-500 mt-2">{legBError}</p>}
             {legBRoute && !legBLoading && renderSegments(legBRoute, legBFlights, legBTrains, "B")}
           </div>
         )}
-
-        {/* Budget summary */}
-        {(legARoute || selectedHotelInfo?.pricePerNight) && (
-          <div className="pt-3 border-t">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Recapitulatif</p>
-            <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg text-xs space-y-1.5">
-              {legARoute && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Trajet A</span>
-                  <span>{formatDuration(legARoute.totalDurationMinutes)} · {legARoute.totalCo2Kg < 1 ? `${Math.round(legARoute.totalCo2Kg * 1000)}g` : `${legARoute.totalCo2Kg.toFixed(1)}kg`} CO2</span>
-                </div>
-              )}
-              {selectedHotelInfo?.pricePerNight && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Hotel ({getDaysDiff(checkin, checkout)} nuit{getDaysDiff(checkin, checkout) > 1 ? "s" : ""})</span>
-                  <span className="font-bold text-green-700">{selectedHotelInfo.pricePerNight * getDaysDiff(checkin, checkout)} {selectedHotelInfo.currency || "€"}</span>
-                </div>
-              )}
-              {legBRoute && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Trajet B</span>
-                  <span>{formatDuration(legBRoute.totalDurationMinutes)} · {legBRoute.totalCo2Kg < 1 ? `${Math.round(legBRoute.totalCo2Kg * 1000)}g` : `${legBRoute.totalCo2Kg.toFixed(1)}kg`} CO2</span>
-                </div>
-              )}
-              <div className="border-t border-green-200 pt-1.5 flex justify-between font-semibold text-sm">
-                <span>CO2 total</span>
-                <span className="text-amber-700">
-                  {(((legARoute?.totalCo2Kg || 0) + (legBRoute?.totalCo2Kg || 0))).toFixed(1)} kg
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Map */}
       <div className="flex-1">
         <TravelMap
-          departure={departure}
-          hotel={hotel}
-          venue={venue}
-          legARoute={legARoute}
-          legBRoute={legBRoute}
-          onMapClick={handleMapClick}
-          mapClickTarget={mapClickTarget}
-          hotelResults={hotelResults}
-          selectedHotelId={hotel?.id || null}
-          onHotelSelect={handleHotelSelect}
-          hotelRadius={hotelRadius}
+          departure={departure} hotel={hotel} venue={venue}
+          legARoute={legARoute} legBRoute={legBRoute}
+          onMapClick={handleMapClick} mapClickTarget={mapClickTarget}
+          hotelResults={hotelResults} selectedHotelId={hotel?.id || null}
+          onHotelSelect={handleHotelSelect} hotelRadius={hotelRadius}
         />
       </div>
     </div>

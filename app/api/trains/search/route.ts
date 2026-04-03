@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       departure_date_time: string;
       arrival_date_time: string;
       nb_transfers: number;
-      co2_emission?: { value: number };
+
       sections: SNCFSection[];
       fare?: { total?: { value?: string } };
     }) => {
@@ -119,7 +119,6 @@ export async function GET(request: NextRequest) {
         arrivalAt: formatSncfDate(j.arrival_date_time),
         transfers: j.nb_transfers,
         trains,
-        co2Kg: j.co2_emission ? j.co2_emission.value / 1000 : undefined,
         price: j.fare?.total?.value ? Number(j.fare.total.value) / 100 : undefined,
         coordinates,
       };

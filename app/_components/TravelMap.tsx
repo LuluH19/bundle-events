@@ -229,10 +229,9 @@ export default function TravelMap({
         map.on("mouseenter", "hotels-circle", (e) => {
           const props = e.features?.[0]?.properties;
           if (props) {
-            const priceHtml = props.pricePerNight ? `<br/><strong style="color:#15803d">${props.pricePerNight} ${props.currency || "€"}/nuit</strong>` : "";
-            const starsHtml = props.stars ? `<br/><span style="color:#d97706">${"★".repeat(props.stars)}</span>` : "";
+            const starsHtml = props.stars ? `<br/><span style="color:#d97706">${props.stars} etoiles</span>` : "";
             popup.setLngLat([props.lng, props.lat])
-              .setHTML(`<strong>${props.name}</strong>${starsHtml}${priceHtml}<br/><span style="color:#666;font-size:12px">${props.locationName}</span>`)
+              .setHTML(`<strong>${props.name}</strong>${starsHtml}<br/><span style="color:#666;font-size:12px">${props.locationName}</span>`)
               .addTo(map);
           }
         });
