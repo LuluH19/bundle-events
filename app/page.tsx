@@ -158,6 +158,10 @@ export default function Home() {
   const [hotelResults, setHotelResults] = useState<HotelMapItem[]>([]);
   const [hotelLoading, setHotelLoading] = useState(false);
   const [selectedHotelInfo, setSelectedHotelInfo] = useState<HotelMapItem | null>(null);
+
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [localisationStatus, setLocalisationStatus] = useState<string>('');
+
   const [checkin, setCheckin] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + 7);
     return d.toISOString().slice(0, 10);
@@ -302,6 +306,54 @@ export default function Home() {
     }
   }
 
+  const handleRequestLocation = () => {
+    setLocalisationStatus('En attente d\'autorisation...');
+    
+    if (!navigator.geolocation) {
+      alert("La geolocation n'est pas supporté par votre navigateur");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const newCoords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        try {
+          const address = await reverseGeocode(newCoords);
+          const displayName = address.split(",")[0];
+
+          const loc: Location = {
+            id: `dep-geo-${Date.now()}`,
+            name: displayName,
+            coords: newCoords,
+            type: "departure",
+            address: address
+          };
+
+          setDeparture(loc);
+          setDepSearch(address);
+          setCoords(newCoords);
+          setLocalisationStatus('Localisation autorisée !');
+        } catch (error) {
+          console.error("Geocoding failed", error);
+          setLocalisationStatus('Erreur de conversion adresse');
+        }
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocalisationStatus('Permission refusé. Merci d\'autoriser la localisation dans les paramètre de votre navigateur.');
+        } else {
+          setLocalisationStatus('Erreur');
+        }
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+
   function renderSegments(route: RouteResult, flights: FlightInfo[], trains: TrainInfo[], leg: "A" | "B") {
     const selectedTrain = leg === "A" ? legASelectedTrain : legBSelectedTrain;
     return (
@@ -403,6 +455,10 @@ export default function Home() {
             </ul>
           )}
           {departure?.id && <p className="text-xs text-green-600 mt-1">✓ {departure.address || departure.name}</p>}
+          <button className="w-full text-left border rounded-lg text-sm flex items-center gap-2 p-1 mt-1 bg-blue-500 hover:bg-blue-600"  onClick={handleRequestLocation}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M11 2v2.07A8 8 0 0 0 4.07 11H2v2h2.07A8 8 0 0 0 11 19.93V22h2v-2.07A8 8 0 0 0 19.93 13H22v-2h-2.07A8 8 0 0 0 13 4.07V2m-2 4.08V8h2V6.09c2.5.41 4.5 2.41 4.92 4.91H16v2h1.91c-.41 2.5-2.41 4.5-4.91 4.92V16h-2v1.91C8.5 17.5 6.5 15.5 6.08 13H8v-2H6.09C6.5 8.5 8.5 6.5 11 6.08M12 11a1 1 0 0 0-1 1a1 1 0 0 0 1 1a1 1 0 0 0 1-1a1 1 0 0 0-1-1"/></svg>
+            Récupérer ma localisation
+            </button>
         </div>
 
         {/* Venue */}
