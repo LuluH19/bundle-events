@@ -90,10 +90,13 @@ export async function GET(request: NextRequest) {
 
     const nearby = cachedStations
       .map((s) => {
-        const dLat = s.coords.lat - pLat;
-        const dLng = s.coords.lng - pLng;
-        // Rough distance in km
-        const dist = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+        // Haversine distance
+        const toRad = (d: number) => (d * Math.PI) / 180;
+        const dLat = toRad(s.coords.lat - pLat);
+        const dLng = toRad(s.coords.lng - pLng);
+        const a = Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(pLat)) * Math.cos(toRad(s.coords.lat)) * Math.sin(dLng / 2) ** 2;
+        const dist = 6371 * 2 * Math.asin(Math.sqrt(a));
         return { ...s, dist };
       })
       .filter((s) => s.dist <= rKm)

@@ -147,9 +147,6 @@ export default function Home() {
   const [legBTrains, setLegBTrains] = useState<TrainInfo[]>([]);
   const [legASelectedTrain, setLegASelectedTrain] = useState<number>(0);
   const [legBSelectedTrain, setLegBSelectedTrain] = useState<number>(0);
-  // Keep base route (before train coordinates injection) to re-apply when switching trains
-  const [legABaseRoute, setLegABaseRoute] = useState<RouteResult | null>(null);
-  const [legBBaseRoute, setLegBBaseRoute] = useState<RouteResult | null>(null);
 
   const [depSearch, setDepSearch] = useState("");
   const [depResults, setDepResults] = useState<{ displayName: string; address: string; coords: LatLng }[]>([]);
@@ -205,7 +202,7 @@ export default function Home() {
 
   // Leg A
   useEffect(() => {
-    if (!departure?.id || !hotel?.id) { setLegARoute(null); setLegABaseRoute(null); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0); return; }
+    if (!departure?.id || !hotel?.id) { setLegARoute(null); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0); return; }
     let cancelled = false;
     setLegALoading(true); setLegAError(""); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0);
     const from = { name: departure.name, coords: departure.coords };
@@ -214,20 +211,13 @@ export default function Home() {
       .then(r => {
         if (cancelled) return;
         setLegARoute(r);
-        setLegABaseRoute(r);
+
         if (r.segments.some(s => s.mode === "plane")) {
           fetchFlightInfo(departure.coords, hotel.coords).then(f => { if (!cancelled) setLegAFlights(f); });
         }
         if (r.segments.some(s => s.mode === "train")) {
           fetchTrainInfo(departure.coords, hotel.coords).then(trains => {
-            if (cancelled) return;
-            setLegATrains(trains);
-            if (trains.length > 0 && trains[0].coordinates.length > 0) {
-              const updated = { ...r, segments: r.segments.map(seg =>
-                seg.mode === "train" ? { ...seg, coordinates: trains[0].coordinates } : seg
-              )};
-              setLegARoute(updated);
-            }
+            if (!cancelled) setLegATrains(trains);
           });
         }
       })
@@ -238,7 +228,7 @@ export default function Home() {
 
   // Leg B
   useEffect(() => {
-    if (!hotel?.id || !venue?.id) { setLegBRoute(null); setLegBBaseRoute(null); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0); return; }
+    if (!hotel?.id || !venue?.id) { setLegBRoute(null); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0); return; }
     let cancelled = false;
     setLegBLoading(true); setLegBError(""); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0);
     const from = { name: hotel.name, coords: hotel.coords };
@@ -247,20 +237,13 @@ export default function Home() {
       .then(r => {
         if (cancelled) return;
         setLegBRoute(r);
-        setLegBBaseRoute(r);
+
         if (r.segments.some(s => s.mode === "plane")) {
           fetchFlightInfo(hotel.coords, venue.coords).then(f => { if (!cancelled) setLegBFlights(f); });
         }
         if (r.segments.some(s => s.mode === "train")) {
           fetchTrainInfo(hotel.coords, venue.coords).then(trains => {
-            if (cancelled) return;
-            setLegBTrains(trains);
-            if (trains.length > 0 && trains[0].coordinates.length > 0) {
-              const updated = { ...r, segments: r.segments.map(seg =>
-                seg.mode === "train" ? { ...seg, coordinates: trains[0].coordinates } : seg
-              )};
-              setLegBRoute(updated);
-            }
+            if (!cancelled) setLegBTrains(trains);
           });
         }
       })
@@ -285,21 +268,8 @@ export default function Home() {
   }, []);
 
   function selectTrain(leg: "A" | "B", index: number) {
-    const trains = leg === "A" ? legATrains : legBTrains;
-    const baseRoute = leg === "A" ? legABaseRoute : legBBaseRoute;
-    const setRoute = leg === "A" ? setLegARoute : setLegBRoute;
     const setSelected = leg === "A" ? setLegASelectedTrain : setLegBSelectedTrain;
-
-    if (!baseRoute || !trains[index]) return;
     setSelected(index);
-
-    const train = trains[index];
-    if (train.coordinates.length > 0) {
-      const updated = { ...baseRoute, segments: baseRoute.segments.map(seg =>
-        seg.mode === "train" ? { ...seg, coordinates: train.coordinates } : seg
-      )};
-      setRoute(updated);
-    }
   }
 
   function renderSegments(route: RouteResult, flights: FlightInfo[], trains: TrainInfo[], leg: "A" | "B") {

@@ -2,6 +2,11 @@ import type { LatLng, RouteResult, RouteSegment, TransportMode } from "@/lib/typ
 import { airports } from "@/lib/data/airports";
 import { busStations } from "@/lib/data/bus-stations";
 import { findNearestByDistance, findNearestByDistanceSorted } from "./dijkstra";
+import {
+  haversineDistance,
+  interpolateGreatCircle,
+  estimateFlightDuration,
+} from "./geodesic";
 
 // Dynamic station type (fetched from SNCF API)
 interface DynamicStation {
@@ -30,11 +35,6 @@ async function fetchNearbyStations(point: LatLng, radiusKm: number = 80): Promis
     return [];
   }
 }
-import {
-  haversineDistance,
-  interpolateGreatCircle,
-  estimateFlightDuration,
-} from "./geodesic";
 
 const OSRM_BASE = "https://router.project-osrm.org/route/v1";
 
@@ -57,6 +57,24 @@ function co2ForSegment(distanceKm: number, mode: TransportMode): number {
   return distanceKm * CO2_KG_PER_KM[mode];
 }
 
+// Vitesses moyennes en km/h (source: ADEME / moyennes constatees France)
+const AVG_SPEED_KMH: Record<TransportMode, number> = {
+  walking: 4.5,
+  car: 70,
+  bus: 55,
+  train: 200,
+  plane: 800,
+};
+
+// Overhead en minutes par mode (embarquement, attente, etc.)
+const OVERHEAD_MINUTES: Record<TransportMode, number> = {
+  walking: 0,
+  car: 0,
+  bus: 20,
+  train: 15,
+  plane: 60,
+};
+
 async function fetchOSRMSegment(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
@@ -78,11 +96,18 @@ async function fetchOSRMSegment(
     ([lng, lat]: [number, number]) => [lat, lng]
   );
 
-  let durationMinutes = route.duration / 60;
   const distanceKm = route.distance / 1000;
 
-  if (mode === "bus") {
-    durationMinutes *= 1.3;
+  // Utiliser les vitesses moyennes plutôt que les estimations OSRM
+  // OSRM est fiable pour le tracé mais pas toujours pour la durée
+  let durationMinutes: number;
+  if (mode === "walking") {
+    durationMinutes = (distanceKm / AVG_SPEED_KMH.walking) * 60;
+  } else if (mode === "bus") {
+    durationMinutes = (distanceKm / AVG_SPEED_KMH.bus) * 60;
+  } else {
+    // Voiture: OSRM est fiable (tient compte du trafic/limitations)
+    durationMinutes = route.duration / 60;
   }
 
   return { from, to, mode, coordinates, distanceKm, durationMinutes, co2Kg: co2ForSegment(distanceKm, mode) };
@@ -98,24 +123,53 @@ function planeSegment(
   return { from, to, mode: "plane", coordinates, distanceKm, durationMinutes, co2Kg: co2ForSegment(distanceKm, "plane") };
 }
 
-function trainSegment(
-  from: { name: string; coords: LatLng },
-  to: { name: string; coords: LatLng }
-): RouteSegment {
-  const distanceKm = haversineDistance(from.coords, to.coords);
-  const durationMinutes = (distanceKm / 250) * 60 + 15;
-  const coordinates = interpolateGreatCircle(from.coords, to.coords, 50);
-  return { from, to, mode: "train", coordinates, distanceKm, durationMinutes, co2Kg: co2ForSegment(distanceKm, "train") };
+// Train: utilise OSRM driving pour le tracé, vitesse train pour la durée
+// Train: fetch le trace via les gares intermediaires SNCF + OSRM multi-waypoint
+async function trainSegment(
+  from: { name: string; coords: LatLng; sncfId?: string },
+  to: { name: string; coords: LatLng; sncfId?: string }
+): Promise<RouteSegment> {
+  let coordinates: [number, number][];
+  let distanceKm: number;
+
+  // Try to get the real rail route via intermediate stops
+  if (from.sncfId && to.sncfId) {
+    try {
+      const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.coordinates?.length > 5) {
+          coordinates = data.coordinates;
+          // Estimate distance from coordinates
+          distanceKm = 0;
+          for (let i = 1; i < coordinates.length; i++) {
+            distanceKm += haversineDistance(
+              { lat: coordinates[i - 1][0], lng: coordinates[i - 1][1] },
+              { lat: coordinates[i][0], lng: coordinates[i][1] }
+            );
+          }
+          const durationMinutes = (distanceKm / AVG_SPEED_KMH.train) * 60 + OVERHEAD_MINUTES.train;
+          return { from, to, mode: "train", coordinates, distanceKm, durationMinutes, co2Kg: co2ForSegment(distanceKm, "train") };
+        }
+      }
+    } catch { /* fallback below */ }
+  }
+
+  // Fallback: OSRM driving route
+  const osrm = await fetchOSRMSegment(from, to, "car");
+  distanceKm = osrm.distanceKm;
+  const durationMinutes = (distanceKm / AVG_SPEED_KMH.train) * 60 + OVERHEAD_MINUTES.train;
+  return { from, to, mode: "train", coordinates: osrm.coordinates, distanceKm, durationMinutes, co2Kg: co2ForSegment(distanceKm, "train") };
 }
 
-function busLongSegment(
+async function busLongSegment(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng }
-): RouteSegment {
-  const distanceKm = haversineDistance(from.coords, to.coords);
-  const durationMinutes = (distanceKm / 60) * 60 + 20;
-  const coordinates = interpolateGreatCircle(from.coords, to.coords, 50);
-  return { from, to, mode: "bus", coordinates, distanceKm, durationMinutes, co2Kg: co2ForSegment(distanceKm, "bus") };
+): Promise<RouteSegment> {
+  const osrm = await fetchOSRMSegment(from, to, "car");
+  const distanceKm = osrm.distanceKm;
+  const durationMinutes = (distanceKm / AVG_SPEED_KMH.bus) * 60 + OVERHEAD_MINUTES.bus;
+  return { from, to, mode: "bus", coordinates: osrm.coordinates, distanceKm, durationMinutes, co2Kg: co2ForSegment(distanceKm, "bus") };
 }
 
 async function accessSegment(
@@ -211,7 +265,7 @@ export async function computeBusRoute(
     accessSegment(arrPoint, to, accessModes),
   ]);
 
-  const bus = busLongSegment(depPoint, arrPoint);
+  const bus = await busLongSegment(depPoint, arrPoint);
 
   return buildResult([toStation, bus, fromStation]);
 }
@@ -286,15 +340,15 @@ export async function computeTrainRoute(
     }
   }
 
-  const depPoint = { name: depStation.name, coords: depStation.coords };
-  const arrPoint = { name: arrStation.name, coords: arrStation.coords };
+  const depPoint = { name: depStation.name, coords: depStation.coords, sncfId: depStation.sncfId };
+  const arrPoint = { name: arrStation.name, coords: arrStation.coords, sncfId: arrStation.sncfId };
 
   const [toStation, fromStation] = await Promise.all([
     accessSegment(from, depPoint, allowedAccessModes),
     accessSegment(arrPoint, to, allowedAccessModes),
   ]);
 
-  const train = trainSegment(depPoint, arrPoint);
+  const train = await trainSegment(depPoint, arrPoint);
 
   return buildResult([toStation, train, fromStation]);
 }
