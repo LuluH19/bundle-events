@@ -19,14 +19,32 @@ interface HotelResult {
 // ---- Caches ----
 const overpassCache = new Map<string, { data: HotelResult[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
-let lastOverpassTime = 0;
 
-async function rateLimitedOverpass(url: string, options: RequestInit): Promise<Response> {
-  const now = Date.now();
-  const wait = 2000 - (now - lastOverpassTime);
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastOverpassTime = Date.now();
-  return fetch(url, options);
+// Public Overpass endpoints, tried in order. The public API is frequently
+// rate-limited or slow, so we fail over to community mirrors before giving up.
+const OVERPASS_MIRRORS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
+
+async function fetchOverpass(query: string): Promise<unknown | null> {
+  const body = `data=${encodeURIComponent(query)}`;
+  for (const url of OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        body,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) continue;
+      return await res.json();
+    } catch {
+      // try the next mirror
+    }
+  }
+  return null;
 }
 
 // ---- Overpass (OSM) ----
@@ -36,23 +54,22 @@ async function searchOverpass(lat: string, lng: string, radiusKm: string): Promi
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
   const radiusMeters = Number(radiusKm) * 1000;
-  const query = `[out:json][timeout:15];(nwr["tourism"="hotel"](around:${radiusMeters},${lat},${lng});nwr["tourism"="hostel"](around:${radiusMeters},${lat},${lng});nwr["tourism"="guest_house"](around:${radiusMeters},${lat},${lng}););out center 30;`;
+  const query = `[out:json][timeout:15];(nwr["tourism"="hotel"](around:${radiusMeters},${lat},${lng});nwr["tourism"="hostel"](around:${radiusMeters},${lat},${lng});nwr["tourism"="guest_house"](around:${radiusMeters},${lat},${lng}););out center 40;`;
 
-  const res = await rateLimitedOverpass("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    body: `data=${encodeURIComponent(query)}`,
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  });
-
-  if (!res.ok) {
-    if (cached) return cached.data;
-    return [];
-  }
-
-  const data = await res.json();
+  type OverpassEl = {
+    id: number;
+    lat?: number;
+    lon?: number;
+    center?: { lat: number; lon: number };
+    tags: Record<string, string>;
+  };
+  const data = (await fetchOverpass(query)) as { elements?: OverpassEl[] } | null;
+  // On a total failure keep whatever we had cached, but never cache an empty
+  // result — a transient outage must not hide hotels for the next 5 minutes.
+  if (!data) return cached?.data ?? [];
   const hotels: HotelResult[] = (data.elements || [])
-    .filter((el: { tags?: { name?: string } }) => el.tags?.name)
-    .map((el: { id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags: Record<string, string> }) => {
+    .filter((el) => el.tags?.name)
+    .map((el) => {
       const elLat = el.lat ?? el.center?.lat;
       const elLng = el.lon ?? el.center?.lon;
       const tags = el.tags;
@@ -71,7 +88,7 @@ async function searchOverpass(lat: string, lng: string, radiusKm: string): Promi
     })
     .filter((h: HotelResult) => h.coords.lat && h.coords.lng);
 
-  overpassCache.set(cacheKey, { data: hotels, ts: Date.now() });
+  if (hotels.length > 0) overpassCache.set(cacheKey, { data: hotels, ts: Date.now() });
   return hotels;
 }
 
@@ -83,6 +100,7 @@ async function searchLiteAPI(lat: string, lng: string, radiusKm: string, checkin
     const res = await fetch("https://api.liteapi.travel/v3.0/hotels/rates", {
       method: "POST",
       headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(8000),
       body: JSON.stringify({
         latitude: Number(lat),
         longitude: Number(lng),
@@ -156,6 +174,7 @@ async function fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Ma
         try {
           const res = await fetch(`https://api.liteapi.travel/v3.0/data/hotel?hotelId=${id}`, {
             headers: { "X-API-Key": apiKey },
+            signal: AbortSignal.timeout(8000),
           });
           if (!res.ok) return null;
           const data = await res.json();

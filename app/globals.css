@@ -1,26 +1,121 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────
+   Bundle Events — design tokens reproduced from the Claude Design
+   maquette (navy / orange editorial system, Inter + Manrope).
+   ───────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand surfaces */
+  --color-ink: #00113a; /* primary dark text + dark panels */
+  --color-navy: #0e3c60; /* hero background */
+  --color-navy-700: #002366;
+  --color-navy-500: #00497d; /* small labels */
+
+  /* Orange accent ramp */
+  --color-ember: #f96c1a; /* brand orange */
+  --color-ember-600: #ea580c;
+  --color-ember-700: #d35400;
+  --color-ember-ink: #9f4200; /* orange used as text on light bg */
+  --color-ember-soft: #ffdbcb; /* light orange chip background */
+
+  /* Neutrals */
+  --color-page: #f9f9fb;
+  --color-mist: #f3f3f5;
+  --color-cloud: #f8fafc;
+  --color-line: #e2e8f0;
+  --color-line-soft: #e8e8ea;
+  --color-slate-ink: #444650;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-600: #475569;
+  --color-muted: #757582;
+
+  --radius-card: 16px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--color-page);
+  --foreground: var(--color-ink);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Editorial display headings */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Tiny uppercase eyebrow labels used everywhere in the maquette */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Frosted glass panels (hero search card, map overlays) */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glass-dark {
+  background: rgba(0, 17, 58, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Slim custom scrollbar for scroll regions */
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(0, 17, 58, 0.15);
+  border-radius: 999px;
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Mapbox popups restyled to the brand */
+.mapboxgl-popup-content {
+  font-family: var(--font-sans);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 12px 32px rgba(0, 17, 58, 0.18);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s ease both;
 }
