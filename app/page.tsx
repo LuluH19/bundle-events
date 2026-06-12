@@ -74,7 +74,7 @@ async function fetchTrainInfo(from: LatLng, to: LatLng): Promise<TrainInfo[]> {
     const arrStations = arrData.stations || [];
     if (depStations.length === 0 || arrStations.length === 0) return [];
 
-    let depStation = depStations[0];
+    const depStation = depStations[0];
     let arrStation = arrStations[0];
     if (depStation.id === arrStation.id && arrStations.length > 1) arrStation = arrStations[1];
     if (depStation.id === arrStation.id) return [];
@@ -142,7 +142,7 @@ export default function Home() {
   const [mapClickTarget, setMapClickTarget] = useState<LocationType | null>(null);
 
   useEffect(() => {
-    if (depSearch.length < 3) { setDepResults([]); return; }
+    if (depSearch.length < 3) { queueMicrotask(() => setDepResults([])); return; }
     const t = setTimeout(async () => {
       try {
         const res = await searchLocation(depSearch);
@@ -153,9 +153,9 @@ export default function Home() {
   }, [depSearch]);
 
   useEffect(() => {
-    if (!venue?.id) { setHotelResults([]); return; }
+    if (!venue?.id) { queueMicrotask(() => setHotelResults([])); return; }
     let cancelled = false;
-    setHotelLoading(true);
+    queueMicrotask(() => setHotelLoading(true));
     const params = new URLSearchParams({
       lat: String(venue.coords.lat),
       lng: String(venue.coords.lng),
@@ -172,9 +172,12 @@ export default function Home() {
   }, [venue, hotelRadius]);
 
   useEffect(() => {
-    if (!departure?.id || !hotel?.id) { setLegARoute(null); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0); return; }
+    if (!departure?.id || !hotel?.id) {
+      queueMicrotask(() => { setLegARoute(null); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0); });
+      return;
+    }
     let cancelled = false;
-    setLegALoading(true); setLegAError(""); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0);
+    queueMicrotask(() => { setLegALoading(true); setLegAError(""); setLegAFlights([]); setLegATrains([]); setLegASelectedTrain(0); });
     computeRoute({ name: departure.name, coords: departure.coords }, { name: hotel.name, coords: hotel.coords }, legAModes)
       .then(r => {
         if (cancelled) return;
@@ -188,9 +191,12 @@ export default function Home() {
   }, [departure, hotel, legAModes]);
 
   useEffect(() => {
-    if (!hotel?.id || !venue?.id) { setLegBRoute(null); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0); return; }
+    if (!hotel?.id || !venue?.id) {
+      queueMicrotask(() => { setLegBRoute(null); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0); });
+      return;
+    }
     let cancelled = false;
-    setLegBLoading(true); setLegBError(""); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0);
+    queueMicrotask(() => { setLegBLoading(true); setLegBError(""); setLegBFlights([]); setLegBTrains([]); setLegBSelectedTrain(0); });
     computeRoute({ name: hotel.name, coords: hotel.coords }, { name: venue.name, coords: venue.coords }, legBModes)
       .then(r => {
         if (cancelled) return;
