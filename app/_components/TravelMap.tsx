@@ -63,8 +63,10 @@ export default function TravelMap({
   const layerIdsRef = useRef<string[]>([]);
   const sourceIdsRef = useRef<string[]>([]);
 
-  mapClickTargetRef.current = mapClickTarget;
-  onHotelSelectRef.current = onHotelSelect;
+  useEffect(() => {
+    mapClickTargetRef.current = mapClickTarget;
+    onHotelSelectRef.current = onHotelSelect;
+  });
 
   // Init map
   useEffect(() => {

@@ -6,12 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@types/mapbox-gl": "^3.4.1",
     "mapbox-gl": "^3.20.0",
-    "next": "16.2.2",
+    "next": "^16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
