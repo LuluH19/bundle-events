@@ -21,6 +21,8 @@ export interface RouteSegment {
   coordinates: [number, number][];
   distanceKm: number;
   durationMinutes: number;
+  color?: string;
+  label?: string;
 }
 
 export interface FlightInfo {
