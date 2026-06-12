@@ -24,7 +24,6 @@ import {
   IconPin,
   IconStar,
   IconLeaf,
-  IconWifi,
   IconCheck,
   IconClose,
   IconMap,
@@ -949,7 +948,6 @@ function HotelsView(props: {
                             </span>
                           ) : null}
                           {dist != null && <span>{formatDistance(dist)} de l&apos;événement</span>}
-                          {h.source === "overpass" && <span className="flex items-center gap-0.5"><IconWifi size={11} /> OSM</span>}
                         </div>
                         {h.locationName && <p className="mt-0.5 truncate text-[12px] text-slate-400">{h.locationName}</p>}
                       </div>

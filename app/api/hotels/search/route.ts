@@ -13,87 +13,16 @@ interface HotelResult {
   pricePerNight?: number;
   currency?: string;
   rating?: number;
-  source: "liteapi" | "overpass";
+  source: "liteapi";
 }
 
-// ---- Caches ----
-const overpassCache = new Map<string, { data: HotelResult[]; ts: number }>();
-const CACHE_TTL = 5 * 60 * 1000;
-
-// Public Overpass endpoints, tried in order. The public API is frequently
-// rate-limited or slow, so we fail over to community mirrors before giving up.
-const OVERPASS_MIRRORS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-];
-
-async function fetchOverpass(query: string): Promise<unknown | null> {
-  const body = `data=${encodeURIComponent(query)}`;
-  for (const url of OVERPASS_MIRRORS) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        body,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        signal: AbortSignal.timeout(12000),
-      });
-      if (!res.ok) continue;
-      return await res.json();
-    } catch {
-      // try the next mirror
-    }
-  }
-  return null;
-}
-
-// ---- Overpass (OSM) ----
-async function searchOverpass(lat: string, lng: string, radiusKm: string): Promise<HotelResult[]> {
-  const cacheKey = `${Number(lat).toFixed(3)},${Number(lng).toFixed(3)},${radiusKm}`;
-  const cached = overpassCache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
-
-  const radiusMeters = Number(radiusKm) * 1000;
-  const query = `[out:json][timeout:15];(nwr["tourism"="hotel"](around:${radiusMeters},${lat},${lng});nwr["tourism"="hostel"](around:${radiusMeters},${lat},${lng});nwr["tourism"="guest_house"](around:${radiusMeters},${lat},${lng}););out center 40;`;
-
-  type OverpassEl = {
-    id: number;
-    lat?: number;
-    lon?: number;
-    center?: { lat: number; lon: number };
-    tags: Record<string, string>;
-  };
-  const data = (await fetchOverpass(query)) as { elements?: OverpassEl[] } | null;
-  // On a total failure keep whatever we had cached, but never cache an empty
-  // result — a transient outage must not hide hotels for the next 5 minutes.
-  if (!data) return cached?.data ?? [];
-  const hotels: HotelResult[] = (data.elements || [])
-    .filter((el) => el.tags?.name)
-    .map((el) => {
-      const elLat = el.lat ?? el.center?.lat;
-      const elLng = el.lon ?? el.center?.lon;
-      const tags = el.tags;
-      const addr = [tags["addr:housenumber"], tags["addr:street"], tags["addr:postcode"], tags["addr:city"]].filter(Boolean).join(" ");
-      return {
-        id: `osm-${el.id}`,
-        name: tags.name,
-        locationName: addr,
-        coords: { lat: elLat!, lng: elLng! },
-        stars: tags.stars ? Number(tags.stars) : undefined,
-        website: tags.website || tags["contact:website"] || undefined,
-        phone: tags.phone || tags["contact:phone"] || undefined,
-        type: tags.tourism,
-        source: "overpass" as const,
-      };
-    })
-    .filter((h: HotelResult) => h.coords.lat && h.coords.lng);
-
-  if (hotels.length > 0) overpassCache.set(cacheKey, { data: hotels, ts: Date.now() });
-  return hotels;
-}
-
-// ---- LiteAPI ----
-async function searchLiteAPI(lat: string, lng: string, radiusKm: string, checkin: string, checkout: string): Promise<HotelResult[]> {
+async function searchLiteAPI(
+  lat: string,
+  lng: string,
+  radiusKm: string,
+  checkin: string,
+  checkout: string
+): Promise<HotelResult[]> {
   const apiKey = process.env.LITEAPI_KEY || "sand_c0155ab8-c683-4f26-8f94-b5e92c5797b9";
 
   try {
@@ -111,59 +40,91 @@ async function searchLiteAPI(lat: string, lng: string, radiusKm: string, checkin
         checkin,
         checkout,
         limit: 20,
-        sort: "price",
+        maxRatesPerHotel: 1,
+        includeHotelData: true,
       }),
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error("LiteAPI rates error:", res.status, await res.text());
+      return [];
+    }
     const data = await res.json();
     if (!data.data?.length) return [];
 
-    // Fetch hotel details for each result
     const hotelIds: string[] = data.data.map((h: { hotelId: string }) => h.hotelId);
     const details = await fetchHotelDetails(apiKey, hotelIds);
 
-    return data.data.map((h: { hotelId: string; roomTypes?: { offerRetailRate?: { amount?: number }; rates?: { retailRate?: { total?: { amount?: number; currency?: string }[] } }[] }[] }) => {
-      const detail = details.get(h.hotelId);
-      // Find cheapest rate
-      let price: number | undefined;
-      let currency = "EUR";
-      for (const rt of h.roomTypes || []) {
-        if (rt.offerRetailRate?.amount) {
-          const p = Number(rt.offerRetailRate.amount);
-          if (!price || p < price) { price = p; currency = "EUR"; }
-        }
-        for (const rate of rt.rates || []) {
-          const total = rate.retailRate?.total?.[0];
-          if (total?.amount) {
-            const p = Number(total.amount);
-            if (!price || p < price) { price = p; currency = total.currency || "EUR"; }
+    return data.data
+      .map((h: {
+        hotelId: string;
+        roomTypes?: {
+          offerRetailRate?: { amount?: number; currency?: string };
+          rates?: { retailRate?: { total?: { amount?: number; currency?: string }[] } }[];
+        }[];
+      }) => {
+        const detail = details.get(h.hotelId);
+        let price: number | undefined;
+        let currency = "EUR";
+        for (const rt of h.roomTypes || []) {
+          if (rt.offerRetailRate?.amount) {
+            const p = Number(rt.offerRetailRate.amount);
+            if (!price || p < price) {
+              price = p;
+              currency = rt.offerRetailRate.currency || "EUR";
+            }
+          }
+          for (const rate of rt.rates || []) {
+            const total = rate.retailRate?.total?.[0];
+            if (total?.amount) {
+              const p = Number(total.amount);
+              if (!price || p < price) {
+                price = p;
+                currency = total.currency || "EUR";
+              }
+            }
           }
         }
-      }
 
-      return {
-        id: `lite-${h.hotelId}`,
-        name: detail?.name || h.hotelId,
-        locationName: detail?.address || detail?.city || "",
-        coords: { lat: detail?.latitude || Number(lat), lng: detail?.longitude || Number(lng) },
-        stars: detail?.starRating,
-        photo: detail?.main_photo,
-        pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
-        currency,
-        rating: detail?.rating,
-        type: "hotel",
-        source: "liteapi" as const,
-      };
-    }).filter((h: HotelResult) => h.name !== h.id.replace("lite-", ""));
+        return {
+          id: `lite-${h.hotelId}`,
+          name: detail?.name || h.hotelId,
+          locationName: detail?.address || detail?.city || "",
+          coords: { lat: detail?.latitude || Number(lat), lng: detail?.longitude || Number(lng) },
+          stars: detail?.starRating,
+          photo: detail?.main_photo,
+          pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
+          currency,
+          rating: detail?.rating,
+          type: "hotel",
+          source: "liteapi" as const,
+        };
+      })
+      .filter((h: HotelResult) => h.name !== h.id.replace("lite-", "") && h.pricePerNight != null);
   } catch {
     return [];
   }
 }
 
-async function fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Map<string, { name: string; address: string; city: string; latitude: number; longitude: number; starRating: number; main_photo: string; rating: number }>> {
+async function fetchHotelDetails(
+  apiKey: string,
+  hotelIds: string[]
+): Promise<
+  Map<
+    string,
+    {
+      name: string;
+      address: string;
+      city: string;
+      latitude: number;
+      longitude: number;
+      starRating: number;
+      main_photo: string;
+      rating: number;
+    }
+  >
+> {
   const map = new Map();
-  // Fetch in parallel (max 5 concurrent)
   const chunks = [];
   for (let i = 0; i < hotelIds.length; i += 5) {
     chunks.push(hotelIds.slice(i, i + 5));
@@ -179,7 +140,9 @@ async function fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Ma
           if (!res.ok) return null;
           const data = await res.json();
           return { id, detail: data.data };
-        } catch { return null; }
+        } catch {
+          return null;
+        }
       })
     );
     for (const r of results) {
@@ -195,38 +158,6 @@ function getDaysDiff(checkin: string, checkout: string): number {
   return Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
 }
 
-// ---- Deduplication ----
-function deduplicateHotels(liteapi: HotelResult[], overpass: HotelResult[]): HotelResult[] {
-  const result: HotelResult[] = [...liteapi];
-  const usedCoords = new Set(liteapi.map(h => `${h.coords.lat.toFixed(4)},${h.coords.lng.toFixed(4)}`));
-
-  for (const osmHotel of overpass) {
-    const coordKey = `${osmHotel.coords.lat.toFixed(4)},${osmHotel.coords.lng.toFixed(4)}`;
-    // Skip if a LiteAPI hotel is at the same coordinates (~11m precision)
-    if (usedCoords.has(coordKey)) continue;
-
-    // Check name similarity with nearby LiteAPI hotels
-    const isDuplicate = liteapi.some(lh => {
-      const dist = Math.sqrt(
-        Math.pow((lh.coords.lat - osmHotel.coords.lat) * 111000, 2) +
-        Math.pow((lh.coords.lng - osmHotel.coords.lng) * 111000 * Math.cos(lh.coords.lat * Math.PI / 180), 2)
-      );
-      if (dist > 200) return false; // >200m apart = different
-      // Normalize names and check similarity
-      const n1 = lh.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const n2 = osmHotel.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-      return n1.includes(n2) || n2.includes(n1) || n1 === n2;
-    });
-
-    if (!isDuplicate) {
-      result.push(osmHotel);
-    }
-  }
-
-  return result;
-}
-
-// ---- Route handler ----
 export async function GET(request: NextRequest) {
   const lat = request.nextUrl.searchParams.get("lat");
   const lng = request.nextUrl.searchParams.get("lng");
@@ -237,24 +168,12 @@ export async function GET(request: NextRequest) {
   if (!lat || !lng) {
     return Response.json({ error: "lat and lng required" }, { status: 400 });
   }
+  if (!checkin || !checkout) {
+    return Response.json({ error: "checkin and checkout required" }, { status: 400 });
+  }
 
-  // Fetch from both sources in parallel
-  const [liteapiResults, overpassResults] = await Promise.all([
-    checkin && checkout
-      ? searchLiteAPI(lat, lng, radiusKm, checkin, checkout)
-      : Promise.resolve([]),
-    searchOverpass(lat, lng, radiusKm),
-  ]);
-
-  // Deduplicate: LiteAPI hotels take priority (they have prices)
-  const hotels = deduplicateHotels(liteapiResults, overpassResults);
-
-  // Sort: hotels with prices first, then by stars
-  hotels.sort((a, b) => {
-    if (a.pricePerNight && !b.pricePerNight) return -1;
-    if (!a.pricePerNight && b.pricePerNight) return 1;
-    return (b.stars || 0) - (a.stars || 0);
-  });
+  const hotels = await searchLiteAPI(lat, lng, radiusKm, checkin, checkout);
+  hotels.sort((a, b) => (a.pricePerNight || 0) - (b.pricePerNight || 0));
 
   return Response.json(hotels);
 }
