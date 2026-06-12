@@ -92,16 +92,39 @@ function planeSegment(
   return { from, to, mode: "plane", coordinates, distanceKm, durationMinutes };
 }
 
-async function trainSegment(
+async function trainSegments(
   from: { name: string; coords: LatLng; sncfId?: string },
   to: { name: string; coords: LatLng; sncfId?: string }
-): Promise<RouteSegment> {
+): Promise<RouteSegment[]> {
   // Try real rail route via SNCF intermediate stops + OSRM multi-waypoint
   if (from.sncfId && to.sncfId) {
     try {
       const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}`);
       if (res.ok) {
         const data = await res.json();
+        if (data.sections && data.sections.length > 0) {
+          return data.sections.map((sect: { fromName?: string; toName?: string; mode: string; coordinates: [number, number][]; color?: string; label?: string }) => {
+            let distanceKm = 0;
+            for (let i = 1; i < sect.coordinates.length; i++) {
+              distanceKm += haversineDistance(
+                { lat: sect.coordinates[i - 1][0], lng: sect.coordinates[i - 1][1] },
+                { lat: sect.coordinates[i][0], lng: sect.coordinates[i][1] }
+              );
+            }
+            const speed = sect.mode === "walking" ? 5 : 120;
+            const durationMinutes = (distanceKm / speed) * 60;
+            return {
+              from: { name: sect.fromName || from.name, coords: sect.coordinates[0] ? { lat: sect.coordinates[0][0], lng: sect.coordinates[0][1] } : from.coords },
+              to: { name: sect.toName || to.name, coords: sect.coordinates[sect.coordinates.length - 1] ? { lat: sect.coordinates[sect.coordinates.length - 1][0], lng: sect.coordinates[sect.coordinates.length - 1][1] } : to.coords },
+              mode: sect.mode as TransportMode,
+              coordinates: sect.coordinates,
+              distanceKm,
+              durationMinutes,
+              color: sect.color,
+              label: sect.label,
+            };
+          });
+        }
         if (data.coordinates?.length > 5) {
           let distanceKm = 0;
           for (let i = 1; i < data.coordinates.length; i++) {
@@ -111,7 +134,7 @@ async function trainSegment(
             );
           }
           const durationMinutes = (distanceKm / 200) * 60;
-          return { from, to, mode: "train", coordinates: data.coordinates, distanceKm, durationMinutes };
+          return [{ from, to, mode: "train", coordinates: data.coordinates, distanceKm, durationMinutes }];
         }
       }
     } catch { /* fallback */ }
@@ -119,7 +142,7 @@ async function trainSegment(
 
   const osrm = await fetchOSRMSegment(from, to, "car");
   const durationMinutes = (osrm.distanceKm / 200) * 60;
-  return { from, to, mode: "train", coordinates: osrm.coordinates, distanceKm: osrm.distanceKm, durationMinutes };
+  return [{ ...osrm, mode: "train", durationMinutes }];
 }
 
 async function busLongSegment(
@@ -263,7 +286,8 @@ export async function computeTrainRoute(
     accessSegment(arrPoint, to, allowedAccessModes),
   ]);
 
-  return buildResult([toStation, await trainSegment(depPoint, arrPoint), fromStation]);
+  const midSegments = await trainSegments(depPoint, arrPoint);
+  return buildResult([toStation, ...midSegments, fromStation]);
 }
 
 export async function computeMultimodalRoute(

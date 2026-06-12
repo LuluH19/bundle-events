@@ -64,7 +64,7 @@ export default function TravelMap({
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/light-v11",
+      style: "mapbox://styles/mapbox/outdoors-v12",
       center: [2.3522, 46.6],
       zoom: 4.6,
       attributionControl: false,
@@ -94,12 +94,52 @@ export default function TravelMap({
       markersRef.current[key]?.remove();
       delete markersRef.current[key];
       if (!loc) return;
+
+      const labelText = key === "departure" ? "Départ" : key === "venue" ? "Arrivée" : key === "hotel" ? "Hôtel" : "";
+      
       const el = document.createElement("div");
-      el.style.cssText = `width:18px;height:18px;background:${MARKER_COLORS[key]};border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,17,58,0.35);`;
-      markersRef.current[key] = new mapboxgl.Marker({ element: el, anchor: "center" })
+      el.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        filter: drop-shadow(0 2px 8px rgba(0,17,58,0.25));
+        cursor: pointer;
+      `;
+      
+      const labelEl = document.createElement("div");
+      labelEl.style.cssText = `
+        background: ${MARKER_COLORS[key]};
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-family: system-ui, -apple-system, sans-serif;
+        white-space: nowrap;
+        margin-bottom: 5px;
+        border: 1px solid rgba(255,255,255,0.2);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        pointer-events: none;
+      `;
+      labelEl.innerText = labelText;
+      el.appendChild(labelEl);
+
+      const dotEl = document.createElement("div");
+      dotEl.style.cssText = `
+        width: 14px;
+        height: 14px;
+        background: ${MARKER_COLORS[key]};
+        border: 3px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      `;
+      el.appendChild(dotEl);
+
+      markersRef.current[key] = new mapboxgl.Marker({ element: el, anchor: "bottom", offset: [0, 7] })
         .setLngLat([loc.coords.lng, loc.coords.lat])
         .setPopup(
-          new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
+          new mapboxgl.Popup({ offset: [0, -28], closeButton: false }).setHTML(
             `<strong style="color:#00113a">${loc.name}</strong>`
           )
         )
@@ -257,13 +297,24 @@ export default function TravelMap({
             },
           });
           const dash = MODE_DASH[seg.mode] || [];
+          const getLineColor = () => {
+            if (seg.color) return seg.color;
+            switch (seg.mode) {
+              case "walking": return "#94a3b8";
+              case "car": return "#64748b";
+              case "bus": return "#0d5c63";
+              case "plane": return "#0ea5e9";
+              case "train": return "#9f4200";
+              default: return "#0e3c60";
+            }
+          };
           map.addLayer({
             id,
             type: "line",
             source: id,
             layout: { "line-cap": "round", "line-join": "round" },
             paint: {
-              "line-color": seg.mode === "walking" ? "#94a3b8" : "#0e3c60",
+              "line-color": getLineColor(),
               "line-width": seg.mode === "walking" ? 3 : 4,
               "line-opacity": 0.9,
               ...(dash.length ? { "line-dasharray": dash } : {}),
