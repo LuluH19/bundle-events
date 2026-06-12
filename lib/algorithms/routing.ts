@@ -33,12 +33,6 @@ async function fetchNearbyStations(point: LatLng, radiusKm: number = 80): Promis
   }
 }
 
-function findNearest<T extends { coords: LatLng }>(point: LatLng, items: T[]): T {
-  return items.reduce((best, item) =>
-    haversineDistance(point, item.coords) < haversineDistance(point, best.coords) ? item : best
-  );
-}
-
 function findNearestSorted<T extends { coords: LatLng; id: string }>(point: LatLng, items: T[], count: number = 3): T[] {
   return [...items]
     .map((item) => ({ item, dist: haversineDistance(point, item.coords) }))
