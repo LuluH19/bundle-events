@@ -12,6 +12,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## APIs
 - Mapbox
+- Liteapi
+- OSRM
+- Overpass
+- SNCF
+- Travel payouts
 
 
 ## File Structure
