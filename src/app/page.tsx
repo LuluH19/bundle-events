@@ -20,6 +20,7 @@ import {
 } from "@/src/services/travel";
 import { Header } from "@/src/components/layout/Header";
 import { MobileTabBar } from "@/src/components/layout/MobileTabBar";
+import { SideNav } from "@/src/components/layout/SideNav";
 import { HomeView } from "@/src/components/views/HomeView";
 import { RoutesView } from "@/src/components/views/RoutesView";
 import { HotelsView } from "@/src/components/views/HotelsView";
@@ -31,9 +32,13 @@ export default function Home() {
 
   const [departure, setDeparture] = useState<Location | null>(null);
   const [venue, setVenue] = useState<Location | null>(null);
-  const [dateLabel] = useState("27 — 29 août");
-  const checkin = useMemo(() => isoPlusDays(30), []);
-  const checkout = useMemo(() => isoPlusDays(32), []);
+  const [checkin, setCheckin] = useState(() => isoPlusDays(30));
+  const [checkout, setCheckout] = useState(() => isoPlusDays(32));
+  const dateLabel = useMemo(() => {
+    const fmt = (iso: string) =>
+      new Date(`${iso}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    return `${fmt(checkin)} — ${fmt(checkout)}`;
+  }, [checkin, checkout]);
 
   // departure search
   const [depSearch, setDepSearch] = useState("");
@@ -118,6 +123,17 @@ export default function Home() {
         setOptionsLoading(true);
       }
     }
+  };
+
+  const handleClearVenue = () => {
+    setVenue(null);
+    setSelectedHotel(null);
+    setOptions([]);
+    setSelectedMode(null);
+    setTrainJourneys([]);
+    setFlights([]);
+    setHotelResults([]);
+    setHotelError("");
   };
 
   const handleSelectMode = (mode: TransportMode) => {
@@ -260,45 +276,60 @@ export default function Home() {
             onPickDeparture={handlePickDeparture}
             onClearDeparture={handleClearDeparture}
             onPickVenue={handlePickVenue}
+            onClearVenue={handleClearVenue}
             dateLabel={dateLabel}
+            checkin={checkin}
+            checkout={checkout}
+            setCheckin={setCheckin}
+            setCheckout={setCheckout}
             onCompose={() => go(departure && venue ? "routes" : "home")}
             pickEvent={pickEvent}
           />
         )}
 
         {step === "routes" && (
-          <RoutesView
-            departure={departure}
-            venue={venue}
-            dateLabel={dateLabel}
-            options={options}
-            loading={optionsLoading}
-            selectedMode={selectedMode}
-            onSelectMode={handleSelectMode}
-            trainJourneys={trainJourneys}
-            flights={flights}
-            journeyRoute={journeyRoute}
-            onContinue={() => go("hotels")}
-          />
+          <div className="lg:flex">
+            <SideNav step={step} go={go} canReach={canReach} venue={venue} />
+            <div className="min-w-0 flex-1">
+              <RoutesView
+                departure={departure}
+                venue={venue}
+                dateLabel={dateLabel}
+                options={options}
+                loading={optionsLoading}
+                selectedMode={selectedMode}
+                onSelectMode={handleSelectMode}
+                trainJourneys={trainJourneys}
+                flights={flights}
+                journeyRoute={journeyRoute}
+                onContinue={() => go("hotels")}
+              />
+            </div>
+          </div>
         )}
 
         {step === "hotels" && (
-          <HotelsView
-            venue={venue}
-            hotelRadius={hotelRadius}
-            setHotelRadius={handleHotelRadiusChange}
-            hotelResults={hotelResults}
-            hotelLoading={hotelLoading}
-            hotelError={hotelError}
-            selectedHotel={selectedHotel}
-            onSelectHotel={setSelectedHotel}
-            departure={departure}
-            hotelLocation={hotelLocation}
-            journeyRoute={journeyRoute}
-            mobileMapOpen={mobileMapOpen}
-            setMobileMapOpen={setMobileMapOpen}
-            onContinue={() => go("bundle")}
-          />
+          <div className="lg:flex">
+            <SideNav step={step} go={go} canReach={canReach} venue={venue} />
+            <div className="min-w-0 flex-1">
+              <HotelsView
+                venue={venue}
+                hotelRadius={hotelRadius}
+                setHotelRadius={handleHotelRadiusChange}
+                hotelResults={hotelResults}
+                hotelLoading={hotelLoading}
+                hotelError={hotelError}
+                selectedHotel={selectedHotel}
+                onSelectHotel={setSelectedHotel}
+                departure={departure}
+                hotelLocation={hotelLocation}
+                journeyRoute={journeyRoute}
+                mobileMapOpen={mobileMapOpen}
+                setMobileMapOpen={setMobileMapOpen}
+                onContinue={() => go("bundle")}
+              />
+            </div>
+          </div>
         )}
 
         {step === "bundle" && (
