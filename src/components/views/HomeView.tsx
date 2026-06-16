@@ -1,23 +1,16 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Location, LatLng } from "@/src/types";
 import { venues } from "@/src/utils/constants/venues";
 import {
-  Button,
-  Chip,
-  Eyebrow,
-  IconArrow,
   IconPin,
   IconLeaf,
   IconClose,
+  IconSearch,
+  IconSparkle,
+  IconTicket,
 } from "@/src/components/ui";
-
-const EVENTS = [
-  { venueId: "stade-de-france", title: "Rock en Seine", tag: "Festival", date: "28 AOÛT", from: 142, gradient: "from-[#0e3c60] to-[#00113a]" },
-  { venueId: "accor-arena", title: "Nuit Électro", tag: "Concert", date: "12 SEPT", from: 79, gradient: "from-[#3a1d52] to-[#00113a]" },
-  { venueId: "orange-velodrome", title: "Stade en Fête", tag: "Stade", date: "04 JUIL", from: 110, gradient: "from-[#0d5c63] to-[#00113a]" },
-  { venueId: "groupama-stadium", title: "Nuits de Fourvière", tag: "Festival", date: "17 JUIL", from: 65, gradient: "from-[#9f4200] to-[#00113a]" },
-];
 
 interface HomeViewProps {
   departure: Location | null;
@@ -30,7 +23,12 @@ interface HomeViewProps {
   onPickDeparture: (r: { displayName: string; address: string; coords: LatLng }) => void;
   onClearDeparture: () => void;
   onPickVenue: (id: string) => void;
+  onClearVenue: () => void;
   dateLabel: string;
+  checkin: string;
+  checkout: string;
+  setCheckin: (v: string) => void;
+  setCheckout: (v: string) => void;
   onCompose: () => void;
   pickEvent: (id: string) => void;
 }
@@ -47,21 +45,37 @@ export function HomeView(props: HomeViewProps) {
     onPickDeparture,
     onClearDeparture,
     onPickVenue,
-    dateLabel,
+    onClearVenue,
+    checkin,
+    checkout,
+    setCheckin,
+    setCheckout,
     onCompose,
-    pickEvent,
   } = props;
   const ready = !!(departure && venue);
+
+  // Suggestions d'événements (filtre local pour le moment — à brancher sur une API ensuite)
+  const [venueSearch, setVenueSearch] = useState("");
+  const [venueFocus, setVenueFocus] = useState(false);
+  const venueResults = useMemo(() => {
+    const q = venueSearch.trim().toLowerCase();
+    if (!q) return [];
+    return venues.filter((v) => `${v.name} ${v.city}`.toLowerCase().includes(q)).slice(0, 6);
+  }, [venueSearch]);
+
+  // Aller simple (false) / aller-retour (true) — affiche ou non la date retour
+  const [roundTrip, setRoundTrip] = useState(true);
 
   return (
     <div>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-navy px-5 pb-28 pt-16 md:px-8 md:pb-40 md:pt-24">
-        <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_80%_-10%,rgba(249,108,26,0.25),transparent),linear-gradient(180deg,rgba(0,17,58,0.2),rgba(0,17,58,0.65))]" />
+      <section className="relative overflow-hidden bg-navy px-5 pb-28 pt-20 md:px-8 md:pb-40 md:pt-32">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/hero-concert.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,11,58,0.5),rgba(0,11,58,0.82))]" />
         <div className="relative mx-auto max-w-4xl text-center">
-          <Eyebrow tone="ember" className="mb-5 text-ember-soft">
-            Événements · Transport · Hébergement
-          </Eyebrow>
           <h1 className="font-display text-[44px] font-extrabold leading-[0.96] tracking-[-0.02em] text-white md:text-[72px]">
             Votre parcours
             <br />
@@ -74,135 +88,233 @@ export function HomeView(props: HomeViewProps) {
           </p>
         </div>
 
-        {/* Search card */}
+        {/* Barre de recherche — bandeau arrondi clair (maquette Stitch) */}
         <div
           id="search-card"
-          className="glass relative mx-auto mt-10 max-w-3xl rounded-3xl border border-white/40 p-5 shadow-[0_24px_60px_-20px_rgba(0,11,58,0.5)] md:mt-12 md:p-7"
-        >
-          <div className="grid gap-4 md:grid-cols-[1.2fr_1.2fr_0.9fr]">
-            {/* Departure */}
-            <div className="relative">
-              <label className="eyebrow flex items-center gap-1.5 text-slate-500">
-                <IconPin size={12} className="text-ember" /> De
-              </label>
-              {departure ? (
-                <div className="mt-1.5 flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2.5 ring-1 ring-line">
-                  <span className="truncate text-[15px] font-medium text-ink">{departure.name}</span>
-                  <button onClick={onClearDeparture} className="text-slate-400 hover:text-ember">
-                    <IconClose size={16} />
-                  </button>
-                </div>
-              ) : (
-                <>
+          className="relative mx-auto mt-10 flex max-w-5xl flex-col gap-3 rounded-xl bg-white/85 p-6 shadow-[0_24px_48px_-12px_rgba(0,11,58,0.45)] backdrop-blur-2xl md:mt-12">
+          <div className="flex flex-col gap-1 md:flex-row md:items-center">
+          {/* De */}
+          <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
+            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
+            {departure ? (
+              <div className="flex items-center gap-2.5">
+                <img src="/cible.svg" alt="" width={20} height={20} className="shrink-0" />
+                <span className="flex-1 truncate text-[16px] font-medium text-ink">{departure.name}</span>
+                <button onClick={onClearDeparture} className="text-slate-400 hover:text-ember">
+                  <IconClose size={16} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2.5">
+                  <img src="/cible.svg" alt="" width={20} height={20} className="shrink-0" />
                   <input
                     value={depSearch}
                     onChange={(e) => setDepSearch(e.target.value)}
                     onFocus={() => setDepFocus(true)}
                     onBlur={() => setTimeout(() => setDepFocus(false), 150)}
-                    placeholder="Ville, gare, aéroport…"
-                    className="mt-1.5 w-full rounded-xl bg-white px-3 py-2.5 text-[15px] text-ink outline-none ring-1 ring-line placeholder:text-slate-400 focus:ring-2 focus:ring-ember"
+                    placeholder="Ville actuelle"
+                    className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
                   />
-                  {depFocus && depResults.length > 0 && (
-                    <ul className="absolute z-20 mt-2 max-h-56 w-full overflow-auto rounded-xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
-                      {depResults.map((r, i) => (
-                        <li key={i}>
-                          <button
-                            onMouseDown={() => onPickDeparture(r)}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
-                          >
-                            <IconPin size={14} className="shrink-0 text-ember" />
-                            <span className="truncate">{r.displayName}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-            </div>
+                </div>
+                {depFocus && depResults.length > 0 && (
+                  <ul className="absolute left-3 right-3 z-20 mt-3 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line md:left-5 md:right-5">
+                    {depResults.map((r, i) => (
+                      <li key={i}>
+                        <button
+                          onMouseDown={() => onPickDeparture(r)}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
+                        >
+                          <IconPin size={14} className="shrink-0 text-ember" />
+                          <span className="truncate">{r.displayName}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
 
-            {/* Venue */}
-            <div>
-              <label className="eyebrow flex items-center gap-1.5 text-slate-500">
-                <IconPin size={12} className="text-ember" /> Vers
-              </label>
-              <select
-                value={venue?.id || ""}
-                onChange={(e) => onPickVenue(e.target.value)}
-                className="mt-1.5 w-full rounded-xl bg-white px-3 py-2.5 text-[15px] text-ink outline-none ring-1 ring-line focus:ring-2 focus:ring-ember"
-              >
-                <option value="">Votre événement…</option>
-                {venues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name} — {v.city}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date */}
-            <div>
-              <label className="eyebrow text-slate-500">Dates</label>
-              <div className="mt-1.5 flex items-center rounded-xl bg-white px-3 py-2.5 text-[15px] font-medium text-ink ring-1 ring-line">
-                {dateLabel}
+          {/* Vers */}
+          <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
+            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
+            {venue ? (
+              <div className="flex items-center gap-2.5">
+                <img src="/carte.svg" alt="" width={20} height={20} className="shrink-0" />
+                <span className="flex-1 truncate text-[16px] font-medium text-ink">{venue.name}</span>
+                <button
+                  onClick={() => {
+                    onClearVenue();
+                    setVenueSearch("");
+                  }}
+                  className="text-slate-400 hover:text-ember"
+                >
+                  <IconClose size={16} />
+                </button>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2.5">
+                  <img src="/carte.svg" alt="" width={20} height={20} className="shrink-0" />
+                  <input
+                    value={venueSearch}
+                    onChange={(e) => setVenueSearch(e.target.value)}
+                    onFocus={() => setVenueFocus(true)}
+                    onBlur={() => setTimeout(() => setVenueFocus(false), 150)}
+                    placeholder="Votre événement"
+                    className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                {venueFocus && venueResults.length > 0 && (
+                  <ul className="absolute left-3 right-3 z-20 mt-3 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line md:left-5 md:right-5">
+                    {venueResults.map((v) => (
+                      <li key={v.id}>
+                        <button
+                          onMouseDown={() => {
+                            onPickVenue(v.id);
+                            setVenueSearch("");
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
+                        >
+                          <IconPin size={14} className="shrink-0 text-ember" />
+                          <span className="truncate">
+                            {v.name} — {v.city}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Date aller */}
+          <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
+            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date aller</label>
+            <div className="flex items-center gap-2.5 whitespace-nowrap">
+              <img src="/calendrier.svg" alt="" width={20} height={20} className="shrink-0" />
+              <input
+                type="date"
+                value={checkin}
+                max={checkout}
+                onChange={(e) => setCheckin(e.target.value)}
+                onClick={(e) => e.currentTarget.showPicker?.()}
+                className="bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+              />
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Date retour — uniquement en aller-retour */}
+          {roundTrip && (
+            <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date retour</label>
+              <div className="flex items-center gap-2.5 whitespace-nowrap">
+                <img src="/calendrier.svg" alt="" width={20} height={20} className="shrink-0" />
+                <input
+                  type="date"
+                  value={checkout}
+                  min={checkin}
+                  onChange={(e) => setCheckout(e.target.value)}
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  className="bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Bouton — bloc orange arrondi (maquette Stitch) */}
+          <button
+            onClick={onCompose}
+            disabled={!ready}
+            className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-ember-ink px-8 text-[15px] font-bold text-white shadow-lg shadow-ember-ink/25 transition-transform hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40 md:w-auto">
+            <IconSearch size={20} /> Créer mon bundle
+          </button>
+          </div>
+
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Aller simple / aller-retour — radio sous forme de rectangles cliquables */}
+            <div role="radiogroup" className="flex items-center gap-2">
+              {[
+                { value: false, label: "Aller simple" },
+                { value: true, label: "Aller-retour" },
+              ].map((opt) => {
+                const active = roundTrip === opt.value;
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setRoundTrip(opt.value)}
+                    className={`rounded-[4px] px-5 py-2 text-[13px] font-bold transition-colors ${
+                      active
+                        ? "bg-navy-700 text-white shadow-lg shadow-navy-700/25"
+                        : "bg-white text-slate-600 ring-1 ring-inset ring-line hover:bg-mist"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
             <p className="flex items-center gap-2 text-[13px] text-slate-500">
               <IconLeaf size={14} className="text-[#0d5c63]" /> Empreinte carbone affichée pour chaque trajet.
             </p>
-            <Button onClick={onCompose} disabled={!ready} className="sm:w-auto">
-              Créer mon bundle <IconArrow size={16} />
-            </Button>
           </div>
         </div>
       </section>
 
-      {/* Events */}
-      <section className="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
-        <div className="mb-7 flex items-end justify-between">
-          <div>
-            <Eyebrow className="mb-2">Les événements à venir</Eyebrow>
-            <h2 className="font-display text-[28px] font-extrabold tracking-tight text-ink md:text-[40px]">
-              À ne pas manquer.
-            </h2>
-          </div>
-          <span className="hidden items-center gap-1.5 text-[13px] font-medium text-slate-500 sm:flex">
-            Tous les événements <IconArrow size={14} />
-          </span>
+      {/* CTA finale — « Prêt à écrire votre prochain chapitre ? » (maquette Stitch) */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-ink to-navy-700 py-20 text-center md:py-24">
+        <div className="absolute inset-0 opacity-10">
+          <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100">
+            <path d="M0 0 L100 100 M100 0 L0 100" fill="none" stroke="white" strokeWidth="0.5" />
+          </svg>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {EVENTS.map((e) => {
-            const v = venues.find((x) => x.id === e.venueId);
-            return (
-              <button
-                key={e.venueId}
-                onClick={() => pickEvent(e.venueId)}
-                className={`group flex min-h-[210px] flex-col justify-between rounded-2xl bg-gradient-to-br ${e.gradient} p-5 text-left text-white transition-transform hover:-translate-y-1`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] tracking-widest text-white/80">{e.date}</span>
-                  <Chip className="bg-white/15 text-white">{e.tag}</Chip>
-                </div>
-                <div>
-                  <div className="font-display text-[26px] font-bold leading-tight">{e.title}</div>
-                  <div className="mt-1 text-[13px] text-white/70">{v?.city}</div>
-                  <div className="mt-3 flex items-center gap-1.5 text-[13px] font-medium text-white/90">
-                     Composer <IconArrow size={14} className="transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="relative z-10 mx-auto max-w-4xl px-5 md:px-8">
+          <h2 className="font-display text-[34px] font-extrabold text-white md:text-[40px]">
+            Prêt à écrire votre prochain chapitre&nbsp;?
+          </h2>
+          <div className="mt-8 flex flex-col justify-center gap-6 md:flex-row">
+            <div className="flex-1 rounded-2xl border border-white/10 bg-white/10 p-8 backdrop-blur-md">
+              <IconSparkle size={32} className="mx-auto mb-4 text-ember-soft" />
+              <h3 className="font-display text-xl font-bold text-white">Tout en un</h3>
+              <p className="mt-2 text-sm text-white/60">
+                Retrouvez toutes les étapes pour planifier votre prochaine destination&nbsp;!
+              </p>
+            </div>
+            <div className="flex-1 rounded-2xl border border-white/10 bg-white/10 p-8 backdrop-blur-md">
+              <IconTicket size={32} className="mx-auto mb-4 text-ember-soft" />
+              <h3 className="font-display text-xl font-bold text-white">Votre choix, votre aventure</h3>
+              <p className="mt-2 text-sm text-white/60">
+                Créer votre propre bundle et vivez votre propre aventure vers votre événement du moment&nbsp;!
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
       <footer className="border-t border-line px-5 py-8 md:px-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[11px] tracking-widest text-slate-400 sm:flex-row">
           <span>© 2026 BUNDLE EVENTS</span>
-          <span>FAQ · CONTACT · CGV</span>
+          <div className="flex flex-col items-center gap-2 uppercase sm:flex-row sm:gap-4">
+            {[
+              "Politique de confidentialité",
+              "Conditions d'utilisation",
+              "Mentions légales",
+            ].map((p) => (
+              <a
+                key={p}
+                href="#"
+                className="underline underline-offset-4 transition-colors hover:text-ink"
+              >
+                {p}
+              </a>
+            ))}
+          </div>
         </div>
       </footer>
     </div>
