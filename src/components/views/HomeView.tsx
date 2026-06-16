@@ -245,6 +245,56 @@ export function HomeView(props: HomeViewProps) {
                   }`}
                 />
               </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2.5">
+                  <img src="/carte.svg" alt="" width={20} height={20} className="shrink-0" />
+                  <input
+                    value={venueSearch}
+                    onChange={(e) => setVenueSearch(e.target.value)}
+                    onFocus={() => setVenueFocus(true)}
+                    onBlur={() => setTimeout(() => setVenueFocus(false), 150)}
+                    placeholder="Votre événement"
+                    className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                {venueFocus && venueResults.length > 0 && (
+                  <ul className="absolute left-3 right-3 z-20 mt-3 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line md:left-5 md:right-5">
+                    {venueResults.map((v) => (
+                      <li key={v.id}>
+                        <button
+                          onMouseDown={() => {
+                            onPickVenue(v.id);
+                            setVenueSearch("");
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
+                        >
+                          <IconPin size={14} className="shrink-0 text-ember" />
+                          <span className="truncate">
+                            {v.name} — {v.city}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Date aller */}
+          <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
+            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date aller</label>
+            <div className="flex items-center gap-2.5 whitespace-nowrap">
+              <img src="/calendrier.svg" alt="" width={20} height={20} className="shrink-0" />
+              <input
+                type="date"
+                value={checkin}
+                max={checkout}
+                onChange={(e) => setCheckin(e.target.value)}
+                onClick={(e) => e.currentTarget.showPicker?.()}
+                className="bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+              />
             </div>
           )}
           </div>
