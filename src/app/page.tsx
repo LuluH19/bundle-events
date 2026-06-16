@@ -25,6 +25,7 @@ import {
 import { Header } from "@/src/components/layout/Header";
 import { SideNav } from "@/src/components/layout/SideNav";
 import { MobileTabBar } from "@/src/components/layout/MobileTabBar";
+import { SideNav } from "@/src/components/layout/SideNav";
 import { HomeView } from "@/src/components/views/HomeView";
 import { RoutesView } from "@/src/components/views/RoutesView";
 import { HotelsView } from "@/src/components/views/HotelsView";
