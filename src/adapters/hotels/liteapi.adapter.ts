@@ -3,7 +3,7 @@ import { getDaysDiff } from "@/src/utils/date";
 import { liteApiConfig } from "@/src/config";
 
 export class LiteApiHotelAdapter implements HotelProvider {
-  private async fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Map<string, { name: string; address: string; city: string; latitude: number; longitude: number; starRating: number; main_photo: string; rating: number }>> {
+  private async fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Map<string, { name: string; address: string; city: string; zip: string; latitude: number; longitude: number; starRating: number; main_photo: string; rating: number }>> {
     const map = new Map();
     // Fetch in parallel (max 5 concurrent)
     const chunks = [];
@@ -88,7 +88,7 @@ export class LiteApiHotelAdapter implements HotelProvider {
         return {
           id: `lite-${h.hotelId}`,
           name: detail?.name || h.hotelId,
-          locationName: detail?.address || detail?.city || "",
+          locationName: [detail?.address, [detail?.zip, detail?.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
           coords: { lat: detail?.latitude || Number(lat), lng: detail?.longitude || Number(lng) },
           stars: detail?.starRating,
           photo: detail?.main_photo,
