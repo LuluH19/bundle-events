@@ -25,7 +25,6 @@ import {
 import { Header } from "@/src/components/layout/Header";
 import { SideNav } from "@/src/components/layout/SideNav";
 import { MobileTabBar } from "@/src/components/layout/MobileTabBar";
-import { SideNav } from "@/src/components/layout/SideNav";
 import { HomeView } from "@/src/components/views/HomeView";
 import { RoutesView } from "@/src/components/views/RoutesView";
 import { HotelsView } from "@/src/components/views/HotelsView";
@@ -241,7 +240,7 @@ export default function Home() {
 
   // live hotel search around the venue
   useEffect(() => {
-    if (!venue || !checkin || !checkout) {
+    if (!venue) {
       return;
     }
     if (!checkin) {
