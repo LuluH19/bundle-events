@@ -54,7 +54,6 @@ export function HomeView(props: HomeViewProps) {
   } = props;
   const ready = !!(departure && venue);
 
-  // Suggestions d'événements (filtre local pour le moment — à brancher sur une API ensuite)
   const [venueSearch, setVenueSearch] = useState("");
   const [venueFocus, setVenueFocus] = useState(false);
   const venueResults = useMemo(() => {
@@ -63,12 +62,10 @@ export function HomeView(props: HomeViewProps) {
     return venues.filter((v) => `${v.name} ${v.city}`.toLowerCase().includes(q)).slice(0, 6);
   }, [venueSearch]);
 
-  // Aller simple (false) / aller-retour (true) — affiche ou non la date retour
   const [roundTrip, setRoundTrip] = useState(true);
 
   return (
     <div>
-      {/* Hero */}
       <section className="relative overflow-hidden bg-navy px-5 pb-28 pt-20 md:px-8 md:pb-40 md:pt-32">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -88,12 +85,10 @@ export function HomeView(props: HomeViewProps) {
           </p>
         </div>
 
-        {/* Barre de recherche — bandeau arrondi clair (maquette Stitch) */}
         <div
           id="search-card"
-          className="relative mx-auto mt-10 flex max-w-5xl flex-col gap-3 rounded-xl bg-white/85 p-6 shadow-[0_24px_48px_-12px_rgba(0,11,58,0.45)] backdrop-blur-2xl md:mt-12">
+          className="relative mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-xl bg-white/85 p-6 shadow-[0_24px_48px_-12px_rgba(0,11,58,0.45)] backdrop-blur-2xl md:mt-12">
           <div className="flex flex-col gap-1 md:flex-row md:items-center">
-          {/* De */}
           <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
             {departure ? (
@@ -136,7 +131,6 @@ export function HomeView(props: HomeViewProps) {
             )}
           </div>
 
-          {/* Vers */}
           <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
             {venue ? (
@@ -189,8 +183,34 @@ export function HomeView(props: HomeViewProps) {
               </>
             )}
           </div>
+          </div>
 
-          {/* Date aller */}
+          <div role="radiogroup" className="flex items-center gap-2 px-4 md:px-6">
+            {[
+              { value: true, label: "Aller-retour" },
+              { value: false, label: "Aller simple" },
+            ].map((opt) => {
+              const active = roundTrip === opt.value;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setRoundTrip(opt.value)}
+                  className={`flex-1 rounded-[4px] px-5 py-2.5 text-[13px] font-bold transition-colors ${
+                    active
+                      ? "bg-navy-700 text-white shadow-lg shadow-navy-700/25"
+                      : "bg-white text-slate-600 ring-1 ring-inset ring-line hover:bg-mist"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-1 md:flex-row md:items-center">
           <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date aller</label>
             <div className="flex items-center gap-2.5 whitespace-nowrap">
@@ -201,12 +221,11 @@ export function HomeView(props: HomeViewProps) {
                 max={checkout}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
-                className="bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+                className="min-w-0 flex-1 bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
               />
             </div>
           </div>
 
-          {/* Date retour — uniquement en aller-retour */}
           {roundTrip && (
             <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
               <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date retour</label>
@@ -218,56 +237,29 @@ export function HomeView(props: HomeViewProps) {
                   min={checkin}
                   onChange={(e) => setCheckout(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
-                  className="bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+                  className="min-w-0 flex-1 bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
                 />
               </div>
             </div>
           )}
-
-          {/* Bouton — bloc orange arrondi (maquette Stitch) */}
-          <button
-            onClick={onCompose}
-            disabled={!ready}
-            className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-ember-ink px-8 text-[15px] font-bold text-white shadow-lg shadow-ember-ink/25 transition-transform hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40 md:w-auto">
-            <IconSearch size={20} /> Créer mon bundle
-          </button>
           </div>
 
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {/* Aller simple / aller-retour — radio sous forme de rectangles cliquables */}
-            <div role="radiogroup" className="flex items-center gap-2">
-              {[
-                { value: false, label: "Aller simple" },
-                { value: true, label: "Aller-retour" },
-              ].map((opt) => {
-                const active = roundTrip === opt.value;
-                return (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => setRoundTrip(opt.value)}
-                    className={`rounded-[4px] px-5 py-2 text-[13px] font-bold transition-colors ${
-                      active
-                        ? "bg-navy-700 text-white shadow-lg shadow-navy-700/25"
-                        : "bg-white text-slate-600 ring-1 ring-inset ring-line hover:bg-mist"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <p className="flex items-center gap-2 text-[13px] text-slate-500">
-              <IconLeaf size={14} className="text-[#0d5c63]" /> Empreinte carbone affichée pour chaque trajet.
-            </p>
+          <div className="px-4 md:px-6">
+            <button
+              onClick={onCompose}
+              disabled={!ready}
+              className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-ember-ink px-8 text-[15px] font-bold text-white shadow-lg shadow-ember-ink/25 transition-transform hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40">
+              <IconSearch size={20} /> Créer mon bundle
+            </button>
           </div>
+
+          <p className="px-4 text-[13px] text-slate-500 md:px-6 md:text-center">
+            <IconLeaf size={14} className="mr-1.5 inline align-text-bottom text-[#0d5c63]" />
+            Empreinte carbone affichée pour chaque trajet.
+          </p>
         </div>
       </section>
 
-      {/* CTA finale — « Prêt à écrire votre prochain chapitre ? » (maquette Stitch) */}
       <section className="relative overflow-hidden bg-gradient-to-br from-ink to-navy-700 py-20 text-center md:py-24">
         <div className="absolute inset-0 opacity-10">
           <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100">
