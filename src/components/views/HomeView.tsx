@@ -221,7 +221,9 @@ export function HomeView(props: HomeViewProps) {
                 max={checkout}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
-                className="min-w-0 flex-1 bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+                className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
+                  checkin ? "text-ink" : "text-slate-400"
+                }`}
               />
             </div>
           </div>
@@ -237,7 +239,9 @@ export function HomeView(props: HomeViewProps) {
                   min={checkin}
                   onChange={(e) => setCheckout(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
-                  className="min-w-0 flex-1 bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+                  className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
+                    checkout ? "text-ink" : "text-slate-400"
+                  }`}
                 />
               </div>
             </div>
