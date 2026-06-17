@@ -241,7 +241,7 @@ export default function Home() {
 
   // live hotel search around the venue
   useEffect(() => {
-    if (!venue) {
+    if (!venue || !checkin || !checkout) {
       return;
     }
     if (!checkin) {
