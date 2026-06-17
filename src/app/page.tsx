@@ -19,7 +19,6 @@ import {
   fetchTrainInfo,
 } from "@/src/services/travel";
 import { Header } from "@/src/components/layout/Header";
-import { MobileTabBar } from "@/src/components/layout/MobileTabBar";
 import { SideNav } from "@/src/components/layout/SideNav";
 import { HomeView } from "@/src/components/views/HomeView";
 import { RoutesView } from "@/src/components/views/RoutesView";
@@ -345,8 +344,6 @@ export default function Home() {
           />
         )}
       </main>
-
-      <MobileTabBar step={step} go={go} canReach={canReach} />
     </div>
   );
 }
