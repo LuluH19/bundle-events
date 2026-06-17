@@ -4,6 +4,12 @@ export function isoPlusDays(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+export function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export function getDaysDiff(checkin: string, checkout: string): number {
   const d1 = new Date(checkin);
   const d2 = new Date(checkout);
