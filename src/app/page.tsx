@@ -24,18 +24,20 @@ import { HomeView } from "@/src/components/views/HomeView";
 import { RoutesView } from "@/src/components/views/RoutesView";
 import { HotelsView } from "@/src/components/views/HotelsView";
 import { BundleView } from "@/src/components/views/BundleView";
-import { isoPlusDays } from "@/src/utils/date";
 
 export default function Home() {
   const [step, setStep] = useState<Step>("home");
 
   const [departure, setDeparture] = useState<Location | null>(null);
   const [venue, setVenue] = useState<Location | null>(null);
-  const [checkin, setCheckin] = useState(() => isoPlusDays(30));
-  const [checkout, setCheckout] = useState(() => isoPlusDays(32));
+  const [checkin, setCheckin] = useState("");
+  const [checkout, setCheckout] = useState("");
   const dateLabel = useMemo(() => {
     const fmt = (iso: string) =>
       new Date(`${iso}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    if (!checkin && !checkout) return "Dates à définir";
+    if (!checkout) return fmt(checkin);
+    if (!checkin) return fmt(checkout);
     return `${fmt(checkin)} — ${fmt(checkout)}`;
   }, [checkin, checkout]);
 
@@ -159,7 +161,7 @@ export default function Home() {
       } catch {
         setDepResults([]);
       }
-    }, 300);
+    }, 150);
     return () => clearTimeout(t);
   }, [depSearch]);
 
@@ -203,7 +205,7 @@ export default function Home() {
 
   // live hotel search around the venue
   useEffect(() => {
-    if (!venue) {
+    if (!venue || !checkin || !checkout) {
       return;
     }
     let cancelled = false;
