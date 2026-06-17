@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Location, LatLng } from "@/src/types";
+import { isoPlusDays } from "@/src/utils/date";
 import { venues } from "@/src/utils/constants/venues";
 import {
   IconPin,
@@ -63,6 +64,7 @@ export function HomeView(props: HomeViewProps) {
   }, [venueSearch]);
 
   const [roundTrip, setRoundTrip] = useState(true);
+  const today = useMemo(() => isoPlusDays(0), []);
 
   return (
     <div>
@@ -87,7 +89,7 @@ export function HomeView(props: HomeViewProps) {
 
         <div
           id="search-card"
-          className="relative mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-xl bg-white/85 p-6 shadow-[0_24px_48px_-12px_rgba(0,11,58,0.45)] backdrop-blur-2xl md:mt-12">
+          className="relative mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-xl bg-white/85 p-4 shadow-[0_24px_48px_-12px_rgba(0,11,58,0.45)] backdrop-blur-2xl md:mt-12 md:p-6">
           <div className="flex flex-col gap-1 md:flex-row md:items-center">
           <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
@@ -218,7 +220,8 @@ export function HomeView(props: HomeViewProps) {
               <input
                 type="date"
                 value={checkin}
-                max={checkout}
+                min={today}
+                max={checkout || undefined}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
                 className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
@@ -236,7 +239,7 @@ export function HomeView(props: HomeViewProps) {
                 <input
                   type="date"
                   value={checkout}
-                  min={checkin}
+                  min={checkin || today}
                   onChange={(e) => setCheckout(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
                   className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${

@@ -4,8 +4,8 @@ import { Step, Location } from "@/src/types";
 import { IconMap, IconBed, IconBag } from "@/src/components/ui";
 
 const NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
-  { id: "routes", label: "Itinéraires", Icon: IconMap },
   { id: "hotels", label: "Hôtels", Icon: IconBed },
+  { id: "routes", label: "Itinéraires", Icon: IconMap },
   { id: "bundle", label: "Bundle", Icon: IconBag },
 ];
 
@@ -55,17 +55,6 @@ export function SideNav({ step, go, canReach, venue }: SideNavProps) {
           );
         })}
       </nav>
-
-      <div className="mt-auto rounded-2xl bg-navy-700 p-4">
-        <p className="mb-2 text-xs text-white/80">Prêt à tout assembler&nbsp;?</p>
-        <button
-          onClick={() => canReach("bundle") && go("bundle")}
-          disabled={!canReach("bundle")}
-          className="w-full rounded-lg bg-ember-ink py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
-        >
-          Voir mon bundle
-        </button>
-      </div>
     </aside>
   );
 }
