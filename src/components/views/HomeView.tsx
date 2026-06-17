@@ -281,8 +281,34 @@ export function HomeView(props: HomeViewProps) {
               </>
             )}
           </div>
+          </div>
 
-          {/* Date aller */}
+          <div role="radiogroup" className="flex items-center gap-2 px-4 md:px-6">
+            {[
+              { value: true, label: "Aller-retour" },
+              { value: false, label: "Aller simple" },
+            ].map((opt) => {
+              const active = roundTrip === opt.value;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setRoundTrip(opt.value)}
+                  className={`flex-1 rounded-[4px] px-5 py-2.5 text-[13px] font-bold transition-colors ${
+                    active
+                      ? "bg-navy-700 text-white shadow-lg shadow-navy-700/25"
+                      : "bg-white text-slate-600 ring-1 ring-inset ring-line hover:bg-mist"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-1 md:flex-row md:items-center">
           <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date aller</label>
             <div className="flex items-center gap-2.5 whitespace-nowrap">
@@ -293,7 +319,7 @@ export function HomeView(props: HomeViewProps) {
                 max={checkout}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
-                className="bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+                className="min-w-0 flex-1 bg-transparent text-[16px] font-medium text-slate-400 outline-none [&::-webkit-calendar-picker-indicator]:hidden"
               />
             </div>
           )}
