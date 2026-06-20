@@ -8,7 +8,7 @@ export interface StepItem {
 
 export const STEPS: StepItem[] = [
   { id: "home", n: "01", label: "Trajet" },
-  { id: "routes", n: "02", label: "Itinéraires" },
-  { id: "hotels", n: "03", label: "Hôtels" },
+  { id: "hotels", n: "02", label: "Hôtels" },
+  { id: "routes", n: "03", label: "Itinéraires" },
   { id: "bundle", n: "04", label: "Bundle" },
 ];

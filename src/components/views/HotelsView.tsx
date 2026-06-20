@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Location, RouteResult, HotelMapItem } from "@/src/types";
+import { Location, HotelMapItem } from "@/src/types";
 import { getHotelDistance } from "@/src/utils/hotel";
 import { formatDistance } from "@/src/utils/format";
 import {
@@ -39,7 +39,6 @@ interface HotelsViewProps {
   onSelectHotel: (h: HotelMapItem | null) => void;
   departure: Location | null;
   hotelLocation: Location | null;
-  journeyRoute: RouteResult | null;
   mobileMapOpen: boolean;
   setMobileMapOpen: (v: boolean) => void;
   onContinue: () => void;
@@ -57,19 +56,31 @@ export function HotelsView(props: HotelsViewProps) {
     onSelectHotel,
     departure,
     hotelLocation,
-    journeyRoute,
     mobileMapOpen,
     setMobileMapOpen,
     onContinue,
   } = props;
 
+  const [sortBy, setSortBy] = useState<"distance" | "price-asc" | "price-desc">("distance");
+
   const sorted = useMemo(() => {
-    return [...hotelResults].sort((a, b) => {
+    const arr = [...hotelResults];
+    if (sortBy === "price-asc" || sortBy === "price-desc") {
+      return arr.sort((a, b) => {
+        const pa = a.pricePerNight;
+        const pb = b.pricePerNight;
+        if (pa == null && pb == null) return 0;
+        if (pa == null) return 1;
+        if (pb == null) return -1;
+        return sortBy === "price-asc" ? pa - pb : pb - pa;
+      });
+    }
+    return arr.sort((a, b) => {
       const da = getHotelDistance(a, venue) ?? 0;
       const db = getHotelDistance(b, venue) ?? 0;
       return da - db;
     });
-  }, [hotelResults, venue]);
+  }, [hotelResults, venue, sortBy]);
 
   if (!venue) {
     return (
@@ -85,7 +96,7 @@ export function HotelsView(props: HotelsViewProps) {
       departure={departure}
       venue={venue}
       hotel={hotelLocation}
-      route={journeyRoute}
+      route={null}
       hotelResults={hotelResults}
       selectedHotelId={selectedHotel?.id ?? null}
       onHotelSelect={onSelectHotel}
@@ -120,6 +131,18 @@ export function HotelsView(props: HotelsViewProps) {
               ))}
             </select>
           </div>
+          <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-line">
+            <span className="text-[12px] font-medium text-slate-500">Trier</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "distance" | "price-asc" | "price-desc")}
+              className="bg-transparent text-[13px] font-semibold text-ink outline-none"
+            >
+              <option value="distance">Plus proche</option>
+              <option value="price-asc">Moins cher</option>
+              <option value="price-desc">Plus cher</option>
+            </select>
+          </div>
           <span className="text-[13px] text-slate-400">
             {hotelLoading ? "Recherche…" : `${hotelResults.length} hôtel${hotelResults.length > 1 ? "s" : ""}`}
           </span>
@@ -147,11 +170,11 @@ export function HotelsView(props: HotelsViewProps) {
               return (
                 <div
                   key={h.id}
-                  className={`flex gap-4 rounded-2xl border bg-white p-3 transition-all ${
+                  className={`flex flex-col gap-4 rounded-2xl border bg-white p-3 transition-all md:flex-row ${
                     selected ? "border-ember ring-1 ring-ember" : "border-line hover:border-ember/40"
                   }`}
                 >
-                  <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-navy to-ink">
+                  <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-navy to-ink md:h-24 md:w-28">
                     {h.photo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={h.photo} alt={h.name} className="h-full w-full object-cover" loading="lazy" />
@@ -165,6 +188,7 @@ export function HotelsView(props: HotelsViewProps) {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <h3 className="truncate font-display text-[17px] font-bold text-ink">{h.name}</h3>
+                        {h.locationName && <p className="mt-0.5 truncate text-[12px] text-slate-400">{h.locationName}</p>}
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-slate-500">
                           {h.stars ? (
                             <span className="flex items-center gap-0.5 text-ember-ink">
@@ -182,7 +206,6 @@ export function HotelsView(props: HotelsViewProps) {
                             </span>
                           )}
                         </div>
-                        {h.locationName && <p className="mt-0.5 truncate text-[12px] text-slate-400">{h.locationName}</p>}
                       </div>
                       <div className="shrink-0 text-right">
                         {h.pricePerNight ? (
@@ -211,7 +234,7 @@ export function HotelsView(props: HotelsViewProps) {
                       )}
                       <button
                         onClick={() => onSelectHotel(selected ? null : h)}
-                        className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors ${
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors md:flex-none ${
                           selected ? "bg-ember text-white" : "bg-ink text-white hover:bg-navy-700"
                         }`}
                       >

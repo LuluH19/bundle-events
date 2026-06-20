@@ -52,7 +52,9 @@ export class OverpassHotelAdapter implements HotelProvider {
         const elLat = el.lat ?? el.center?.lat;
         const elLng = el.lon ?? el.center?.lon;
         const tags = el.tags;
-        const addr = [tags["addr:housenumber"], tags["addr:street"], tags["addr:postcode"], tags["addr:city"]].filter(Boolean).join(" ");
+        const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
+        const cityLine = [tags["addr:postcode"], tags["addr:city"]].filter(Boolean).join(" ");
+        const addr = [street, cityLine].filter(Boolean).join(", ");
         return {
           id: `osm-${el.id}`,
           name: tags.name,

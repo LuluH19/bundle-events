@@ -1,6 +1,13 @@
 "use client";
 
-import { Step, STEPS } from "@/src/types";
+import { Step } from "@/src/types";
+import { IconMap, IconBed, IconBag } from "@/src/components/ui";
+
+const NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
+  { id: "hotels", label: "Hôtels", Icon: IconBed },
+  { id: "routes", label: "Itinéraires", Icon: IconMap },
+  { id: "bundle", label: "Bundle", Icon: IconBag },
+];
 
 interface MobileTabBarProps {
   step: Step;
@@ -10,21 +17,21 @@ interface MobileTabBarProps {
 
 export function MobileTabBar({ step, go, canReach }: MobileTabBarProps) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-white/95 backdrop-blur-xl md:hidden">
-      {STEPS.map((s) => {
-        const active = s.id === step;
-        const reachable = canReach(s.id);
+    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
+      {NAV_ITEMS.map(({ id, label, Icon }) => {
+        const active = id === step;
+        const reachable = canReach(id);
         return (
           <button
-            key={s.id}
-            onClick={() => reachable && go(s.id)}
+            key={id}
+            onClick={() => reachable && go(id)}
             disabled={!reachable}
-            className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${
+            className={`flex min-h-[60px] flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium leading-none transition-colors ${
               active ? "text-ember-ink" : reachable ? "text-slate-500" : "text-slate-300"
             }`}
           >
-            <span className={`font-mono text-[10px] ${active ? "text-ember" : ""}`}>{s.n}</span>
-            {s.label}
+            <Icon size={22} className="shrink-0 overflow-visible" />
+            <span>{label}</span>
           </button>
         );
       })}

@@ -116,10 +116,51 @@ export function IconClose({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+export function IconSearch({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
 export function IconMap({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
       <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14" />
+    </svg>
+  );
+}
+export function IconBed({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M3 18v-7h13a4 4 0 0 1 4 4v3" />
+      <path d="M3 14h17M3 9V6M3 18v2M20 18v2" />
+      <path d="M7 11V9.5A1.5 1.5 0 0 1 8.5 8h2A1.5 1.5 0 0 1 12 9.5V11" />
+    </svg>
+  );
+}
+export function IconBag({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M6 8h12l-1 12H7L6 8Z" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+    </svg>
+  );
+}
+export function IconSparkle({ size = 24, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z" />
+      <path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
+    </svg>
+  );
+}
+export function IconTicket({ size = 24, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1.5a2 2 0 1 0 0 5V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.5a2 2 0 1 0 0-5V8Z" />
+      <path d="M14 6.5v11" strokeDasharray="2 2.5" />
     </svg>
   );
 }

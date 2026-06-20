@@ -150,6 +150,8 @@ export default function TravelMap({
     sync("venue", venue);
     sync("hotel", hotel);
 
+    if (showHotels) return;
+
     const locs = [departure, venue, hotel].filter(Boolean) as Location[];
     if (locs.length === 1) {
       map.flyTo({ center: [locs[0].coords.lng, locs[0].coords.lat], zoom: 12 });
@@ -158,7 +160,18 @@ export default function TravelMap({
       locs.forEach((l) => bounds.extend([l.coords.lng, l.coords.lat]));
       map.fitBounds(bounds, { padding: 90, maxZoom: 13.5, duration: 800 });
     }
-  }, [departure, venue, hotel]);
+  }, [departure, venue, hotel, showHotels]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !showHotels || !venue) return;
+    const lng = venue.coords.lng;
+    const lat = venue.coords.lat;
+    const dx = hotelRadius / (111.32 * Math.cos((lat * Math.PI) / 180));
+    const dy = hotelRadius / 110.574;
+    const bounds = new mapboxgl.LngLatBounds([lng - dx, lat - dy], [lng + dx, lat + dy]);
+    map.fitBounds(bounds, { padding: 64, duration: 600 });
+  }, [showHotels, venue, hotelRadius]);
 
   // ── Style-dependent layers: hotels, radius, route ──
   useEffect(() => {

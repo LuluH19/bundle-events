@@ -1,6 +1,12 @@
 "use client";
 
-import { Step, STEPS } from "@/src/types";
+import { Step } from "@/src/types";
+
+const NAV_LINKS: { label: string; href: string }[] = [
+  { label: "Événements", href: "#" },
+  { label: "Actualités", href: "#" },
+  { label: "Contact", href: "#" },
+];
 
 function Brand({ className = "" }: { className?: string }) {
   return (
@@ -16,39 +22,37 @@ interface HeaderProps {
   canReach: (s: Step) => boolean;
 }
 
-export function Header({ step, go, canReach }: HeaderProps) {
+export function Header({ go }: HeaderProps) {
+  const startBundle = () => {
+    go("home");
+    setTimeout(
+      () => document.getElementById("search-card")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      60
+    );
+  };
+
   return (
     <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-line bg-white/90 px-5 py-3 backdrop-blur-xl md:px-8">
       <button onClick={() => go("home")} className="shrink-0">
-        <Brand />
+        {/* <Brand /> */}
       </button>
-      <nav className="mx-auto hidden items-center gap-1 md:flex">
-        {STEPS.map((s, i) => {
-          const active = s.id === step;
-          const reachable = canReach(s.id);
-          return (
-            <div key={s.id} className="flex items-center gap-1">
-              <button
-                onClick={() => reachable && go(s.id)}
-                disabled={!reachable}
-                className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 transition-colors ${
-                  active ? "bg-ink text-white" : reachable ? "text-slate-500 hover:bg-mist" : "text-slate-300"
-                }`}
-              >
-                <span className="font-mono text-[10px] tracking-widest">{s.n}</span>
-                <span className="text-[13px] font-medium">{s.label}</span>
-              </button>
-              {i < STEPS.length - 1 && <span className="h-px w-3 bg-line" />}
-            </div>
-          );
-        })}
+      <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
+        {/* {NAV_LINKS.map((l) => (
+          <a
+            key={l.label}
+            href={l.href}
+            className="text-[14px] font-medium text-slate-600 transition-colors hover:text-ink"
+          >
+            {l.label}
+          </a>
+        ))} */}
       </nav>
-      <div className="ml-auto hidden items-center gap-3 md:flex">
-        <span className="text-[11px] font-medium tracking-widest text-slate-400">FR · €</span>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-[12px] font-semibold text-white">
-          BE
-        </span>
-      </div>
+      <button
+        onClick={startBundle}
+        className="ml-auto shrink-0 rounded-[4px] bg-ember-ink px-[20px] py-[8px] text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
+      >
+        Créer mon bundle
+      </button>
     </header>
   );
 }
