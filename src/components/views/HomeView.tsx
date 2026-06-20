@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Location, LatLng } from "@/src/types";
 import { isoPlusDays } from "@/src/utils/date";
-import { venues } from "@/src/utils/constants/venues";
 import {
   IconPin,
   IconLeaf,
@@ -25,6 +24,13 @@ interface HomeViewProps {
   onClearDeparture: () => void;
   onPickVenue: (id: string) => void;
   onClearVenue: () => void;
+  venueSearch: string;
+  setVenueSearch: (v: string) => void;
+  venueResults: { id: string; name: string; city: string }[];
+  venueFocus: boolean;
+  setVenueFocus: (v: boolean) => void;
+  roundTrip: boolean;
+  setRoundTrip: (v: boolean) => void;
   dateLabel: string;
   checkin: string;
   checkout: string;
@@ -47,6 +53,13 @@ export function HomeView(props: HomeViewProps) {
     onClearDeparture,
     onPickVenue,
     onClearVenue,
+    venueSearch,
+    setVenueSearch,
+    venueResults,
+    venueFocus,
+    setVenueFocus,
+    roundTrip,
+    setRoundTrip,
     checkin,
     checkout,
     setCheckin,
@@ -55,15 +68,6 @@ export function HomeView(props: HomeViewProps) {
   } = props;
   const ready = !!(departure && venue);
 
-  const [venueSearch, setVenueSearch] = useState("");
-  const [venueFocus, setVenueFocus] = useState(false);
-  const venueResults = useMemo(() => {
-    const q = venueSearch.trim().toLowerCase();
-    if (!q) return [];
-    return venues.filter((v) => `${v.name} ${v.city}`.toLowerCase().includes(q)).slice(0, 6);
-  }, [venueSearch]);
-
-  const [roundTrip, setRoundTrip] = useState(true);
   const today = useMemo(() => isoPlusDays(0), []);
 
   return (
@@ -140,10 +144,7 @@ export function HomeView(props: HomeViewProps) {
                 <img src="/carte.svg" alt="" width={20} height={20} className="shrink-0" />
                 <span className="flex-1 truncate text-[16px] font-medium text-ink">{venue.name}</span>
                 <button
-                  onClick={() => {
-                    onClearVenue();
-                    setVenueSearch("");
-                  }}
+                  onClick={onClearVenue}
                   className="text-slate-400 hover:text-ember"
                 >
                   <IconClose size={16} />
@@ -167,10 +168,7 @@ export function HomeView(props: HomeViewProps) {
                     {venueResults.map((v) => (
                       <li key={v.id}>
                         <button
-                          onMouseDown={() => {
-                            onPickVenue(v.id);
-                            setVenueSearch("");
-                          }}
+                          onMouseDown={() => onPickVenue(v.id)}
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
                         >
                           <IconPin size={14} className="shrink-0 text-ember" />

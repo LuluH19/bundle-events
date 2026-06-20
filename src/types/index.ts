@@ -6,6 +6,7 @@ export * from "./hotel";
 export * from "./station";
 export * from "./airport";
 export * from "./venue";
+export * from "./event";
 export * from "./step";
 export * from "./geocoding";
 export * from "./sncf";

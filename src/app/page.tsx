@@ -10,11 +10,13 @@ import type {
   HotelMapItem,
   TrainJourney,
   Step,
+  Venue,
 } from "@/src/types";
 import { STEPS } from "@/src/types/step";
 import { venues } from "@/src/utils/constants/venues";
 import { addDaysIso } from "@/src/utils/date";
 import { searchLocation } from "@/src/services/geocoding";
+import { searchEvents } from "@/src/services/events";
 import {
   computeOptions,
   fetchFlightInfo,
@@ -35,6 +37,12 @@ export default function Home() {
   const [venue, setVenue] = useState<Location | null>(null);
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
+  const [roundTrip, setRoundTrip] = useState(true);
+
+  const handleRoundTrip = (value: boolean) => {
+    setRoundTrip(value);
+    if (!value) setCheckout("");
+  };
   const dateLabel = useMemo(() => {
     const fmt = (iso: string) =>
       new Date(`${iso}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
@@ -48,6 +56,10 @@ export default function Home() {
   const [depSearch, setDepSearch] = useState("");
   const [depResults, setDepResults] = useState<{ displayName: string; address: string; coords: LatLng }[]>([]);
   const [depFocus, setDepFocus] = useState(false);
+
+  const [venueSearch, setVenueSearch] = useState("");
+  const [venueResults, setVenueResults] = useState<Venue[]>([]);
+  const [venueFocus, setVenueFocus] = useState(false);
 
   // transport options
   const [options, setOptions] = useState<RouteOption[]>([]);
@@ -105,10 +117,19 @@ export default function Home() {
     setFlights([]);
   };
 
+  const handleVenueSearchChange = (val: string) => {
+    setVenueSearch(val);
+    if (!val.trim()) {
+      setVenueResults([]);
+    }
+  };
+
   const handlePickVenue = (id: string) => {
     const v = venues.find((x) => x.id === id);
     if (v) {
       setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
+      setVenueSearch("");
+      setVenueResults([]);
       setSelectedHotel(null);
       setOptions([]);
       setSelectedMode(null);
@@ -125,6 +146,8 @@ export default function Home() {
 
   const handleClearVenue = () => {
     setVenue(null);
+    setVenueSearch("");
+    setVenueResults([]);
     setSelectedHotel(null);
     setOptions([]);
     setSelectedMode(null);
@@ -161,6 +184,21 @@ export default function Home() {
     }, 150);
     return () => clearTimeout(t);
   }, [depSearch]);
+
+  useEffect(() => {
+    if (!venueSearch.trim()) {
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const r = await searchEvents(venueSearch);
+      if (!cancelled) setVenueResults(r);
+    }, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [venueSearch]);
 
   // compute transport options when both ends known
   useEffect(() => {
@@ -282,6 +320,13 @@ export default function Home() {
             onClearDeparture={handleClearDeparture}
             onPickVenue={handlePickVenue}
             onClearVenue={handleClearVenue}
+            venueSearch={venueSearch}
+            setVenueSearch={handleVenueSearchChange}
+            venueResults={venueResults}
+            venueFocus={venueFocus}
+            setVenueFocus={setVenueFocus}
+            roundTrip={roundTrip}
+            setRoundTrip={handleRoundTrip}
             dateLabel={dateLabel}
             checkin={checkin}
             checkout={checkout}
