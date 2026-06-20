@@ -42,35 +42,31 @@ jobs:
             if (!webhook) { core.setFailed("Secret DISCORD_WEBHOOK_PR manquant"); return; }
 
             const C = { green: 0x2ecc71, red: 0xe74c3c, blue: 0x3498db, orange: 0xe67e22, grey: 0x95a5a6, purple: 0x9b59b6 };
-            const pr = context.payload.pull_request;
-            let title, color;
+            const p = context.payload;
+            const pr = p.pull_request;
+            const author = (u) => u && { name: u.login, url: u.html_url, icon_url: u.avatar_url };
+            let title, color, who = pr.user;
 
             if (context.eventName === "pull_request_review") {
-              const review = context.payload.review;
-              const who = review.user.login;
-              if (review.state === "approved") { title = `✅ PR approuvée par ${who}`; color = C.green; }
-              else if (review.state === "changes_requested") { title = `Changements demandés par ${who}`; color = C.red; }
-              else { title = `Review commentée par ${who}`; color = C.grey; }
+              const rv = p.review;
+              who = rv.user;
+              title = rv.state === "approved" ? `PR approuvée par ${who.login}`
+                : rv.state === "changes_requested" ? `Changements demandés par ${who.login}`
+                : `Review commentée par ${who.login}`;
+              color = rv.state === "approved" ? C.green : rv.state === "changes_requested" ? C.red : C.grey;
             } else {
-              switch (context.payload.action) {
-                case "opened": title = "Nouvelle PR ouverte"; color = C.blue; break;
-                case "reopened": title = "PR rouverte"; color = C.blue; break;
-                case "ready_for_review": title = "PR prête pour review"; color = C.purple; break;
-                case "converted_to_draft": title = "PR repassée en brouillon"; color = C.grey; break;
-                case "review_requested": {
-                  const r = context.payload.requested_reviewer?.login || context.payload.requested_team?.name || "—";
-                  title = `Review demandée à ${r}`; color = C.orange; break;
-                }
-                case "review_request_removed": {
-                  const r = context.payload.requested_reviewer?.login || context.payload.requested_team?.name || "—";
-                  title = `Demande de review retirée (${r})`; color = C.grey; break;
-                }
-                case "closed":
-                  if (pr.merged) { title = "PR mergée"; color = C.green; }
-                  else { title = "PR fermée sans merge"; color = C.red; }
-                  break;
-                default: core.info(`Action ignorée : ${context.payload.action}`); return;
-              }
+              const reviewer = p.requested_reviewer?.login || p.requested_team?.name || "—";
+              const map = {
+                opened: ["Nouvelle PR ouverte", C.blue],
+                reopened: ["PR rouverte", C.blue],
+                ready_for_review: ["PR prête pour review", C.purple],
+                converted_to_draft: ["PR repassée en brouillon", C.grey],
+                review_requested: [`Review demandée à ${reviewer}`, C.orange],
+                review_request_removed: [`Demande de review retirée (${reviewer})`, C.grey],
+                closed: [pr.merged ? "PR mergée" : "PR fermée sans merge", pr.merged ? C.green : C.red],
+              };
+              if (!map[p.action]) { core.info(`Action ignorée : ${p.action}`); return; }
+              [title, color] = map[p.action];
             }
 
             const reviewers = [
@@ -82,11 +78,11 @@ jobs:
               title,
               url: pr.html_url,
               color,
+              author: author(who),
               fields: [
                 { name: "PR", value: `[#${pr.number}](${pr.html_url}) — ${pr.title}` },
-                { name: "Auteur", value: pr.user.login, inline: true },
                 { name: "Branche", value: `\`${pr.head.ref}\` → \`${pr.base.ref}\``, inline: true },
-                { name: "Reviewers", value: reviewers },
+                { name: "Reviewers", value: reviewers, inline: true },
               ],
               timestamp: new Date().toISOString(),
             };
@@ -94,7 +90,7 @@ jobs:
             const res = await fetch(webhook, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ username: "GitHub · PR", embeds: [embed] }),
+              body: JSON.stringify({ embeds: [embed] }),
             });
             if (!res.ok) core.setFailed(`Discord a répondu ${res.status} : ${await res.text()}`);
 
@@ -112,27 +108,27 @@ jobs:
             const webhook = process.env.DISCORD_WEBHOOK;
             if (!webhook) { core.setFailed("Secret DISCORD_WEBHOOK_RELEASE manquant"); return; }
 
-            const rel = context.payload.release;
-            let notes = (rel.body || "").trim();
+            const r = context.payload.release;
+            let notes = (r.body || "").trim();
             if (notes.length > 1500) notes = notes.slice(0, 1500) + "…";
 
             const embed = {
-              title: `Nouvelle version : ${rel.name || rel.tag_name}`,
-              url: rel.html_url,
-              color: rel.prerelease ? 0xe67e22 : 0x2ecc71,
+              title: `Nouvelle version : ${r.name || r.tag_name}`,
+              url: r.html_url,
+              color: r.prerelease ? 0xe67e22 : 0x2ecc71,
               description: notes || "_Pas de notes de version._",
+              author: r.author && { name: r.author.login, url: r.author.html_url, icon_url: r.author.avatar_url },
               fields: [
-                { name: "Tag", value: rel.tag_name, inline: true },
-                { name: "Pré-release", value: rel.prerelease ? "Oui" : "Non", inline: true },
-                { name: "Auteur", value: rel.author?.login || "—", inline: true },
+                { name: "Tag", value: r.tag_name, inline: true },
+                { name: "Pré-release", value: r.prerelease ? "Oui" : "Non", inline: true },
               ],
-              timestamp: rel.published_at || new Date().toISOString(),
+              timestamp: r.published_at || new Date().toISOString(),
             };
 
             const res = await fetch(webhook, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ username: "GitHub · Versions", embeds: [embed] }),
+              body: JSON.stringify({ embeds: [embed] }),
             });
             if (!res.ok) core.setFailed(`Discord a répondu ${res.status} : ${await res.text()}`);
 
@@ -151,23 +147,19 @@ jobs:
             if (!webhook) { core.setFailed("Secret DISCORD_WEBHOOK_RELEASE manquant"); return; }
 
             const tag = context.ref.replace("refs/tags/", "");
-
-            // Si une Release GitHub existe pour ce tag, c'est le job "release" qui notifie.
             try {
               await github.rest.repos.getReleaseByTag({ owner: context.repo.owner, repo: context.repo.repo, tag });
-              core.info(`Release déjà présente pour ${tag} — on laisse le job release notifier.`);
+              core.info(`Release déjà présente pour ${tag} — pas de doublon.`);
               return;
             } catch (e) {
               if (e.status !== 404) throw e;
             }
 
-            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}`;
             const embed = {
               title: `Nouveau tag : ${tag}`,
-              url,
+              url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}`,
               color: 0x2ecc71,
               fields: [
-                { name: "Tag", value: tag, inline: true },
                 { name: "Commit", value: context.sha.slice(0, 7), inline: true },
                 { name: "Par", value: context.actor, inline: true },
               ],
@@ -177,6 +169,6 @@ jobs:
             const res = await fetch(webhook, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ username: "GitHub · Versions", embeds: [embed] }),
+              body: JSON.stringify({ embeds: [embed] }),
             });
             if (!res.ok) core.setFailed(`Discord a répondu ${res.status} : ${await res.text()}`);
