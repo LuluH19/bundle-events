@@ -1,0 +1,174 @@
+name: Discord Notifications
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - converted_to_draft
+      - closed
+      - review_requested
+      - review_request_removed
+  pull_request_review:
+    types: [submitted]
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: discord-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pull-request:
+    if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+    name: Notify PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PR }}
+        with:
+          script: |
+            const webhook = process.env.DISCORD_WEBHOOK;
+            if (!webhook) { core.setFailed("Secret DISCORD_WEBHOOK_PR manquant"); return; }
+
+            const C = { green: 0x2ecc71, red: 0xe74c3c, blue: 0x3498db, orange: 0xe67e22, grey: 0x95a5a6, purple: 0x9b59b6 };
+            const p = context.payload;
+            const pr = p.pull_request;
+            const author = (u) => u && { name: u.login, url: u.html_url, icon_url: u.avatar_url };
+            let title, color, who = pr.user;
+
+            if (context.eventName === "pull_request_review") {
+              const rv = p.review;
+              who = rv.user;
+              title = rv.state === "approved" ? `PR approuvée par ${who.login}`
+                : rv.state === "changes_requested" ? `Changements demandés par ${who.login}`
+                : `Review commentée par ${who.login}`;
+              color = rv.state === "approved" ? C.green : rv.state === "changes_requested" ? C.red : C.grey;
+            } else {
+              const reviewer = p.requested_reviewer?.login || p.requested_team?.name || "—";
+              const map = {
+                opened: ["Nouvelle PR ouverte", C.blue],
+                reopened: ["PR rouverte", C.blue],
+                ready_for_review: ["PR prête pour review", C.purple],
+                converted_to_draft: ["PR repassée en brouillon", C.grey],
+                review_requested: [`Review demandée à ${reviewer}`, C.orange],
+                review_request_removed: [`Demande de review retirée (${reviewer})`, C.grey],
+                closed: [pr.merged ? "PR mergée" : "PR fermée sans merge", pr.merged ? C.green : C.red],
+              };
+              if (!map[p.action]) { core.info(`Action ignorée : ${p.action}`); return; }
+              [title, color] = map[p.action];
+            }
+
+            const reviewers = [
+              ...(pr.requested_reviewers || []).map((r) => "@" + r.login),
+              ...(pr.requested_teams || []).map((t) => t.name),
+            ].join(", ") || "—";
+
+            const embed = {
+              title,
+              url: pr.html_url,
+              color,
+              author: author(who),
+              fields: [
+                { name: "PR", value: `[#${pr.number}](${pr.html_url}) — ${pr.title}` },
+                { name: "Branche", value: `\`${pr.head.ref}\` → \`${pr.base.ref}\``, inline: true },
+                { name: "Reviewers", value: reviewers, inline: true },
+              ],
+              timestamp: new Date().toISOString(),
+            };
+
+            const res = await fetch(webhook, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ embeds: [embed] }),
+            });
+            if (!res.ok) core.setFailed(`Discord a répondu ${res.status} : ${await res.text()}`);
+
+  release:
+    if: github.event_name == 'release'
+    name: Notify release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_RELEASE }}
+        with:
+          script: |
+            const webhook = process.env.DISCORD_WEBHOOK;
+            if (!webhook) { core.setFailed("Secret DISCORD_WEBHOOK_RELEASE manquant"); return; }
+
+            const r = context.payload.release;
+            let notes = (r.body || "").trim();
+            if (notes.length > 1500) notes = notes.slice(0, 1500) + "…";
+
+            const embed = {
+              title: `Nouvelle version : ${r.name || r.tag_name}`,
+              url: r.html_url,
+              color: r.prerelease ? 0xe67e22 : 0x2ecc71,
+              description: notes || "_Pas de notes de version._",
+              author: r.author && { name: r.author.login, url: r.author.html_url, icon_url: r.author.avatar_url },
+              fields: [
+                { name: "Tag", value: r.tag_name, inline: true },
+                { name: "Pré-release", value: r.prerelease ? "Oui" : "Non", inline: true },
+              ],
+              timestamp: r.published_at || new Date().toISOString(),
+            };
+
+            const res = await fetch(webhook, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ embeds: [embed] }),
+            });
+            if (!res.ok) core.setFailed(`Discord a répondu ${res.status} : ${await res.text()}`);
+
+  tag:
+    if: github.event_name == 'push'
+    name: Notify tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_RELEASE }}
+        with:
+          script: |
+            const webhook = process.env.DISCORD_WEBHOOK;
+            if (!webhook) { core.setFailed("Secret DISCORD_WEBHOOK_RELEASE manquant"); return; }
+
+            const tag = context.ref.replace("refs/tags/", "");
+            try {
+              await github.rest.repos.getReleaseByTag({ owner: context.repo.owner, repo: context.repo.repo, tag });
+              core.info(`Release déjà présente pour ${tag} — pas de doublon.`);
+              return;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+
+            const embed = {
+              title: `Nouveau tag : ${tag}`,
+              url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}`,
+              color: 0x2ecc71,
+              fields: [
+                { name: "Commit", value: context.sha.slice(0, 7), inline: true },
+                { name: "Par", value: context.actor, inline: true },
+              ],
+              timestamp: new Date().toISOString(),
+            };
+
+            const res = await fetch(webhook, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ embeds: [embed] }),
+            });
+            if (!res.ok) core.setFailed(`Discord a répondu ${res.status} : ${await res.text()}`);
