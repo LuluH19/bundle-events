@@ -4,6 +4,7 @@ import { Location, RouteOption, HotelMapItem, Step } from "@/src/types";
 import { formatDuration } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
 import { Button, Eyebrow, IconArrow, IconPin, IconStar, MODE_ICON } from "@/src/components/ui";
+import Image from "next/image";
 
 interface BundleViewProps {
   departure: Location | null;
@@ -112,8 +113,18 @@ function BundleRow({ eyebrow, title, subtitle, price, onEdit, icon, photo }: Bun
     <div className="flex items-center gap-4 rounded-2xl border border-line bg-white p-4">
       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-mist text-ink">
         {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt={title} className="h-full w-full object-cover" />
+          <Image
+            src={photo}
+            alt={title}
+            width={56}
+            height={56}
+            quality={75}
+            preload={false}
+            placeholder="empty"
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         ) : (
           icon
         )}

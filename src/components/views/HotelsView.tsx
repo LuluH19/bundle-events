@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Location, HotelMapItem } from "@/src/types";
 import { getHotelDistance } from "@/src/utils/hotel";
@@ -176,8 +177,18 @@ export function HotelsView(props: HotelsViewProps) {
                 >
                   <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-navy to-ink md:h-24 md:w-28">
                     {h.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={h.photo} alt={h.name} className="h-full w-full object-cover" loading="lazy" />
+                      <Image
+                        src={h.photo}
+                        alt={h.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 112px"
+                        quality={75}
+                        loading="lazy"
+                        preload={false}
+                        decoding="async"
+                        placeholder="empty"
+                        className="object-cover"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-white/40">
                         <IconPin size={22} />

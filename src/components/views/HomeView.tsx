@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import { Location, LatLng } from "@/src/types";
 import { isoPlusDays } from "@/src/utils/date";
 import {
@@ -99,7 +100,19 @@ export function HomeView(props: HomeViewProps) {
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
             {departure ? (
               <div className="flex items-center gap-2.5">
-                <img src="/cible.svg" alt="" width={20} height={20} className="shrink-0" />
+                <Image
+                  src="/cible.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                  quality={75}
+                  loading="lazy"
+                  preload={false}
+                  decoding="async"
+                  placeholder="empty"
+                  unoptimized
+                  className="shrink-0"
+                />
                 <span className="flex-1 truncate text-[16px] font-medium text-ink">{departure.name}</span>
                 <button onClick={onClearDeparture} className="text-slate-400 hover:text-ember">
                   <IconClose size={16} />
@@ -108,7 +121,19 @@ export function HomeView(props: HomeViewProps) {
             ) : (
               <>
                 <div className="flex items-center gap-2.5">
-                  <img src="/cible.svg" alt="" width={20} height={20} className="shrink-0" />
+                  <Image
+                    src="/cible.svg"
+                    alt=""
+                    width={20}
+                    height={20}
+                    quality={75}
+                    loading="lazy"
+                    preload={false}
+                    decoding="async"
+                    placeholder="empty"
+                    unoptimized
+                    className="shrink-0"
+                  />
                   <input
                     value={depSearch}
                     onChange={(e) => setDepSearch(e.target.value)}
@@ -141,7 +166,19 @@ export function HomeView(props: HomeViewProps) {
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
             {venue ? (
               <div className="flex items-center gap-2.5">
-                <img src="/carte.svg" alt="" width={20} height={20} className="shrink-0" />
+                <Image
+                  src="/carte.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                  quality={75}
+                  loading="lazy"
+                  preload={false}
+                  decoding="async"
+                  placeholder="empty"
+                  unoptimized
+                  className="shrink-0"
+                />
                 <span className="flex-1 truncate text-[16px] font-medium text-ink">{venue.name}</span>
                 <button
                   onClick={onClearVenue}
@@ -153,7 +190,19 @@ export function HomeView(props: HomeViewProps) {
             ) : (
               <>
                 <div className="flex items-center gap-2.5">
-                  <img src="/carte.svg" alt="" width={20} height={20} className="shrink-0" />
+                  <Image
+                    src="/carte.svg"
+                    alt=""
+                    width={20}
+                    height={20}
+                    quality={75}
+                    loading="lazy"
+                    preload={false}
+                    decoding="async"
+                    placeholder="empty"
+                    unoptimized
+                    className="shrink-0"
+                  />
                   <input
                     value={venueSearch}
                     onChange={(e) => setVenueSearch(e.target.value)}
@@ -214,7 +263,19 @@ export function HomeView(props: HomeViewProps) {
           <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date aller</label>
             <div className="flex items-center gap-2.5 whitespace-nowrap">
-              <img src="/calendrier.svg" alt="" width={20} height={20} className="shrink-0" />
+              <Image
+                src="/calendrier.svg"
+                alt=""
+                width={20}
+                height={20}
+                quality={75}
+                loading="lazy"
+                preload={false}
+                decoding="async"
+                placeholder="empty"
+                unoptimized
+                className="shrink-0"
+              />
               <input
                 type="date"
                 value={checkin}
@@ -233,7 +294,19 @@ export function HomeView(props: HomeViewProps) {
             <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
               <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date retour</label>
               <div className="flex items-center gap-2.5 whitespace-nowrap">
-                <img src="/calendrier.svg" alt="" width={20} height={20} className="shrink-0" />
+                <Image
+                  src="/calendrier.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                  quality={75}
+                  loading="lazy"
+                  preload={false}
+                  decoding="async"
+                  placeholder="empty"
+                  unoptimized
+                  className="shrink-0"
+                />
                 <input
                   type="date"
                   value={checkout}
