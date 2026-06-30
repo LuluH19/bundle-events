@@ -1,5 +1,19 @@
 import type { Metadata } from "next";
+import { Inter, Allan } from "next/font/google";
 import "../styles/globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const allan = Allan({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-allan",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Bundle Events — Le trajet, l'hôtel, l'événement. Un bundle.",
@@ -13,16 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="h-full antialiased">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Charge les fichiers de police ; les constantes font-family vivent dans src/styles/theme.css (@theme). */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Allan:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="fr" className={`${inter.variable} ${allan.variable} h-full antialiased`}>
       <body className="min-h-full">{children}</body>
     </html>
   );
