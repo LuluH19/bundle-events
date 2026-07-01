@@ -30,8 +30,11 @@ import { RoutesView } from "@/src/components/views/RoutesView";
 import { HotelsView } from "@/src/components/views/HotelsView";
 import { BundleView } from "@/src/components/views/BundleView";
 
+const idxOf = (s: Step) => STEPS.findIndex((x) => x.id === s);
+
 export default function Home() {
   const [step, setStep] = useState<Step>("home");
+  const [maxStepIdx, setMaxStepIdx] = useState(0);
 
   const [departure, setDeparture] = useState<Location | null>(null);
   const [venue, setVenue] = useState<Location | null>(null);
@@ -82,10 +85,7 @@ export default function Home() {
     [selectedHotel]
   );
 
-  const canReach = useCallback(
-    (s: Step) => STEPS.findIndex((x) => x.id === s) <= STEPS.findIndex((x) => x.id === step),
-    [step]
-  );
+  const canReach = useCallback((s: Step) => idxOf(s) <= maxStepIdx, [maxStepIdx]);
 
   // departure search input wrapper
   const handleDepSearchChange = (val: string) => {
@@ -103,6 +103,8 @@ export default function Home() {
     setSelectedMode(null);
     setTrainJourneys([]);
     setFlights([]);
+    // le trajet change → itinéraires & bundle à refaire, les hôtels restent valides
+    setMaxStepIdx((m) => Math.min(m, idxOf("hotels")));
     if (venue) {
       setOptionsLoading(true);
     }
@@ -115,6 +117,7 @@ export default function Home() {
     setSelectedMode(null);
     setTrainJourneys([]);
     setFlights([]);
+    setMaxStepIdx((m) => Math.min(m, idxOf("hotels")));
   };
 
   const handleVenueSearchChange = (val: string) => {
@@ -138,6 +141,7 @@ export default function Home() {
       setHotelResults([]);
       setHotelError("");
       setHotelLoading(true);
+      setMaxStepIdx((m) => Math.min(m, idxOf("home")));
       if (departure) {
         setOptionsLoading(true);
       }
@@ -155,6 +159,7 @@ export default function Home() {
     setFlights([]);
     setHotelResults([]);
     setHotelError("");
+    setMaxStepIdx((m) => Math.min(m, idxOf("home")));
   };
 
   const handleSelectMode = (mode: TransportMode) => {
@@ -278,7 +283,10 @@ export default function Home() {
     };
   }, [venue, hotelRadius, checkin, checkout]);
 
-  const go = useCallback((s: Step) => setStep(s), []);
+  const go = useCallback((s: Step) => {
+    setStep(s);
+    setMaxStepIdx((m) => Math.max(m, idxOf(s)));
+  }, []);
 
   const pickEvent = (venueId: string) => {
     const v = venues.find((x) => x.id === venueId);
@@ -292,6 +300,7 @@ export default function Home() {
     setHotelResults([]);
     setHotelError("");
     setHotelLoading(true);
+    setMaxStepIdx((m) => Math.min(m, idxOf("home")));
     if (departure) {
       setOptionsLoading(true);
     }
@@ -382,16 +391,21 @@ export default function Home() {
         )}
 
         {step === "bundle" && (
-          <BundleView
-            departure={departure}
-            venue={venue}
-            dateLabel={dateLabel}
-            selectedOption={selectedOption}
-            selectedHotel={selectedHotel}
-            checkin={checkin}
-            checkout={checkout}
-            onEdit={go}
-          />
+          <div className="lg:flex">
+            <SideNav step={step} go={go} canReach={canReach} venue={venue} />
+            <div className="min-w-0 flex-1">
+              <BundleView
+                departure={departure}
+                venue={venue}
+                dateLabel={dateLabel}
+                selectedOption={selectedOption}
+                selectedHotel={selectedHotel}
+                checkin={checkin}
+                checkout={checkout}
+                onEdit={go}
+              />
+            </div>
+          </div>
         )}
       </main>
 

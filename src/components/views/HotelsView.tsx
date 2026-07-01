@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Location, HotelMapItem } from "@/src/types";
 import { getHotelDistance } from "@/src/utils/hotel";
@@ -108,7 +109,7 @@ export function HotelsView(props: HotelsViewProps) {
   return (
     <div className="flex flex-col md:h-[calc(100dvh-65px)] md:flex-row">
       {/* List */}
-      <aside className="scroll-slim w-full overflow-y-auto bg-page p-5 md:w-[560px] md:p-7">
+      <aside className="scroll-slim w-full overflow-y-auto bg-page px-5 pt-5 pb-28 md:w-[560px] md:p-7">
         <Eyebrow className="mb-2">Hébergements disponibles</Eyebrow>
         <h2 className="font-display text-[30px] font-extrabold tracking-tight text-ink md:text-[40px]">
           Votre base près de <span className="text-ember">{venue.name}</span>.
@@ -176,8 +177,18 @@ export function HotelsView(props: HotelsViewProps) {
                 >
                   <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-navy to-ink md:h-24 md:w-28">
                     {h.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={h.photo} alt={h.name} className="h-full w-full object-cover" loading="lazy" />
+                      <Image
+                        src={h.photo}
+                        alt={h.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 112px"
+                        quality={75}
+                        loading="lazy"
+                        preload={false}
+                        decoding="async"
+                        placeholder="empty"
+                        className="object-cover"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-white/40">
                         <IconPin size={22} />
@@ -257,7 +268,7 @@ export function HotelsView(props: HotelsViewProps) {
           )}
         </div>
 
-        <div className="sticky bottom-0 mt-6 bg-page pt-2 pb-1">
+        <div className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 px-5 py-3 md:sticky md:inset-x-auto md:bottom-0 md:z-auto md:mt-6 md:border-0 md:px-0 md:py-1 md:pt-2">
           <Button onClick={onContinue} disabled={!selectedHotel} className="w-full">
             {selectedHotel ? "Voir mon bundle" : "Choisissez un hôtel"} <IconArrow size={16} />
           </Button>

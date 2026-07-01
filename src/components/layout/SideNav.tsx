@@ -16,10 +16,6 @@ interface SideNavProps {
   venue: Location | null;
 }
 
-/**
- * Menu latéral des pages Itinéraires & Hôtels (maquette Stitch « SideNavBar »).
- * Absent de la page récap (bundle). Masqué sous lg — le MobileTabBar prend le relais.
- */
 export function SideNav({ step, go, canReach, venue }: SideNavProps) {
   return (
     <aside className="sticky top-[65px] hidden h-[calc(100dvh-65px)] w-64 shrink-0 flex-col border-r border-line bg-page p-4 lg:flex">
