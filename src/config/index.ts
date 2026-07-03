@@ -4,4 +4,4 @@ export * from "./liteapi";
 export * from "./overpass";
 export * from "./travelpayouts";
 export * from "./osrm";
-export * from "./openrailwaymap";
+export * from "./openrailwayrouting";
