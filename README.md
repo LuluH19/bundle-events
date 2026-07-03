@@ -29,3 +29,51 @@ npm run dev
 ```
 
 Ouvrir [http://localhost:3000](http://localhost:3000) avec votre navigateur.
+
+## Conventional Commits
+
+Le projet utilise le format [Conventional Commits](https://www.conventionalcommits.org/) pour standardiser les messages de commit.
+
+### Format
+
+```
+<type>(<scope>): <subject>
+
+[body optionnel]
+
+[footer optionnel]
+```
+
+### Types autorisés
+
+- `feat` : Nouvelle fonctionnalité
+- `fix` : Correction de bug
+- `docs` : Documentation
+- `style` : Formatage, point-virgules manquants, etc. (pas de changement de code)
+- `refactor` : Refactoring du code
+- `perf` : Amélioration des performances
+- `test` : Ajout ou modification de tests
+- `build` : Changements du système de build
+- `ci` : Changements de configuration CI
+- `chore` : Tâches de maintenance
+- `revert` : Annulation d'un commit précédent
+
+### Exemples en ligne de commande par terminal
+
+```bash
+# ✅ Valides
+git commit -m "feat: ajouter la fonctionnalité de connexion"
+git commit -m "fix(client): corriger le bug de chargement"
+git commit -m "docs: mettre à jour le README"
+git commit -m "refactor: réorganiser le code d'authentification"
+git commit -m "feat(auth): ajouter l'authentification OAuth
+
+Implémente l'authentification via Google et GitHub"
+
+# ❌ Invalides
+git commit -m "ajouter fonctionnalité"  # Manque le type
+git commit -m "Fix bug"  # Type en majuscule
+git commit -m "feat: Ajouter fonctionnalité"  # Sujet en majuscule
+```
+
+Le workflow CI vérifie automatiquement le format des commits et bloque le merge si le format n'est pas respecté.
