@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Step } from "@/src/types";
 
 interface HeaderProps {
@@ -19,8 +20,17 @@ export function Header({ go }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-line bg-white/90 px-5 py-3 backdrop-blur-xl md:px-8">
-      <button onClick={() => go("home")} className="shrink-0">
-        {/* <Brand /> */}
+      <button onClick={() => go("home")} aria-label="Accueil Bundle Events" className="shrink-0">
+        <Image
+          src="/favicon/favicon.svg"
+          alt="Bundle Events"
+          width={40}
+          height={40}
+          loading="lazy"
+          priority
+          unoptimized
+          className="h-9 w-auto"
+        />
       </button>
       <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
         {/*
