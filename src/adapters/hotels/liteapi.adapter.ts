@@ -3,7 +3,7 @@ import { getDaysDiff } from "@/src/utils/date";
 import { liteApiConfig } from "@/src/config";
 
 export class LiteApiHotelAdapter implements HotelProvider {
-  private async fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Map<string, { name: string; address: string; city: string; zip: string; latitude: number; longitude: number; starRating: number; main_photo: string; rating: number }>> {
+  private async fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Map<string, { name: string; address: string; city: string; zip: string; location?: { latitude: number; longitude: number }; starRating: number; main_photo: string; rating: number }>> {
     const map = new Map();
     // Fetch in parallel (max 5 concurrent)
     const chunks = [];
@@ -54,11 +54,15 @@ export class LiteApiHotelAdapter implements HotelProvider {
           checkin,
           checkout,
           limit: 20,
-          sort: "price",
+          maxRatesPerHotel: 1,
+          includeHotelData: true,
         }),
       });
 
-      if (!res.ok) return [];
+      if (!res.ok) {
+        console.error("LiteAPI rates error:", res.status, await res.text());
+        return [];
+      }
       const data = await res.json();
       if (!data.data?.length) return [];
 
@@ -66,39 +70,55 @@ export class LiteApiHotelAdapter implements HotelProvider {
       const hotelIds: string[] = data.data.map((h: { hotelId: string }) => h.hotelId);
       const details = await this.fetchHotelDetails(apiKey, hotelIds);
 
-      return data.data.map((h: { hotelId: string; roomTypes?: { offerRetailRate?: { amount?: number }; rates?: { retailRate?: { total?: { amount?: number; currency?: string }[] } }[] }[] }) => {
-        const detail = details.get(h.hotelId);
-        // Find cheapest rate
-        let price: number | undefined;
-        let currency = "EUR";
-        for (const rt of h.roomTypes || []) {
-          if (rt.offerRetailRate?.amount) {
-            const p = Number(rt.offerRetailRate.amount);
-            if (!price || p < price) { price = p; currency = "EUR"; }
-          }
-          for (const rate of rt.rates || []) {
-            const total = rate.retailRate?.total?.[0];
-            if (total?.amount) {
-              const p = Number(total.amount);
-              if (!price || p < price) { price = p; currency = total.currency || "EUR"; }
+      return data.data
+        .map((h: {
+          hotelId: string;
+          roomTypes?: {
+            offerRetailRate?: { amount?: number; currency?: string };
+            rates?: { retailRate?: { total?: { amount?: number; currency?: string }[] } }[];
+          }[];
+        }) => {
+          const detail = details.get(h.hotelId);
+          let price: number | undefined;
+          let currency = "EUR";
+          for (const rt of h.roomTypes || []) {
+            if (rt.offerRetailRate?.amount) {
+              const p = Number(rt.offerRetailRate.amount);
+              if (!price || p < price) {
+                price = p;
+                currency = rt.offerRetailRate.currency || "EUR";
+              }
+            }
+            for (const rate of rt.rates || []) {
+              const total = rate.retailRate?.total?.[0];
+              if (total?.amount) {
+                const p = Number(total.amount);
+                if (!price || p < price) {
+                  price = p;
+                  currency = total.currency || "EUR";
+                }
+              }
             }
           }
-        }
 
-        return {
-          id: `lite-${h.hotelId}`,
-          name: detail?.name || h.hotelId,
-          locationName: [detail?.address, [detail?.zip, detail?.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
-          coords: { lat: detail?.latitude || Number(lat), lng: detail?.longitude || Number(lng) },
-          stars: detail?.starRating,
-          photo: detail?.main_photo,
-          pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
-          currency,
-          rating: detail?.rating,
-          type: "hotel",
-          source: "liteapi" as const,
-        };
-      }).filter((h: HotelMapItem) => h.name !== h.id.replace("lite-", ""));
+          return {
+            id: `lite-${h.hotelId}`,
+            name: detail?.name || h.hotelId,
+            locationName: [detail?.address, [detail?.zip, detail?.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+            coords: {
+              lat: detail?.location?.latitude ?? Number(lat),
+              lng: detail?.location?.longitude ?? Number(lng),
+            },
+            stars: detail?.starRating,
+            photo: detail?.main_photo,
+            pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
+            currency,
+            rating: detail?.rating,
+            type: "hotel",
+            source: "liteapi" as const,
+          };
+        })
+        .filter((h: HotelMapItem) => h.name !== h.id.replace("lite-", "") && h.pricePerNight != null);
     } catch {
       return [];
     }

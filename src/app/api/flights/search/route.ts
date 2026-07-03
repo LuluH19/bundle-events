@@ -4,6 +4,7 @@ import { travelpayoutsConfig } from "@/src/config";
 export async function GET(request: NextRequest) {
   const origin = request.nextUrl.searchParams.get("origin");
   const destination = request.nextUrl.searchParams.get("destination");
+  const departureAt = request.nextUrl.searchParams.get("departure_at");
 
   if (!origin || !destination) {
     return Response.json({ error: "origin and destination IATA codes required" }, { status: 400 });
@@ -22,6 +23,10 @@ export async function GET(request: NextRequest) {
     sorting: "price",
     limit: "5",
   });
+
+  if (departureAt) {
+    params.set("departure_at", departureAt);
+  }
 
   const res = await fetch(
     `${travelpayoutsConfig.baseUrl}/prices_for_dates?${params}`

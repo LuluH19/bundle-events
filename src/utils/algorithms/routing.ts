@@ -6,7 +6,7 @@ import {
   interpolateGreatCircle,
   estimateFlightDuration,
 } from "./geodesic";
-import { osrmConfig } from "@/src/config";
+import { osrmConfig, openRailwayRoutingConfig } from "@/src/config";
 
 const stationCache = new Map<string, DynamicStation[]>();
 
@@ -80,6 +80,27 @@ function planeSegment(
   return { from, to, mode: "plane", coordinates, distanceKm, durationMinutes };
 }
 
+async function fetchOpenRailRoutingSegment(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng }
+): Promise<RouteSegment> {
+  const url = `${openRailwayRoutingConfig.routingBaseUrl}/route?point=${from.coords.lat},${from.coords.lng}&point=${to.coords.lat},${to.coords.lng}&profile=all_tracks&points_encoded=false`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("OpenRailRouting error");
+  const data = await res.json();
+  if (!data.paths?.length || !data.paths[0].points?.coordinates) throw new Error("OpenRailRouting no route");
+  
+  const route = data.paths[0];
+  const coordinates: [number, number][] = route.points.coordinates.map(
+    ([lng, lat]: [number, number]) => [lat, lng]
+  );
+  
+  const distanceKm = route.distance / 1000;
+  const durationMinutes = route.time / 60000;
+
+  return { from, to, mode: "train", coordinates, distanceKm, durationMinutes };
+}
+
 async function trainSegments(
   from: { name: string; coords: LatLng; sncfId?: string },
   to: { name: string; coords: LatLng; sncfId?: string }
@@ -128,9 +149,13 @@ async function trainSegments(
     } catch { /* fallback */ }
   }
 
-  const osrm = await fetchOSRMSegment(from, to, "car");
-  const durationMinutes = (osrm.distanceKm / 200) * 60;
-  return [{ ...osrm, mode: "train", durationMinutes }];
+  try {
+    return [await fetchOpenRailRoutingSegment(from, to)];
+  } catch {
+    const osrm = await fetchOSRMSegment(from, to, "car");
+    const durationMinutes = (osrm.distanceKm / 200) * 60;
+    return [{ ...osrm, mode: "train", durationMinutes }];
+  }
 }
 
 async function busLongSegment(
