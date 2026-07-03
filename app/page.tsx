@@ -59,11 +59,19 @@ const MODE_META: Record<TransportMode, { label: string; provider: string; co2: "
 
 const RADIUS_OPTIONS = [5, 10, 20, 25, 50];
 
-const EVENTS: { venueId: string; title: string; tag: string; date: string; from: number; gradient: string }[] = [
-  { venueId: "stade-de-france", title: "Rock en Seine", tag: "Festival", date: "28 AOÛT", from: 142, gradient: "from-[#0e3c60] to-[#00113a]" },
-  { venueId: "accor-arena", title: "Nuit Électro", tag: "Concert", date: "12 SEPT", from: 79, gradient: "from-[#3a1d52] to-[#00113a]" },
-  { venueId: "orange-velodrome", title: "Stade en Fête", tag: "Stade", date: "04 JUIL", from: 110, gradient: "from-[#0d5c63] to-[#00113a]" },
-  { venueId: "groupama-stadium", title: "Nuits de Fourvière", tag: "Festival", date: "17 JUIL", from: 65, gradient: "from-[#9f4200] to-[#00113a]" },
+const EVENTS: {
+  venueId: string;
+  title: string;
+  tag: string;
+  date: string;
+  eventDate: string;
+  from: number;
+  gradient: string;
+}[] = [
+  { venueId: "stade-de-france", title: "Rock en Seine", tag: "Festival", date: "28 AOÛT", eventDate: "2026-08-28", from: 142, gradient: "from-[#0e3c60] to-[#00113a]" },
+  { venueId: "accor-arena", title: "Nuit Électro", tag: "Concert", date: "12 SEPT", eventDate: "2026-09-12", from: 79, gradient: "from-[#3a1d52] to-[#00113a]" },
+  { venueId: "orange-velodrome", title: "Stade en Fête", tag: "Stade", date: "04 JUIL", eventDate: "2026-07-04", from: 110, gradient: "from-[#0d5c63] to-[#00113a]" },
+  { venueId: "groupama-stadium", title: "Nuits de Fourvière", tag: "Festival", date: "17 JUIL", eventDate: "2026-07-17", from: 65, gradient: "from-[#9f4200] to-[#00113a]" },
 ];
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -86,10 +94,40 @@ function priceEstimate(mode: TransportMode, km: number) {
     case "plane": return Math.round(km * 0.1 + 55);
   }
 }
-function isoPlusDays(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
+function toIsoDate(d: Date) {
   return d.toISOString().slice(0, 10);
+}
+function todayIso() {
+  return toIsoDate(new Date());
+}
+function stayDatesFromEvent(eventDate: string) {
+  const event = new Date(`${eventDate}T12:00:00`);
+  const checkin = new Date(event);
+  checkin.setDate(checkin.getDate() - 1);
+  const checkout = new Date(event);
+  checkout.setDate(checkout.getDate() + 1);
+  return { checkin: toIsoDate(checkin), checkout: toIsoDate(checkout) };
+}
+function formatStayLabel(checkin: string, checkout: string) {
+  const d1 = new Date(`${checkin}T12:00:00`);
+  const d2 = new Date(`${checkout}T12:00:00`);
+  if (d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear()) {
+    const month = d2.toLocaleDateString("fr-FR", { month: "long" });
+    return `${d1.getDate()} — ${d2.getDate()} ${month}`;
+  }
+  const f1 = d1.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  const f2 = d2.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  return `${f1} — ${f2}`;
+}
+function stayNights(checkin: string, checkout: string) {
+  return Math.max(1, Math.round((new Date(`${checkout}T12:00:00`).getTime() - new Date(`${checkin}T12:00:00`).getTime()) / 86400000));
+}
+function isValidStay(checkin: string, checkout: string) {
+  if (!checkin || !checkout) return false;
+  const inDate = new Date(`${checkin}T12:00:00`);
+  const outDate = new Date(`${checkout}T12:00:00`);
+  const today = new Date(`${todayIso()}T12:00:00`);
+  return outDate > inDate && inDate >= today;
 }
 
 interface RouteOption {
@@ -258,9 +296,19 @@ export default function Home() {
 
   const [departure, setDeparture] = useState<Location | null>(null);
   const [venue, setVenue] = useState<Location | null>(null);
-  const [dateLabel] = useState("27 — 29 août");
-  const checkin = useMemo(() => isoPlusDays(30), []);
-  const checkout = useMemo(() => isoPlusDays(32), []);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [checkin, setCheckin] = useState("");
+  const [checkout, setCheckout] = useState("");
+  const [hotelDatesReady, setHotelDatesReady] = useState(false);
+
+  const dateLabel = useMemo(
+    () => (checkin && checkout ? formatStayLabel(checkin, checkout) : "Dates à confirmer"),
+    [checkin, checkout]
+  );
+  const selectedEvent = useMemo(
+    () => EVENTS.find((e) => e.venueId === selectedEventId) ?? null,
+    [selectedEventId]
+  );
 
   // departure search
   const [depSearch, setDepSearch] = useState("");
@@ -281,6 +329,15 @@ export default function Home() {
   const [hotelError, setHotelError] = useState("");
   const [selectedHotel, setSelectedHotel] = useState<HotelMapItem | null>(null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+
+  const applyEventDates = useCallback((eventDate: string) => {
+    const { checkin: inDate, checkout: outDate } = stayDatesFromEvent(eventDate);
+    setCheckin(inDate);
+    setCheckout(outDate);
+    setHotelDatesReady(false);
+    setSelectedHotel(null);
+    setHotelResults([]);
+  }, []);
 
   const selectedOption = useMemo(() => options.find((o) => o.mode === selectedMode) || null, [options, selectedMode]);
   const hotelLocation: Location | null = useMemo(
@@ -358,10 +415,13 @@ export default function Home() {
     };
   }, [selectedOption, departure, venue]);
 
-  // live hotel search around the venue
+  // live hotel search around the venue (only after dates confirmed)
   useEffect(() => {
-    if (!venue) {
-      setHotelResults([]);
+    if (!venue || !hotelDatesReady || !isValidStay(checkin, checkout)) {
+      if (!hotelDatesReady) {
+        setHotelResults([]);
+        setHotelLoading(false);
+      }
       return;
     }
     let cancelled = false;
@@ -394,16 +454,38 @@ export default function Home() {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [venue, hotelRadius, checkin, checkout]);
+  }, [venue, hotelRadius, checkin, checkout, hotelDatesReady]);
 
   const go = useCallback((s: Step) => setStep(s), []);
 
   const pickEvent = (venueId: string) => {
     const v = venues.find((x) => x.id === venueId);
-    if (!v) return;
+    const event = EVENTS.find((x) => x.venueId === venueId);
+    if (!v || !event) return;
+    setSelectedEventId(venueId);
     setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
-    setSelectedHotel(null);
+    applyEventDates(event.eventDate);
     document.getElementById("search-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleCheckinChange = (value: string) => {
+    setCheckin(value);
+    setHotelDatesReady(false);
+    setSelectedHotel(null);
+    setHotelResults([]);
+  };
+
+  const handleCheckoutChange = (value: string) => {
+    setCheckout(value);
+    setHotelDatesReady(false);
+    setSelectedHotel(null);
+    setHotelResults([]);
+  };
+
+  const confirmHotelDates = () => {
+    if (!isValidStay(checkin, checkout)) return;
+    setHotelDatesReady(true);
+    setSelectedHotel(null);
   };
 
   const journeyRoute = selectedOption?.route ?? null;
@@ -435,10 +517,22 @@ export default function Home() {
               const v = venues.find((x) => x.id === id);
               if (v) {
                 setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
-                setSelectedHotel(null);
+                const event = EVENTS.find((e) => e.venueId === id);
+                if (event) {
+                  setSelectedEventId(id);
+                  applyEventDates(event.eventDate);
+                } else {
+                  setSelectedEventId(null);
+                  setCheckin("");
+                  setCheckout("");
+                  setHotelDatesReady(false);
+                  setSelectedHotel(null);
+                  setHotelResults([]);
+                }
               }
             }}
             dateLabel={dateLabel}
+            hasStayDates={!!(checkin && checkout)}
             onCompose={() => go(departure && venue ? "routes" : "home")}
             pickEvent={pickEvent}
           />
@@ -463,6 +557,15 @@ export default function Home() {
         {step === "hotels" && (
           <HotelsView
             venue={venue}
+            selectedEvent={selectedEvent}
+            checkin={checkin}
+            checkout={checkout}
+            onCheckinChange={handleCheckinChange}
+            onCheckoutChange={handleCheckoutChange}
+            hotelDatesReady={hotelDatesReady}
+            onConfirmDates={confirmHotelDates}
+            stayLabel={checkin && checkout ? formatStayLabel(checkin, checkout) : ""}
+            nights={checkin && checkout ? stayNights(checkin, checkout) : 0}
             hotelRadius={hotelRadius}
             setHotelRadius={setHotelRadius}
             hotelResults={hotelResults}
@@ -512,10 +615,11 @@ function HomeView(props: {
   onClearDeparture: () => void;
   onPickVenue: (id: string) => void;
   dateLabel: string;
+  hasStayDates: boolean;
   onCompose: () => void;
   pickEvent: (id: string) => void;
 }) {
-  const { departure, venue, depSearch, setDepSearch, depResults, depFocus, setDepFocus, onPickDeparture, onClearDeparture, onPickVenue, dateLabel, onCompose, pickEvent } = props;
+  const { departure, venue, depSearch, setDepSearch, depResults, depFocus, setDepFocus, onPickDeparture, onClearDeparture, onPickVenue, dateLabel, hasStayDates, onCompose, pickEvent } = props;
   const ready = !!(departure && venue);
 
   return (
@@ -608,7 +712,7 @@ function HomeView(props: {
             {/* Date */}
             <div>
               <label className="eyebrow text-slate-500">Dates</label>
-              <div className="mt-1.5 flex items-center rounded-xl bg-white px-3 py-2.5 text-[15px] font-medium text-ink ring-1 ring-line">
+              <div className={`mt-1.5 flex items-center rounded-xl bg-white px-3 py-2.5 text-[15px] font-medium ring-1 ring-line ${hasStayDates ? "text-ink" : "text-slate-400"}`}>
                 {dateLabel}
               </div>
             </div>
@@ -820,6 +924,15 @@ function HotelDistance(h: HotelMapItem, venue: Location | null) {
 
 function HotelsView(props: {
   venue: Location | null;
+  selectedEvent: (typeof EVENTS)[number] | null;
+  checkin: string;
+  checkout: string;
+  onCheckinChange: (v: string) => void;
+  onCheckoutChange: (v: string) => void;
+  hotelDatesReady: boolean;
+  onConfirmDates: () => void;
+  stayLabel: string;
+  nights: number;
   hotelRadius: number;
   setHotelRadius: (n: number) => void;
   hotelResults: HotelMapItem[];
@@ -835,9 +948,13 @@ function HotelsView(props: {
   onContinue: () => void;
 }) {
   const {
-    venue, hotelRadius, setHotelRadius, hotelResults, hotelLoading, hotelError,
+    venue, selectedEvent, checkin, checkout, onCheckinChange, onCheckoutChange,
+    hotelDatesReady, onConfirmDates, stayLabel, nights,
+    hotelRadius, setHotelRadius, hotelResults, hotelLoading, hotelError,
     selectedHotel, onSelectHotel, departure, hotelLocation, journeyRoute, mobileMapOpen, setMobileMapOpen, onContinue,
   } = props;
+
+  const datesValid = isValidStay(checkin, checkout);
 
   const sorted = useMemo(() => {
     return [...hotelResults].sort((a, b) => {
@@ -866,7 +983,7 @@ function HotelsView(props: {
       selectedHotelId={selectedHotel?.id ?? null}
       onHotelSelect={onSelectHotel}
       hotelRadius={hotelRadius}
-      showHotels
+      showHotels={hotelDatesReady}
     />
   );
 
@@ -880,6 +997,49 @@ function HotelsView(props: {
         </h2>
         <p className="mt-2 text-[14px] text-slate-500">{venue.address || venue.name}</p>
 
+        {/* Stay dates */}
+        <div className="mt-5 rounded-2xl border border-line bg-white p-4">
+          <Eyebrow className="mb-2">Dates de séjour</Eyebrow>
+          <p className="text-[13px] text-slate-500">
+            {selectedEvent
+              ? `Séjour suggéré autour de ${selectedEvent.title} · ${selectedEvent.date}. Ajustez si besoin.`
+              : "Choisissez vos dates pour afficher les tarifs réels."}
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="eyebrow text-slate-500">Arrivée</label>
+              <input
+                type="date"
+                value={checkin}
+                min={todayIso()}
+                onChange={(e) => onCheckinChange(e.target.value)}
+                className="mt-1.5 w-full rounded-xl bg-white px-3 py-2.5 text-[14px] text-ink outline-none ring-1 ring-line focus:ring-2 focus:ring-ember"
+              />
+            </div>
+            <div>
+              <label className="eyebrow text-slate-500">Départ</label>
+              <input
+                type="date"
+                value={checkout}
+                min={checkin || todayIso()}
+                onChange={(e) => onCheckoutChange(e.target.value)}
+                className="mt-1.5 w-full rounded-xl bg-white px-3 py-2.5 text-[14px] text-ink outline-none ring-1 ring-line focus:ring-2 focus:ring-ember"
+              />
+            </div>
+          </div>
+          {checkin && checkout && !datesValid && (
+            <p className="mt-2 text-[12px] text-ember-ink">Vérifiez vos dates (départ après arrivée, séjour à venir).</p>
+          )}
+          {datesValid && (
+            <p className="mt-2 text-[12px] text-slate-400">
+              {nights} nuit{nights > 1 ? "s" : ""} · {stayLabel}
+            </p>
+          )}
+          <Button onClick={onConfirmDates} disabled={!datesValid} className="mt-4 w-full">
+            {hotelDatesReady ? "Mettre à jour les tarifs" : "Afficher les tarifs"} <IconArrow size={16} />
+          </Button>
+        </div>
+
         {/* Filters */}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-line">
@@ -887,15 +1047,25 @@ function HotelsView(props: {
             <select
               value={hotelRadius}
               onChange={(e) => setHotelRadius(Number(e.target.value))}
-              className="bg-transparent text-[13px] font-semibold text-ink outline-none"
+              disabled={!hotelDatesReady}
+              className="bg-transparent text-[13px] font-semibold text-ink outline-none disabled:text-slate-400"
             >
               {RADIUS_OPTIONS.map((r) => (
                 <option key={r} value={r}>{r} km</option>
               ))}
             </select>
           </div>
+          {hotelDatesReady && (
+            <span className="rounded-full bg-mist px-3 py-1.5 text-[12px] font-medium text-slate-600">
+              Tarifs · {stayLabel}
+            </span>
+          )}
           <span className="text-[13px] text-slate-400">
-            {hotelLoading ? "Recherche…" : `${hotelResults.length} hôtel${hotelResults.length > 1 ? "s" : ""}`}
+            {!hotelDatesReady
+              ? "Confirmez vos dates"
+              : hotelLoading
+                ? "Recherche…"
+                : `${hotelResults.length} hôtel${hotelResults.length > 1 ? "s" : ""}`}
           </span>
           <button
             onClick={() => setMobileMapOpen(true)}
@@ -907,14 +1077,21 @@ function HotelsView(props: {
 
         {/* Cards */}
         <div className="mt-5 flex flex-col gap-4">
-          {hotelLoading &&
+          {!hotelDatesReady && (
+            <p className="rounded-2xl bg-mist p-4 text-[14px] text-slate-500">
+              Les tarifs LiteAPI s&apos;affichent une fois vos dates de séjour confirmées.
+            </p>
+          )}
+
+          {hotelDatesReady && hotelLoading &&
             [0, 1, 2].map((i) => <div key={i} className="h-[120px] animate-pulse rounded-2xl bg-mist" />)}
 
-          {!hotelLoading && hotelError && (
+          {hotelDatesReady && !hotelLoading && hotelError && (
             <p className="rounded-2xl bg-ember-soft/60 p-4 text-[14px] text-ember-ink">{hotelError}</p>
           )}
 
-          {!hotelLoading &&
+          {hotelDatesReady &&
+            !hotelLoading &&
             sorted.map((h) => {
               const selected = selectedHotel?.id === h.id;
               const dist = HotelDistance(h, venue);
@@ -958,7 +1135,7 @@ function HotelsView(props: {
                               {h.currency === "EUR" || !h.currency ? "€" : h.currency}
                               {h.pricePerNight}
                             </div>
-                            <div className="font-mono text-[10px] tracking-widest text-slate-400">/ NUIT</div>
+                            <div className="font-mono text-[10px] tracking-widest text-slate-400">/ NUIT · {stayLabel}</div>
                           </>
                         ) : (
                           <div className="font-mono text-[10px] tracking-widest text-slate-400">PRIX N/A</div>
@@ -990,7 +1167,7 @@ function HotelsView(props: {
               );
             })}
 
-          {!hotelLoading && !hotelError && sorted.length === 0 && (
+          {hotelDatesReady && !hotelLoading && !hotelError && sorted.length === 0 && (
             <p className="rounded-2xl bg-mist p-4 text-[14px] text-slate-500">Aucun hôtel dans ce rayon.</p>
           )}
         </div>
@@ -1035,10 +1212,11 @@ function BundleView(props: {
 }) {
   const { departure, venue, dateLabel, selectedOption, selectedHotel, checkin, checkout, onEdit } = props;
 
-  const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
+  const nights = stayNights(checkin, checkout);
   const transportCost = selectedOption ? selectedOption.price : 0;
   const hotelCost = selectedHotel?.pricePerNight ? selectedHotel.pricePerNight * nights : 0;
   const total = transportCost + hotelCost;
+  const stayLabel = formatStayLabel(checkin, checkout);
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-16">
@@ -1074,7 +1252,7 @@ function BundleView(props: {
         <BundleRow
           eyebrow="Hébergement"
           title={selectedHotel?.name || "—"}
-          subtitle={selectedHotel ? `${nights} nuit${nights > 1 ? "s" : ""}${selectedHotel.pricePerNight ? ` · €${selectedHotel.pricePerNight}/nuit` : ""}` : "Aucun hôtel sélectionné"}
+          subtitle={selectedHotel ? `${stayLabel} · ${nights} nuit${nights > 1 ? "s" : ""}${selectedHotel.pricePerNight ? ` · €${selectedHotel.pricePerNight}/nuit` : ""}` : "Aucun hôtel sélectionné"}
           price={hotelCost ? `€${hotelCost.toLocaleString("fr-FR")}` : "—"}
           onEdit={() => onEdit("hotels")}
           icon={<IconPin size={22} />}
