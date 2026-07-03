@@ -10,6 +10,19 @@ export function addDaysIso(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+export function dateOnly(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+export function toSncfDateTime(iso: string): string {
+  if (!iso) return "";
+  const [datePart, timePart = "00:00"] = iso.split("T");
+  const date = datePart.replace(/-/g, "");
+  if (date.length !== 8) return "";
+  const [h = "00", m = "00", s = "00"] = timePart.split(":");
+  return `${date}T${h.padStart(2, "0")}${m.padStart(2, "0")}${s.padStart(2, "0")}`;
+}
+
 export function getDaysDiff(checkin: string, checkout: string): number {
   const d1 = new Date(checkin);
   const d2 = new Date(checkout);
@@ -17,7 +30,6 @@ export function getDaysDiff(checkin: string, checkout: string): number {
 }
 
 export function formatSncfDate(sncfDate: string): string {
-  // Converts "YYYYMMDDTHHMMSS" to standard ISO format
   if (sncfDate.length < 15) return sncfDate;
   const y = sncfDate.substring(0, 4);
   const m = sncfDate.substring(4, 6);
