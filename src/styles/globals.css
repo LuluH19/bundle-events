@@ -1,0 +1,86 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+:root {
+  --background: var(--color-page);
+  --foreground: var(--color-ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Editorial display headings */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Tiny uppercase eyebrow labels used everywhere in the maquette */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Frosted glass panels (hero search card, map overlays) */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glass-dark {
+  background: rgba(0, 17, 58, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Slim custom scrollbar for scroll regions */
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(0, 17, 58, 0.15);
+  border-radius: 999px;
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Mapbox popups restyled to the brand */
+.mapboxgl-popup-content {
+  font-family: var(--font-sans);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 12px 32px rgba(0, 17, 58, 0.18);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s ease both;
+}
