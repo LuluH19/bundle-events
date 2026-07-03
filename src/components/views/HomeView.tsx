@@ -67,9 +67,10 @@ export function HomeView(props: HomeViewProps) {
     setCheckout,
     onCompose,
   } = props;
-  const ready = !!(departure && venue);
-
+  
+  const ready = !!(departure && venue && checkin && (!roundTrip || checkout));
   const today = useMemo(() => isoPlusDays(0), []);
+  const minDateTime = `${today}T00:00`;
 
   return (
     <div>
@@ -261,7 +262,7 @@ export function HomeView(props: HomeViewProps) {
 
           <div className="flex flex-col gap-1 md:flex-row md:items-center">
           <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
-            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date aller</label>
+            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure aller</label>
             <div className="flex items-center gap-2.5 whitespace-nowrap">
               <Image
                 src="/calendrier.svg"
@@ -277,9 +278,9 @@ export function HomeView(props: HomeViewProps) {
                 className="shrink-0"
               />
               <input
-                type="date"
+                type="datetime-local"
                 value={checkin}
-                min={today}
+                min={minDateTime}
                 max={checkout || undefined}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
@@ -292,7 +293,7 @@ export function HomeView(props: HomeViewProps) {
 
           {roundTrip && (
             <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date retour</label>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure retour</label>
               <div className="flex items-center gap-2.5 whitespace-nowrap">
                 <Image
                   src="/calendrier.svg"
@@ -308,9 +309,9 @@ export function HomeView(props: HomeViewProps) {
                   className="shrink-0"
                 />
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={checkout}
-                  min={checkin || today}
+                  min={checkin || minDateTime}
                   onChange={(e) => setCheckout(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
                   className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
