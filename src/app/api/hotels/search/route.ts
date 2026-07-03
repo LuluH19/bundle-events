@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
-import { LiteApiHotelAdapter, OverpassHotelAdapter } from "@/src/adapters/hotels";
-import { deduplicateHotels } from "@/src/utils/hotel";
+import { LiteApiHotelAdapter } from "@/src/adapters/hotels";
 
-// ---- Route handler ----
 export async function GET(request: NextRequest) {
   const lat = request.nextUrl.searchParams.get("lat");
   const lng = request.nextUrl.searchParams.get("lng");
@@ -13,27 +11,14 @@ export async function GET(request: NextRequest) {
   if (!lat || !lng) {
     return Response.json({ error: "lat and lng required" }, { status: 400 });
   }
+  if (!checkin || !checkout) {
+    return Response.json({ error: "checkin and checkout required" }, { status: 400 });
+  }
 
   const liteapiAdapter = new LiteApiHotelAdapter();
-  const overpassAdapter = new OverpassHotelAdapter();
+  const hotels = await liteapiAdapter.searchHotels({ lat, lng, radiusKm, checkin, checkout });
 
-  // Fetch from both sources in parallel using the adapter interface
-  const [liteapiResults, overpassResults] = await Promise.all([
-    checkin && checkout
-      ? liteapiAdapter.searchHotels({ lat, lng, radiusKm, checkin, checkout })
-      : Promise.resolve([]),
-    overpassAdapter.searchHotels({ lat, lng, radiusKm }),
-  ]);
-
-  // Deduplicate: LiteAPI hotels take priority (they have prices)
-  const hotels = deduplicateHotels(liteapiResults, overpassResults);
-
-  // Sort: hotels with prices first, then by stars
-  hotels.sort((a, b) => {
-    if (a.pricePerNight && !b.pricePerNight) return -1;
-    if (!a.pricePerNight && b.pricePerNight) return 1;
-    return (b.stars || 0) - (a.stars || 0);
-  });
+  hotels.sort((a, b) => (a.pricePerNight || 0) - (b.pricePerNight || 0));
 
   return Response.json(hotels);
 }

@@ -13,7 +13,7 @@ export interface HotelMapItem {
   pricePerNight?: number;
   currency?: string;
   rating?: number;
-  source?: "liteapi" | "overpass";
+  source?: "liteapi";
 }
 
 export interface HotelSearchCriteria {

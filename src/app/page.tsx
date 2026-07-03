@@ -14,7 +14,6 @@ import type {
 } from "@/src/types";
 import { STEPS } from "@/src/types/step";
 import { venues } from "@/src/utils/constants/venues";
-import { addDaysIso } from "@/src/utils/date";
 import { searchLocation } from "@/src/services/geocoding";
 import { searchEvents } from "@/src/services/events";
 import {
@@ -248,11 +247,11 @@ export default function Home() {
     if (!venue) {
       return;
     }
-    if (!checkin) {
+    if (!checkin || !checkout) {
       setHotelLoading(false);
       return;
     }
-    const stayCheckout = checkout || addDaysIso(checkin, 1);
+    const stayCheckout = checkout;
     let cancelled = false;
     const params = new URLSearchParams({
       lat: String(venue.coords.lat),

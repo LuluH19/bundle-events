@@ -11,7 +11,6 @@ import {
   Eyebrow,
   IconPin,
   IconStar,
-  IconWifi,
   IconCheck,
   IconClose,
   IconMap,
@@ -211,11 +210,6 @@ export function HotelsView(props: HotelsViewProps) {
                             </span>
                           ) : null}
                           {dist != null && <span>{formatDistance(dist)} de l&apos;événement</span>}
-                          {h.source === "overpass" && (
-                            <span className="flex items-center gap-0.5">
-                              <IconWifi size={11} /> OSM
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
