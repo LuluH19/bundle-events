@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { StopCoord, RouteSection } from "@/src/types";
-import { sncfConfig, osrmConfig } from "@/src/config";
+import { sncfConfig, osrmConfig, openRailwayMapConfig } from "@/src/config";
 
 // Cache: journey key → coordinates
 const cache = new Map<string, { coords: [number, number][]; sections?: RouteSection[]; ts: number }>();
@@ -72,71 +72,96 @@ export async function GET(request: NextRequest) {
         label = "Transfert à pied";
       }
 
-      // Try to get coordinates from section.geojson
-      if (section.geojson?.coordinates && section.geojson.coordinates.length > 0) {
-        sectionCoords = section.geojson.coordinates.map(
-          ([lng, lat]: [number, number]) => [lat, lng]
+      // 1. Gather all intermediate stops from SNCF
+      const sectionStops: StopCoord[] = [];
+      const vjLink = section.links?.find((l: { type: string }) => l.type === "vehicle_journey");
+      if (vjLink?.id) {
+        const vjRes = await fetch(
+          `${sncfConfig.baseUrl}/coverage/sncf/vehicle_journeys/${vjLink.id}?depth=2`,
+          { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
         );
-      } else {
-        // Fallback: collect stop times
-        const sectionStops: StopCoord[] = [];
-        const vjLink = section.links?.find((l: { type: string }) => l.type === "vehicle_journey");
-        if (vjLink?.id) {
-          const vjRes = await fetch(
-            `${sncfConfig.baseUrl}/coverage/sncf/vehicle_journeys/${vjLink.id}?depth=2`,
-            { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
-          );
 
-          if (vjRes.ok) {
-            const vjData = await vjRes.json();
-            const vj = vjData.vehicle_journeys?.[0];
-            if (vj?.stop_times) {
-              for (const st of vj.stop_times) {
-                const sp = st.stop_point;
-                if (sp?.coord?.lat && sp?.coord?.lon) {
-                  sectionStops.push({
-                    name: sp.name,
-                    lat: parseFloat(sp.coord.lat),
-                    lng: parseFloat(sp.coord.lon),
-                  });
-                }
+        if (vjRes.ok) {
+          const vjData = await vjRes.json();
+          const vj = vjData.vehicle_journeys?.[0];
+          if (vj?.stop_times) {
+            for (const st of vj.stop_times) {
+              const sp = st.stop_point;
+              if (sp?.coord?.lat && sp?.coord?.lon) {
+                sectionStops.push({
+                  name: sp.name,
+                  lat: parseFloat(sp.coord.lat),
+                  lng: parseFloat(sp.coord.lon),
+                });
               }
             }
           }
         }
+      }
 
-        if (sectionStops.length === 0) {
-          if (section.from?.stop_point?.coord) {
-            const c = section.from.stop_point.coord;
-            sectionStops.push({ name: section.from.name, lat: parseFloat(c.lat), lng: parseFloat(c.lon) });
-          }
-          if (section.to?.stop_point?.coord) {
-            const c = section.to.stop_point.coord;
-            sectionStops.push({ name: section.to.name, lat: parseFloat(c.lat), lng: parseFloat(c.lon) });
+      if (sectionStops.length === 0) {
+        if (section.from?.stop_point?.coord) {
+          const c = section.from.stop_point.coord;
+          sectionStops.push({ name: section.from.name, lat: parseFloat(c.lat), lng: parseFloat(c.lon) });
+        }
+        if (section.to?.stop_point?.coord) {
+          const c = section.to.stop_point.coord;
+          sectionStops.push({ name: section.to.name, lat: parseFloat(c.lat), lng: parseFloat(c.lon) });
+        }
+      }
+
+      // Add stop names to allStops
+      sectionStops.forEach(s => {
+        if (!allStops.includes(s.name)) allStops.push(s.name);
+      });
+
+      // 2. Fetch routing
+      if (sectionStops.length >= 2) {
+        if (mode === "train") {
+          try {
+            // Using OpenRailwayMap (OpenRailRouting API)
+            const points = sectionStops.map(s => `point=${s.lat},${s.lng}`).join("&");
+            const url = `${openRailwayMapConfig.routingBaseUrl}/route?${points}&profile=all_tracks&points_encoded=false`;
+            const ormRes = await fetch(url);
+            if (ormRes.ok) {
+              const ormData = await ormRes.json();
+              if (ormData.paths?.length > 0 && ormData.paths[0].points?.coordinates) {
+                sectionCoords = ormData.paths[0].points.coordinates.map(
+                  ([lng, lat]: [number, number]) => [lat, lng]
+                );
+              }
+            }
+          } catch (err) {
+            console.error("OpenRailRouting fetch error", err);
           }
         }
-
-        // Add stop names to allStops
-        sectionStops.forEach(s => {
-          if (!allStops.includes(s.name)) allStops.push(s.name);
-        });
-
-        if (sectionStops.length >= 2) {
+        
+        if (sectionCoords.length === 0 && mode !== "train") {
           const waypointStr = sectionStops.map(s => `${s.lng},${s.lat}`).join(";");
           const profile = mode === "walking" ? "foot" : "driving";
-          const osrmRes = await fetch(
-            `${osrmConfig.baseUrl}/${profile}/${waypointStr}?overview=full&geometries=geojson`
-          );
-
-          if (osrmRes.ok) {
-            const osrmData = await osrmRes.json();
-            if (osrmData.code === "Ok" && osrmData.routes?.length) {
-              sectionCoords = osrmData.routes[0].geometry.coordinates.map(
-                ([lng, lat]: [number, number]) => [lat, lng]
-              );
+          try {
+            const osrmRes = await fetch(
+              `${osrmConfig.baseUrl}/${profile}/${waypointStr}?overview=full&geometries=geojson`
+            );
+            if (osrmRes.ok) {
+              const osrmData = await osrmRes.json();
+              if (osrmData.code === "Ok" && osrmData.routes?.length) {
+                sectionCoords = osrmData.routes[0].geometry.coordinates.map(
+                  ([lng, lat]: [number, number]) => [lat, lng]
+                );
+              }
             }
+          } catch (err) {
+            console.error("OSRM fetch error", err);
           }
         }
+      }
+
+      // 3. Fallback to section.geojson if APIs failed or didn't run (e.g. OpenRailRouting failed)
+      if (sectionCoords.length === 0 && section.geojson?.coordinates && section.geojson.coordinates.length > 0) {
+        sectionCoords = section.geojson.coordinates.map(
+          ([lng, lat]: [number, number]) => [lat, lng]
+        );
       }
 
       // Straight line fallback if OSRM and geojson both failed
