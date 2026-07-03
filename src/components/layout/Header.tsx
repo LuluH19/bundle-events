@@ -27,7 +27,6 @@ export function Header({ go }: HeaderProps) {
           width={40}
           height={40}
           loading="lazy"
-          priority
           unoptimized
           className="h-9 w-auto"
         />
