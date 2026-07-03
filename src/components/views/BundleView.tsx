@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Location, RouteOption, HotelMapItem, Step } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
@@ -16,8 +17,11 @@ import {
   IconStar,
   MODE_ICON,
 } from "@/src/components/ui";
+import { SaveBundleModal } from "@/src/components/SaveBundleModal";
 
 interface BundleViewProps {
+  /** Present once the bundle is persisted; enables "save by email". */
+  bundleId?: string;
   departure: Location | null;
   venue: Location | null;
   dateLabel: string;
@@ -29,7 +33,8 @@ interface BundleViewProps {
 }
 
 export function BundleView(props: BundleViewProps) {
-  const { departure, venue, dateLabel, selectedOption, selectedHotel, checkin, checkout, onEdit } = props;
+  const { bundleId, departure, venue, dateLabel, selectedOption, selectedHotel, checkin, checkout, onEdit } = props;
+  const [saveOpen, setSaveOpen] = useState(false);
 
   const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
   const transportCost = selectedOption ? selectedOption.price : 0;
@@ -39,7 +44,7 @@ export function BundleView(props: BundleViewProps) {
   const mode = selectedOption?.mode ?? null;
   const modeMeta = mode ? MODE_META[mode] : null;
   const ModeIcon = mode ? MODE_ICON[mode] : null;
-  const bundleId = `BE-${(total * 7 + 100000).toString().slice(0, 6)}-FR`;
+  const bundleRef = `BE-${(total * 7 + 100000).toString().slice(0, 6)}-FR`;
   const stars = selectedHotel?.stars ?? (selectedHotel?.rating ? Math.round(selectedHotel.rating) : 0);
 
   const hotelFacts: { icon: React.ReactNode; label: string }[] = [];
@@ -266,7 +271,7 @@ export function BundleView(props: BundleViewProps) {
         {/* Logistics */}
         <section className="col-span-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
           <LogisticsCard icon={<IconMap size={20} />} title="Fenêtre de voyage" value={dateLabel} hint={`${nights} jour${nights > 1 ? "s" : ""} sur place`} />
-          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleId}`} />
+          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleRef}`} />
           <LogisticsCard
             icon={<IconLeaf size={20} />}
             title="Empreinte carbone"
@@ -278,16 +283,25 @@ export function BundleView(props: BundleViewProps) {
 
       {/* Final action */}
       <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleId}</p>
+        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleRef}</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button kind="ghost" onClick={() => onEdit("home")} className="sm:w-auto">
             Modifier
           </Button>
+          {bundleId && (
+            <Button kind="dark" onClick={() => setSaveOpen(true)} className="sm:w-auto">
+              Sauvegarder mon bundle
+            </Button>
+          )}
           <Button kind="primary" disabled={!selectedOption || !selectedHotel}>
             Réserver mon bundle <IconArrow size={16} />
           </Button>
         </div>
       </div>
+
+      {bundleId && saveOpen && (
+        <SaveBundleModal bundleId={bundleId} onClose={() => setSaveOpen(false)} />
+      )}
     </div>
   );
 }
