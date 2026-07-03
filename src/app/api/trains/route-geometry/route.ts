@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { StopCoord, RouteSection } from "@/src/types";
-import { sncfConfig, osrmConfig, openRailwayMapConfig } from "@/src/config";
+import { sncfConfig, osrmConfig, openRailwayRoutingConfig } from "@/src/config";
 
 // Cache: journey key → coordinates
 const cache = new Map<string, { coords: [number, number][]; sections?: RouteSection[]; ts: number }>();
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
           try {
             // Using OpenRailwayMap (OpenRailRouting API)
             const points = sectionStops.map(s => `point=${s.lat},${s.lng}`).join("&");
-            const url = `${openRailwayMapConfig.routingBaseUrl}/route?${points}&profile=all_tracks&points_encoded=false`;
+            const url = `${openRailwayRoutingConfig.routingBaseUrl}/route?${points}&profile=all_tracks&points_encoded=false`;
             const ormRes = await fetch(url);
             if (ormRes.ok) {
               const ormData = await ormRes.json();

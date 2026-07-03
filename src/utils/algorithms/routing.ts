@@ -6,7 +6,7 @@ import {
   interpolateGreatCircle,
   estimateFlightDuration,
 } from "./geodesic";
-import { osrmConfig, openRailwayMapConfig } from "@/src/config";
+import { osrmConfig, openRailwayRoutingConfig } from "@/src/config";
 
 const stationCache = new Map<string, DynamicStation[]>();
 
@@ -84,7 +84,7 @@ async function fetchOpenRailRoutingSegment(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng }
 ): Promise<RouteSegment> {
-  const url = `${openRailwayMapConfig.routingBaseUrl}/route?point=${from.coords.lat},${from.coords.lng}&point=${to.coords.lat},${to.coords.lng}&profile=all_tracks&points_encoded=false`;
+  const url = `${openRailwayRoutingConfig.routingBaseUrl}/route?point=${from.coords.lat},${from.coords.lng}&point=${to.coords.lat},${to.coords.lng}&profile=all_tracks&points_encoded=false`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("OpenRailRouting error");
   const data = await res.json();

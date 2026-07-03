@@ -6,4 +6,4 @@ export const overpassConfig = {
   ],
   cacheTtl: 5 * 60 * 1000, // 5 minutes
   timeoutMs: 12000,
-};
+} as const;
