@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Location, RouteOption, HotelMapItem, Step } from "@/src/types";
+import { Location, RouteOption, Step, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
 import {
@@ -17,28 +17,16 @@ import {
   MODE_ICON,
 } from "@/src/components/ui";
 
-interface BundleViewProps {
-  departure: Location | null;
-  venue: Location | null;
-  dateLabel: string;
-  selectedOption: RouteOption | null;
-  selectedHotel: HotelMapItem | null;
-  checkin: string;
-  checkout: string;
-  onEdit: (s: Step) => void;
-}
+
 
 export function BundleView(props: BundleViewProps) {
-  const { departure, venue, dateLabel, selectedOption, selectedHotel, checkin, checkout, onEdit } = props;
+  const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit } = props;
 
   const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
-  const transportCost = selectedOption ? selectedOption.price : 0;
+  const transportCost = (outboundOption?.price || 0) + (roundTrip && returnOption ? returnOption.price : 0);
   const hotelCost = selectedHotel?.pricePerNight ? selectedHotel.pricePerNight * nights : 0;
   const total = transportCost + hotelCost;
 
-  const mode = selectedOption?.mode ?? null;
-  const modeMeta = mode ? MODE_META[mode] : null;
-  const ModeIcon = mode ? MODE_ICON[mode] : null;
   const bundleId = `BE-${(total * 7 + 100000).toString().slice(0, 6)}-FR`;
   const stars = selectedHotel?.stars ?? (selectedHotel?.rating ? Math.round(selectedHotel.rating) : 0);
 
@@ -76,55 +64,95 @@ export function BundleView(props: BundleViewProps) {
       {/* Bento grid */}
       <div className="grid grid-cols-12 gap-5 md:gap-6">
         {/* Transport */}
-        <section className="col-span-12 flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line lg:col-span-7">
-          <div className="relative h-44 overflow-hidden bg-gradient-to-br from-navy to-ink">
-            <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_85%_-10%,rgba(249,108,26,0.35),transparent_55%)]" />
-            <div className="absolute bottom-6 left-6 flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-md">
-                {ModeIcon ? <ModeIcon size={22} /> : <IconMap size={22} />}
-              </span>
-              <div>
-                <h2 className="font-display text-[22px] font-bold leading-tight text-white">
-                  {modeMeta ? modeMeta.label : "Trajet"}
-                </h2>
-                {modeMeta && <p className="text-[13px] text-white/60">{modeMeta.provider}</p>}
-              </div>
-            </div>
-          </div>
+        <section className="col-span-12 flex flex-col gap-5 lg:col-span-7">
+          {(
+            [
+              { option: outboundOption, direction: "outbound", title: "Trajet Aller", dep: departure, arr: venue, editStep: "routes-outbound" as Step },
+              roundTrip ? { option: returnOption, direction: "return", title: "Trajet Retour", dep: venue, arr: departure, editStep: "routes-return" as Step } : null
+            ].filter(Boolean) as { option: RouteOption | null; direction: string; title: string; dep: Location | null; arr: Location | null; editStep: Step }[]
+          ).map((t, idx) => {
+            const mode = t.option?.mode ?? null;
+            const modeMeta = mode ? MODE_META[mode] : null;
+            const ModeIcon = mode ? MODE_ICON[mode] : null;
 
-          {selectedOption ? (
-            <div className="flex flex-grow flex-col p-7 md:p-8">
-              <div className="mb-7 grid grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <p className="eyebrow text-slate-400">Départ</p>
-                  <p className="truncate text-[17px] font-bold text-ink">{departure?.name ?? "—"}</p>
-                  <p className="text-[13px] text-slate-500">{dateLabel}</p>
+            return (
+              <div key={idx} className="flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line">
+                <div className="relative h-44 overflow-hidden bg-gradient-to-br from-navy to-ink">
+                  <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_85%_-10%,rgba(249,108,26,0.35),transparent_55%)]" />
+                  <div className="absolute bottom-6 left-6 flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-md">
+                      {ModeIcon ? <ModeIcon size={22} /> : <IconMap size={22} />}
+                    </span>
+                    <div>
+                      <h2 className="font-display text-[22px] font-bold leading-tight text-white">
+                        {t.title}
+                        {t.option ? (() => {
+                          const counts: Record<string, number> = { plane: 0, train: 0, bus: 0, car: 0 };
+                          t.option.route.segments.forEach(seg => {
+                            if (counts[seg.mode] !== undefined) counts[seg.mode]++;
+                          });
+                          
+                          const parts: string[] = [];
+                          const order = ["plane", "train", "bus", "car"];
+                          
+                          order.forEach(m => {
+                            const c = counts[m];
+                            if (c > 0) {
+                              let name = MODE_META[m as keyof typeof MODE_META].label;
+                              if (c === 1) {
+                                parts.push(name);
+                              } else {
+                                if (name === "Train") name = "Trains";
+                                if (name === "Avion") name = "Avions";
+                                if (name === "Voiture") name = "Voitures";
+                                parts.push(`${c} ${name}`);
+                              }
+                            }
+                          });
+                          return parts.length > 0 ? ` · ${parts.join(" + ")}` : (modeMeta ? ` · ${modeMeta.label}` : "");
+                        })() : ""}
+                      </h2>
+                      {modeMeta && <p className="text-[13px] text-white/60">{modeMeta.provider}</p>}
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="eyebrow text-slate-400">Arrivée</p>
-                  <p className="truncate text-[17px] font-bold text-ink">{venue?.name ?? "—"}</p>
-                  <p className="text-[13px] text-slate-500">
-                    {formatDuration(selectedOption.durationMin)} · {formatDistance(selectedOption.distanceKm)}
-                  </p>
-                </div>
+
+                {t.option ? (
+                  <div className="flex flex-grow flex-col p-7 md:p-8">
+                    <div className="mb-7 grid grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <p className="eyebrow text-slate-400">Départ</p>
+                        <p className="truncate text-[17px] font-bold text-ink">{t.dep?.name ?? "—"}</p>
+                        <p className="text-[13px] text-slate-500">{t.direction === "outbound" ? dateLabel : ""}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="eyebrow text-slate-400">Arrivée</p>
+                        <p className="truncate text-[17px] font-bold text-ink">{t.arr?.name ?? "—"}</p>
+                        <p className="text-[13px] text-slate-500">
+                          {formatDuration(t.option.durationMin)} · {formatDistance(t.option.distanceKm)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-auto flex items-center justify-between border-t border-line pt-6">
+                      <div>
+                        <p className="font-display text-[24px] font-extrabold text-ink">€{t.option.price.toLocaleString("fr-FR")}</p>
+                        <p className="text-[12px] text-slate-400">Prix du trajet estimé</p>
+                      </div>
+                      <button
+                        onClick={() => onEdit(t.editStep)}
+                        className="flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-navy-700"
+                      >
+                        Modifier <span className="hidden sm:inline">le trajet</span>
+                        <IconArrow size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyBlock label="Aucun trajet sélectionné" cta="Choisir un trajet" onClick={() => onEdit(t.editStep)} />
+                )}
               </div>
-              <div className="mt-auto flex items-center justify-between border-t border-line pt-6">
-                <div>
-                  <p className="font-display text-[24px] font-extrabold text-ink">€{transportCost.toLocaleString("fr-FR")}</p>
-                  <p className="text-[12px] text-slate-400">Prix du trajet estimé</p>
-                </div>
-                <button
-                  onClick={() => onEdit("routes")}
-                  className="flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-navy-700"
-                >
-                  Modifier le trajet
-                  <IconArrow size={15} />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <EmptyBlock label="Aucun trajet sélectionné" cta="Choisir un trajet" onClick={() => onEdit("routes")} />
-          )}
+            );
+          })}
         </section>
 
         {/* Destination route widget */}
@@ -154,13 +182,13 @@ export function BundleView(props: BundleViewProps) {
             <div className="rounded-2xl bg-white p-4">
               <p className="eyebrow text-slate-400">Temps de trajet</p>
               <p className="font-display text-[18px] font-extrabold text-ink">
-                {selectedOption ? formatDuration(selectedOption.durationMin) : "—"}
+                {outboundOption ? formatDuration(outboundOption.durationMin) : "—"}
               </p>
             </div>
             <div className="rounded-2xl bg-white p-4">
               <p className="eyebrow text-slate-400">Empreinte CO₂</p>
               <p className="flex items-center gap-1.5 font-display text-[18px] font-extrabold text-ink">
-                <IconLeaf size={16} className="text-[#0d5c63]" /> {modeMeta ? modeMeta.co2 : "—"}
+                <IconLeaf size={16} className="text-[#0d5c63]" /> {outboundOption ? MODE_META[outboundOption.mode].co2 : "—"}
               </p>
             </div>
           </div>
@@ -270,8 +298,8 @@ export function BundleView(props: BundleViewProps) {
           <LogisticsCard
             icon={<IconLeaf size={20} />}
             title="Empreinte carbone"
-            value={modeMeta ? `Impact ${modeMeta.co2.toLowerCase()}` : "—"}
-            hint={modeMeta ? `Via ${modeMeta.provider}` : "Trajet non défini"}
+            value={outboundOption ? `Impact ${MODE_META[outboundOption.mode].co2.toLowerCase()}` : "—"}
+            hint={outboundOption ? `Via ${MODE_META[outboundOption.mode].provider}` : "Trajet non défini"}
           />
         </section>
       </div>
@@ -283,7 +311,7 @@ export function BundleView(props: BundleViewProps) {
           <Button kind="ghost" onClick={() => onEdit("home")} className="sm:w-auto">
             Modifier
           </Button>
-          <Button kind="primary" disabled={!selectedOption || !selectedHotel}>
+          <Button kind="primary" disabled={!selectedHotel}>
             Réserver mon bundle <IconArrow size={16} />
           </Button>
         </div>

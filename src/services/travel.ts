@@ -1,5 +1,5 @@
 import { LatLng, RouteOption, TrainJourney, FlightInfo, TransportMode } from "@/src/types";
-import { computeRoute } from "@/src/utils/algorithms/routing";
+import { computeDirectRoute, computeBusRoute, computePlaneRoute, computeTrainRoute } from "@/src/utils/algorithms/routing";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { airports } from "@/src/utils/constants/airports";
 import { priceEstimate, findNearest } from "@/src/utils/travel";
@@ -9,29 +9,59 @@ export async function computeOptions(
   to: { name: string; coords: LatLng }
 ): Promise<RouteOption[]> {
   const dist = haversineDistance(from.coords, to.coords);
-  const modes: TransportMode[] = [];
-  if (dist < 8) modes.push("walking");
-  modes.push("car", "bus");
-  if (dist > 20) modes.push("train");
-  if (dist > 200) modes.push("plane");
+  const promises: Promise<RouteOption | null>[] = [];
 
-  const results = await Promise.all(
-    modes.map(async (mode) => {
-      try {
-        const route = await computeRoute(from, to, [mode]);
-        return {
-          mode,
-          route,
-          durationMin: route.totalDurationMinutes,
-          distanceKm: route.totalDistanceKm,
-          price: priceEstimate(mode, route.totalDistanceKm),
-        } as RouteOption;
-      } catch {
-        return null;
-      }
-    })
-  );
-  return (results.filter(Boolean) as RouteOption[]).sort((a, b) => a.durationMin - b.durationMin);
+  const addOption = async (promise: Promise<import("@/src/types").RouteResult>, mode: TransportMode, accessMode?: TransportMode) => {
+    try {
+      const route = await promise;
+      return {
+        id: `${mode}-${accessMode || "direct"}`,
+        mode,
+        accessMode,
+        route,
+        durationMin: route.totalDurationMinutes,
+        distanceKm: route.totalDistanceKm,
+        price: priceEstimate(mode, route.totalDistanceKm),
+      } as RouteOption;
+    } catch {
+      return null;
+    }
+  };
+
+  if (dist < 8) {
+    promises.push(addOption(computeDirectRoute(from, to, "walking"), "walking"));
+  }
+  promises.push(addOption(computeDirectRoute(from, to, "car"), "car"));
+  
+  if (dist > 10) {
+    promises.push(addOption(computeBusRoute(from, to, ["walking"]), "bus", "walking"));
+    promises.push(addOption(computeBusRoute(from, to, ["car"]), "bus", "car"));
+  }
+  
+  if (dist > 20) {
+    promises.push(addOption(computeTrainRoute(from, to, ["walking"]), "train", "walking"));
+    promises.push(addOption(computeTrainRoute(from, to, ["bus"]), "train", "bus"));
+    promises.push(addOption(computeTrainRoute(from, to, ["train"]), "train", "train"));
+    promises.push(addOption(computeTrainRoute(from, to, ["car"]), "train", "car"));
+  }
+  
+  if (dist > 200) {
+    promises.push(addOption(computePlaneRoute(from, to, ["walking"]), "plane", "walking"));
+    promises.push(addOption(computePlaneRoute(from, to, ["bus"]), "plane", "bus"));
+    promises.push(addOption(computePlaneRoute(from, to, ["train"]), "plane", "train"));
+    promises.push(addOption(computePlaneRoute(from, to, ["car"]), "plane", "car"));
+  }
+
+  const results = await Promise.all(promises);
+  // Filter out duplicates (sometimes computePlaneRoute with 'walking' falls back to 'car' if too far, returning same result)
+  const uniqueOptions = new Map<string, RouteOption>();
+  for (const r of results.filter(Boolean) as RouteOption[]) {
+    // create a unique key based on segments length and duration
+    const key = r.mode + "-" + r.route.segments.length + "-" + Math.round(r.durationMin / 5) * 5;
+    if (!uniqueOptions.has(key)) uniqueOptions.set(key, r);
+  }
+
+  return Array.from(uniqueOptions.values()).sort((a, b) => a.durationMin - b.durationMin);
 }
 
 export async function fetchFlightInfo(from: LatLng, to: LatLng): Promise<FlightInfo[]> {

@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { StopCoord, RouteSection } from "@/src/types";
 import { sncfConfig, osrmConfig, openRailwayRoutingConfig } from "@/src/config";
 
+export const dynamic = "force-dynamic";
+
 // Cache: journey key → coordinates
 const cache = new Map<string, { coords: [number, number][]; sections?: RouteSection[]; ts: number }>();
 
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Find a journey to get the vehicle_journey/line
     const journeyRes = await fetch(
-      `${sncfConfig.baseUrl}/coverage/sncf/journeys?from=${fromId}&to=${toId}&count=1`,
+      `${sncfConfig.baseUrl}/coverage/sncf/journeys?from=${fromId}&to=${toId}&count=1&disable_geojson=false`,
       { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
     );
 
@@ -85,14 +87,32 @@ export async function GET(request: NextRequest) {
           const vjData = await vjRes.json();
           const vj = vjData.vehicle_journeys?.[0];
           if (vj?.stop_times) {
+            let recording = false;
             for (const st of vj.stop_times) {
               const sp = st.stop_point;
-              if (sp?.coord?.lat && sp?.coord?.lon) {
+              
+              if (!recording) {
+                const matchFromId = sp?.id === section.from?.id || sp?.id === section.from?.stop_point?.id || sp?.stop_area?.id === section.from?.id;
+                const matchFromName = sp?.name === section.from?.name;
+                if (matchFromId || matchFromName) {
+                  recording = true;
+                }
+              }
+
+              if (recording && sp?.coord?.lat && sp?.coord?.lon) {
                 sectionStops.push({
                   name: sp.name,
                   lat: parseFloat(sp.coord.lat),
                   lng: parseFloat(sp.coord.lon),
                 });
+              }
+
+              if (recording) {
+                const matchToId = sp?.id === section.to?.id || sp?.id === section.to?.stop_point?.id || sp?.stop_area?.id === section.to?.id;
+                const matchToName = sp?.name === section.to?.name;
+                if (matchToId || matchToName) {
+                  break;
+                }
               }
             }
           }
@@ -119,9 +139,9 @@ export async function GET(request: NextRequest) {
       if (sectionStops.length >= 2) {
         if (mode === "train") {
           try {
-            // Using OpenRailwayMap (OpenRailRouting API)
-            const points = sectionStops.map(s => `point=${s.lat},${s.lng}`).join("&");
-            const url = `${openRailwayRoutingConfig.routingBaseUrl}/route?${points}&profile=all_tracks&points_encoded=false`;
+            const startNode = sectionStops[0];
+            const endNode = sectionStops[sectionStops.length - 1];
+            const url = `${openRailwayRoutingConfig.routingBaseUrl}/route?point=${startNode.lat},${startNode.lng}&point=${endNode.lat},${endNode.lng}&profile=all_tracks&points_encoded=false`;
             const ormRes = await fetch(url);
             if (ormRes.ok) {
               const ormData = await ormRes.json();
@@ -159,9 +179,21 @@ export async function GET(request: NextRequest) {
 
       // 3. Fallback to section.geojson if APIs failed or didn't run (e.g. OpenRailRouting failed)
       if (sectionCoords.length === 0 && section.geojson?.coordinates && section.geojson.coordinates.length > 0) {
-        sectionCoords = section.geojson.coordinates.map(
-          ([lng, lat]: [number, number]) => [lat, lng]
-        );
+        if (section.geojson.type === "MultiLineString") {
+          // Flatten MultiLineString
+          sectionCoords = section.geojson.coordinates.flat().map(
+            ([lng, lat]: [number, number]) => [lat, lng]
+          );
+        } else {
+          sectionCoords = section.geojson.coordinates.map(
+            ([lng, lat]: [number, number]) => [lat, lng]
+          );
+        }
+      }
+
+      // 4. Fallback to connecting intermediate stops
+      if (sectionCoords.length === 0 && sectionStops.length >= 2) {
+        sectionCoords = sectionStops.map(s => [s.lat, s.lng]);
       }
 
       // Straight line fallback if OSRM and geojson both failed

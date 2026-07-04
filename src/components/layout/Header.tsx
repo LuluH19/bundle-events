@@ -1,12 +1,6 @@
 "use client";
 
-import { Step } from "@/src/types";
-
-interface HeaderProps {
-  step: Step;
-  go: (s: Step) => void;
-  canReach: (s: Step) => boolean;
-}
+import { HeaderProps } from "@/src/types";
 
 export function Header({ go }: HeaderProps) {
   const startBundle = () => {

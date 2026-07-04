@@ -108,7 +108,7 @@ async function trainSegments(
   // Try real rail route via SNCF intermediate stops + OSRM multi-waypoint
   if (from.sncfId && to.sncfId) {
     try {
-      const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}`);
+      const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}&t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         if (data.sections && data.sections.length > 0) {
@@ -170,22 +170,33 @@ async function busLongSegment(
 async function accessSegment(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
-  allowedAccessModes: ("walking" | "car" | "bus")[]
+  allowedAccessModes: TransportMode[]
 ): Promise<RouteSegment> {
   const dist = haversineDistance(from.coords, to.coords);
   const viable = allowedAccessModes.filter((m) => !(m === "walking" && dist > 8));
 
   if (viable.length === 0) {
-    return fetchOSRMSegment(from, to, allowedAccessModes[0] || "walking");
+    return fetchOSRMSegment(from, to, (allowedAccessModes[0] === "train" ? "car" : allowedAccessModes[0]) as "walking" | "car" || "walking");
   }
 
   const results = await Promise.all(
-    viable.map((m) => fetchOSRMSegment(from, to, m).catch(() => null))
+    viable.map(async (m) => {
+      if (m === "train") {
+        const seg = await fetchOSRMSegment(from, to, "car").catch(() => null);
+        if (seg) return { ...seg, mode: "train", durationMinutes: seg.durationMinutes * 0.8 } as RouteSegment;
+      }
+      if (m === "bus") {
+        const seg = await fetchOSRMSegment(from, to, "car").catch(() => null);
+        if (seg) return { ...seg, mode: "bus", durationMinutes: seg.durationMinutes * 1.5 } as RouteSegment;
+      }
+      return fetchOSRMSegment(from, to, m as "car" | "walking").catch(() => null);
+    })
   );
   const valid = results.filter(Boolean) as RouteSegment[];
 
   if (valid.length === 0) {
-    return fetchOSRMSegment(from, to, viable[0]);
+    const fallback = await fetchOSRMSegment(from, to, "walking").catch(() => null);
+    return fallback || { from, to, mode: "walking", coordinates: [[from.coords.lat, from.coords.lng], [to.coords.lat, to.coords.lng]], distanceKm: 0, durationMinutes: 0 } as RouteSegment;
   }
 
   return valid.reduce((best, seg) =>
@@ -193,12 +204,13 @@ async function accessSegment(
   );
 }
 
-function extractAccessModes(modes: TransportMode[]): ("walking" | "car" | "bus")[] {
-  const access: ("walking" | "car" | "bus")[] = [];
+function extractAccessModes(modes: TransportMode[]): TransportMode[] {
+  const access: TransportMode[] = [];
   if (modes.includes("walking")) access.push("walking");
   if (modes.includes("car")) access.push("car");
   if (modes.includes("bus")) access.push("bus");
-  if (access.length === 0) return ["walking", "car"];
+  if (modes.includes("train")) access.push("train");
+  if (access.length === 0) return ["walking", "car", "bus", "train"];
   return access;
 }
 
@@ -222,7 +234,7 @@ export async function computeDirectRoute(
 export async function computeBusRoute(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
-  allowedAccessModes: ("walking" | "car" | "bus")[]
+  allowedAccessModes: TransportMode[]
 ): Promise<RouteResult> {
   const depCandidates = findNearestSorted(from.coords, busStations, 3);
   const arrCandidates = findNearestSorted(to.coords, busStations, 3);
@@ -238,7 +250,7 @@ export async function computeBusRoute(
     return buildResult([{ ...seg, mode: "bus" }]);
   }
 
-  const accessOnly = allowedAccessModes.filter((m) => m !== "bus") as ("walking" | "car" | "bus")[];
+  const accessOnly = allowedAccessModes.filter((m) => m !== "bus");
   const [toStation, fromStation] = await Promise.all([
     accessSegment(from, { name: dep.name, coords: dep.coords }, accessOnly.length > 0 ? accessOnly : ["walking"]),
     accessSegment({ name: arr.name, coords: arr.coords }, to, accessOnly.length > 0 ? accessOnly : ["walking"]),
@@ -250,7 +262,7 @@ export async function computeBusRoute(
 export async function computePlaneRoute(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
-  allowedAccessModes: ("walking" | "car" | "bus")[]
+  allowedAccessModes: TransportMode[]
 ): Promise<RouteResult> {
   const depCandidates = findNearestSorted(from.coords, airports, 3);
   const arrCandidates = findNearestSorted(to.coords, airports, 3);
@@ -273,7 +285,7 @@ export async function computePlaneRoute(
 export async function computeTrainRoute(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
-  allowedAccessModes: ("walking" | "car" | "bus")[]
+  allowedAccessModes: TransportMode[]
 ): Promise<RouteResult> {
   const [depStations, arrStations] = await Promise.all([
     fetchNearbyStations(from.coords),

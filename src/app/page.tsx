@@ -3,13 +3,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import type {
   Location,
-  TransportMode,
+  Step,
   RouteOption,
   LatLng,
   FlightInfo,
   HotelMapItem,
   TrainJourney,
-  Step,
   Venue,
 } from "@/src/types";
 import { STEPS } from "@/src/types/step";
@@ -39,12 +38,6 @@ export default function Home() {
   const [venue, setVenue] = useState<Location | null>(null);
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
-  const [roundTrip, setRoundTrip] = useState(true);
-
-  const handleRoundTrip = (value: boolean) => {
-    setRoundTrip(value);
-    if (!value) setCheckout("");
-  };
   const dateLabel = useMemo(() => {
     const fmt = (iso: string) =>
       new Date(`${iso}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
@@ -64,9 +57,12 @@ export default function Home() {
   const [venueFocus, setVenueFocus] = useState(false);
 
   // transport options
-  const [options, setOptions] = useState<RouteOption[]>([]);
+  const [outboundOptions, setOutboundOptions] = useState<RouteOption[]>([]);
+  const [returnOptions, setReturnOptions] = useState<RouteOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<TransportMode | null>(null);
+
+  const [selectedOutboundId, setSelectedOutboundId] = useState<string | null>(null);
+  const [selectedReturnId, setSelectedReturnId] = useState<string | null>(null);
   const [trainJourneys, setTrainJourneys] = useState<TrainJourney[]>([]);
   const [flights, setFlights] = useState<FlightInfo[]>([]);
 
@@ -78,7 +74,16 @@ export default function Home() {
   const [selectedHotel, setSelectedHotel] = useState<HotelMapItem | null>(null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
 
-  const selectedOption = useMemo(() => options.find((o) => o.mode === selectedMode) || null, [options, selectedMode]);
+  const selectedOption = useMemo(() => {
+    if (step === "routes-outbound") {
+      return outboundOptions.find((o) => o.id === selectedOutboundId) || null;
+    }
+    if (step === "routes-return") {
+      return returnOptions.find((o) => o.id === selectedReturnId) || null;
+    }
+    return null;
+  }, [step, outboundOptions, returnOptions, selectedOutboundId, selectedReturnId]);
+
   const hotelLocation: Location | null = useMemo(
     () => (selectedHotel ? { id: selectedHotel.id, name: selectedHotel.name, coords: selectedHotel.coords, type: "hotel", address: selectedHotel.locationName } : null),
     [selectedHotel]
@@ -98,8 +103,10 @@ export default function Home() {
     setDeparture({ id: `dep-${Date.now()}`, name: r.displayName.split(",")[0], coords: r.coords, type: "departure", address: r.address });
     setDepSearch(r.displayName);
     setDepResults([]);
-    setOptions([]);
-    setSelectedMode(null);
+    setOutboundOptions([]);
+    setReturnOptions([]);
+    setSelectedOutboundId(null);
+    setSelectedReturnId(null);
     setTrainJourneys([]);
     setFlights([]);
     // le trajet change → itinéraires & bundle à refaire, les hôtels restent valides
@@ -112,8 +119,10 @@ export default function Home() {
   const handleClearDeparture = () => {
     setDeparture(null);
     setDepSearch("");
-    setOptions([]);
-    setSelectedMode(null);
+    setOutboundOptions([]);
+    setReturnOptions([]);
+    setSelectedOutboundId(null);
+    setSelectedReturnId(null);
     setTrainJourneys([]);
     setFlights([]);
     setMaxStepIdx((m) => Math.min(m, idxOf("hotels")));
@@ -133,8 +142,10 @@ export default function Home() {
       setVenueSearch("");
       setVenueResults([]);
       setSelectedHotel(null);
-      setOptions([]);
-      setSelectedMode(null);
+      setOutboundOptions([]);
+      setReturnOptions([]);
+      setSelectedOutboundId(null);
+      setSelectedReturnId(null);
       setTrainJourneys([]);
       setFlights([]);
       setHotelResults([]);
@@ -152,8 +163,10 @@ export default function Home() {
     setVenueSearch("");
     setVenueResults([]);
     setSelectedHotel(null);
-    setOptions([]);
-    setSelectedMode(null);
+    setOutboundOptions([]);
+    setReturnOptions([]);
+    setSelectedOutboundId(null);
+    setSelectedReturnId(null);
     setTrainJourneys([]);
     setFlights([]);
     setHotelResults([]);
@@ -161,8 +174,12 @@ export default function Home() {
     setMaxStepIdx((m) => Math.min(m, idxOf("home")));
   };
 
-  const handleSelectMode = (mode: TransportMode) => {
-    setSelectedMode(mode);
+  const handleSelectMode = (id: string) => {
+    const currentId = step === "routes-outbound" ? selectedOutboundId : selectedReturnId;
+    if (currentId === id) return;
+
+    if (step === "routes-outbound") setSelectedOutboundId(id);
+    else setSelectedReturnId(id);
     setTrainJourneys([]);
     setFlights([]);
   };
@@ -210,15 +227,16 @@ export default function Home() {
       return;
     }
     let cancelled = false;
-    computeOptions(
-      { name: departure.name, coords: departure.coords },
-      { name: venue.name, coords: venue.coords }
-    )
-      .then((opts) => {
+    Promise.all([
+      computeOptions({ name: departure.name, coords: departure.coords }, { name: venue.name, coords: venue.coords }),
+      computeOptions({ name: venue.name, coords: venue.coords }, { name: departure.name, coords: departure.coords })
+    ])
+      .then(([outOpts, retOpts]) => {
         if (cancelled) return;
-        setOptions(opts);
-        const initialMode = opts[0]?.mode ?? null;
-        setSelectedMode(initialMode);
+        setOutboundOptions(outOpts);
+        setReturnOptions(retOpts);
+        setSelectedOutboundId(outOpts[0]?.id ?? null);
+        setSelectedReturnId(retOpts[0]?.id ?? null);
         setTrainJourneys([]);
         setFlights([]);
       })
@@ -232,15 +250,18 @@ export default function Home() {
   useEffect(() => {
     if (!departure || !venue || !selectedOption) return;
     let cancelled = false;
+    const origin = step === "routes-outbound" ? departure.coords : venue.coords;
+    const dest = step === "routes-outbound" ? venue.coords : departure.coords;
+    
     if (selectedOption.mode === "train") {
-      fetchTrainInfo(departure.coords, venue.coords).then((j) => !cancelled && setTrainJourneys(j));
+      fetchTrainInfo(origin, dest).then((j) => !cancelled && setTrainJourneys(j));
     } else if (selectedOption.mode === "plane") {
-      fetchFlightInfo(departure.coords, venue.coords).then((f) => !cancelled && setFlights(f));
+      fetchFlightInfo(origin, dest).then((f) => !cancelled && setFlights(f));
     }
     return () => {
       cancelled = true;
     };
-  }, [selectedOption, departure, venue]);
+  }, [selectedOption, departure, venue, step]);
 
   // live hotel search around the venue
   useEffect(() => {
@@ -248,8 +269,8 @@ export default function Home() {
       return;
     }
     if (!checkin || !checkout) {
-      setHotelLoading(false);
-      return;
+      const t = setTimeout(() => setHotelLoading(false), 0);
+      return () => clearTimeout(t);
     }
     const stayCheckout = checkout;
     let cancelled = false;
@@ -292,8 +313,10 @@ export default function Home() {
     if (!v) return;
     setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
     setSelectedHotel(null);
-    setOptions([]);
-    setSelectedMode(null);
+    setOutboundOptions([]);
+    setReturnOptions([]);
+    setSelectedOutboundId(null);
+    setSelectedReturnId(null);
     setTrainJourneys([]);
     setFlights([]);
     setHotelResults([]);
@@ -311,65 +334,75 @@ export default function Home() {
   const showTabBar = step !== "home";
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
       <Header step={step} go={go} canReach={canReach} />
 
-      <main className={`flex-1 ${showTabBar ? "pb-16 lg:pb-0" : ""}`}>
+      <main className={`flex flex-col flex-1 min-h-0 ${showTabBar ? "pb-16 lg:pb-0" : ""}`}>
         {step === "home" && (
-          <HomeView
-            departure={departure}
-            venue={venue}
-            depSearch={depSearch}
-            setDepSearch={handleDepSearchChange}
-            depResults={depResults}
-            depFocus={depFocus}
-            setDepFocus={setDepFocus}
-            onPickDeparture={handlePickDeparture}
-            onClearDeparture={handleClearDeparture}
-            onPickVenue={handlePickVenue}
-            onClearVenue={handleClearVenue}
-            venueSearch={venueSearch}
-            setVenueSearch={handleVenueSearchChange}
-            venueResults={venueResults}
-            venueFocus={venueFocus}
-            setVenueFocus={setVenueFocus}
-            roundTrip={roundTrip}
-            setRoundTrip={handleRoundTrip}
-            dateLabel={dateLabel}
-            checkin={checkin}
-            checkout={checkout}
-            setCheckin={setCheckin}
-            setCheckout={setCheckout}
-            onCompose={() => go(departure && venue ? "hotels" : "home")}
-            pickEvent={pickEvent}
-          />
+          <div className="flex-1 overflow-y-auto">
+            <HomeView
+              departure={departure}
+              venue={venue}
+              depSearch={depSearch}
+              setDepSearch={handleDepSearchChange}
+              depResults={depResults}
+              depFocus={depFocus}
+              setDepFocus={setDepFocus}
+              onPickDeparture={handlePickDeparture}
+              onClearDeparture={handleClearDeparture}
+              onPickVenue={handlePickVenue}
+              onClearVenue={handleClearVenue}
+              venueSearch={venueSearch}
+              setVenueSearch={handleVenueSearchChange}
+              venueResults={venueResults}
+              venueFocus={venueFocus}
+              setVenueFocus={setVenueFocus}
+
+              dateLabel={dateLabel}
+              checkin={checkin}
+              checkout={checkout}
+              setCheckin={setCheckin}
+              setCheckout={setCheckout}
+              onCompose={() => go(departure && venue ? "hotels" : "home")}
+              pickEvent={pickEvent}
+            />
+          </div>
         )}
 
-        {step === "routes" && (
-          <div className="lg:flex">
-            <SideNav step={step} go={go} canReach={canReach} venue={venue} />
-            <div className="min-w-0 flex-1">
+        {(step === "routes-outbound" || step === "routes-return") && (
+          <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+            <SideNav step={step} go={go} canReach={canReach} venue={venue} roundTrip={true} />
+            <div className="min-w-0 flex-1 flex flex-col">
               <RoutesView
                 departure={departure}
                 venue={venue}
                 dateLabel={dateLabel}
-                options={options}
+                direction={step === "routes-outbound" ? "outbound" : "return"}
+                setDirection={() => {}}
+                options={step === "routes-outbound" ? outboundOptions : returnOptions}
                 loading={optionsLoading}
-                selectedMode={selectedMode}
+                selectedModeId={step === "routes-outbound" ? selectedOutboundId : selectedReturnId}
                 onSelectMode={handleSelectMode}
                 trainJourneys={trainJourneys}
                 flights={flights}
                 journeyRoute={journeyRoute}
-                onContinue={() => go("bundle")}
+                onContinue={() => {
+                  if (step === "routes-outbound") {
+                    go("routes-return");
+                  } else {
+                    go("bundle");
+                  }
+                }}
+                roundTrip={true}
               />
             </div>
           </div>
         )}
 
         {step === "hotels" && (
-          <div className="lg:flex">
-            <SideNav step={step} go={go} canReach={canReach} venue={venue} />
-            <div className="min-w-0 flex-1">
+          <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+            <SideNav step={step} go={go} canReach={canReach} venue={venue} roundTrip={true} />
+            <div className="min-w-0 flex-1 flex flex-col">
               <HotelsView
                 venue={venue}
                 hotelRadius={hotelRadius}
@@ -383,21 +416,23 @@ export default function Home() {
                 hotelLocation={hotelLocation}
                 mobileMapOpen={mobileMapOpen}
                 setMobileMapOpen={setMobileMapOpen}
-                onContinue={() => go("routes")}
+                onContinue={() => go("routes-outbound")}
               />
             </div>
           </div>
         )}
 
         {step === "bundle" && (
-          <div className="lg:flex">
-            <SideNav step={step} go={go} canReach={canReach} venue={venue} />
-            <div className="min-w-0 flex-1">
+          <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+            <SideNav step={step} go={go} canReach={canReach} venue={venue} roundTrip={true} />
+            <div className="min-w-0 flex-1 flex flex-col overflow-y-auto">
               <BundleView
                 departure={departure}
                 venue={venue}
                 dateLabel={dateLabel}
-                selectedOption={selectedOption}
+                outboundOption={outboundOptions.find((o) => o.id === selectedOutboundId) || null}
+                returnOption={returnOptions.find((o) => o.id === selectedReturnId) || null}
+                roundTrip={true}
                 selectedHotel={selectedHotel}
                 checkin={checkin}
                 checkout={checkout}
@@ -408,7 +443,7 @@ export default function Home() {
         )}
       </main>
 
-      {showTabBar && <MobileTabBar step={step} go={go} canReach={canReach} />}
+      {showTabBar && <MobileTabBar step={step} go={go} canReach={canReach} roundTrip={true} />}
     </div>
   );
 }
