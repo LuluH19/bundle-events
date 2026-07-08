@@ -4,8 +4,8 @@ import { Step } from "@/src/types";
 import { IconMap, IconBed, IconBag } from "@/src/components/ui";
 
 const NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
-  { id: "hotels", label: "Hôtels", Icon: IconBed },
-  { id: "routes", label: "Itinéraires", Icon: IconMap },
+  { id: "hotels", label: "Logement", Icon: IconBed },
+  { id: "routes", label: "Transports", Icon: IconMap },
   { id: "bundle", label: "Bundle", Icon: IconBag },
 ];
 

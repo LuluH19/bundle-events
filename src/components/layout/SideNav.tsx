@@ -4,9 +4,9 @@ import { Step, Location } from "@/src/types";
 import { IconMap, IconBed, IconBag } from "@/src/components/ui";
 
 const NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
-  { id: "hotels", label: "Hôtels", Icon: IconBed },
-  { id: "routes", label: "Itinéraires", Icon: IconMap },
-  { id: "bundle", label: "Bundle", Icon: IconBag },
+  { id: "hotels", label: "Mon logement", Icon: IconBed },
+  { id: "routes", label: "Mes transports", Icon: IconMap },
+  { id: "bundle", label: "Mon Bundle final", Icon: IconBag },
 ];
 
 interface SideNavProps {

@@ -162,7 +162,7 @@ export function RoutesView(props: RoutesViewProps) {
 
         <div className="sticky bottom-0 mt-6 bg-page pt-2 pb-1">
           <Button onClick={onContinue} disabled={!selectedMode} className="w-full">
-            Continuer vers les hôtels <IconArrow size={16} />
+            Voir mon bundle <IconArrow size={16} />
           </Button>
         </div>
       </aside>
