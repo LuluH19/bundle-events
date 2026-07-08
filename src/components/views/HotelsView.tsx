@@ -97,7 +97,7 @@ export function HotelsView(props: HotelsViewProps) {
       <aside className="scroll-slim flex flex-col flex-1 w-full overflow-y-auto bg-page px-5 pt-5 pb-28 md:w-[560px] md:p-7">
         <Eyebrow className="mb-2">Hébergements disponibles</Eyebrow>
         <h2 className="font-display text-[30px] font-extrabold tracking-tight text-ink md:text-[40px]">
-          Votre base près de <span className="text-ember">{venue.name}</span>.
+          Votre logement près de <span className="text-ember">{venue.name}</span>.
         </h2>
         <p className="mt-2 text-[14px] text-slate-500">{venue.address || venue.name}</p>
 
@@ -250,7 +250,7 @@ export function HotelsView(props: HotelsViewProps) {
 
         <div className="mt-auto px-5 py-3 md:sticky md:inset-x-auto md:bottom-0 md:z-auto md:mt-6 md:border-0 md:px-0 md:py-1 md:pt-2">
           <Button onClick={onContinue} disabled={!selectedHotel} className="w-full">
-            {selectedHotel ? "Voir mon bundle" : "Choisissez un hôtel"} <IconArrow size={16} />
+            {selectedHotel ? "Voir mes transports" : "Choisissez un hôtel"} <IconArrow size={16} />
           </Button>
         </div>
       </aside>
