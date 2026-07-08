@@ -5,3 +5,4 @@ export * from "./overpass";
 export * from "./travelpayouts";
 export * from "./osrm";
 export * from "./openrailwayrouting";
+export * from "./supabase";

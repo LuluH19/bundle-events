@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { SNCFSection, TrainDetail } from "@/src/types";
-import { formatSncfDate } from "@/src/utils/date";
+import { formatSncfDate, toSncfDateTime } from "@/src/utils/date";
 import { sncfConfig } from "@/src/config";
 
 export async function GET(request: NextRequest) {
   const fromId = request.nextUrl.searchParams.get("from");
   const toId = request.nextUrl.searchParams.get("to");
+  const datetime = request.nextUrl.searchParams.get("datetime");
 
   if (!fromId || !toId) {
     return Response.json({ error: "from and to SNCF stop_area IDs required" }, { status: 400 });
@@ -22,6 +23,12 @@ export async function GET(request: NextRequest) {
     count: "5",
     "data_freshness": "realtime",
   });
+
+  const sncfDateTime = datetime ? toSncfDateTime(datetime) : "";
+  if (sncfDateTime) {
+    params.set("datetime", sncfDateTime);
+    params.set("datetime_represents", "departure");
+  }
 
   const url = `${sncfConfig.baseUrl}/coverage/sncf/journeys?${params}`;
 
