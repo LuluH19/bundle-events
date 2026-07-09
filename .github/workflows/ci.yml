@@ -165,39 +165,161 @@ jobs:
             !.next/cache
           retention-days: 7
 
+  # --- PR checklist automation (mirrors .github/PULL_REQUEST_TEMPLATE.md) ---
+
+  title:
+    name: PR title (Conventional Commits)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title || "";
+            const re = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([\w\-./ ]+\))?!?:\s.+/;
+            const ok = re.test(title);
+            core.notice(`PR title: "${title}" -> ${ok ? "valid" : "invalid"}`);
+            if (!ok) core.setFailed("PR title does not follow Conventional Commits");
+
+  dev:
+    name: Dev server boot (npm run dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Start dev server and wait for it to respond
+        run: |
+          npm run dev &
+          PID=$!
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000 >/dev/null; then
+              echo "✅ dev server responded"
+              kill "$PID" 2>/dev/null || true
+              exit 0
+            fi
+            if ! kill -0 "$PID" 2>/dev/null; then
+              echo "❌ dev server exited before it was ready"
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "❌ dev server did not respond within timeout"
+          kill "$PID" 2>/dev/null || true
+          exit 1
+
+  secrets:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   pr-summary:
     name: PR Summary
-    if: github.event_name == 'pull_request'
-    needs: [lint-commits, lint, typecheck, security, build]
+    if: always() && github.event_name == 'pull_request'
+    needs: [lint-commits, lint, typecheck, security, build, title, dev, secrets]
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/github-script@v7
         with:
           script: |
-            const results = {
+            const res = {
               commits: "${{ needs.lint-commits.result }}",
               lint: "${{ needs.lint.result }}",
               typecheck: "${{ needs.typecheck.result }}",
               security: "${{ needs.security.result }}",
-              build: "${{ needs.build.result }}"
+              build: "${{ needs.build.result }}",
+              title: "${{ needs.title.result }}",
+              dev: "${{ needs.dev.result }}",
+              secrets: "${{ needs.secrets.result }}",
             };
+            const ok = v => v === "success";
+            const icon = v => (ok(v) ? "✅" : "❌");
 
-            const icon = r => r === "success" ? "✅" : "❌";
+            // 1) Tick the deterministic checklist boxes in the PR body.
+            const items = [
+              { match: "Conventional Commits", pass: ok(res.title) },
+              { match: "npm run dev", pass: ok(res.dev) },
+              { match: "npm run build", pass: ok(res.build) },
+              { match: "secret committed", pass: ok(res.secrets) },
+            ];
+            const pr = context.payload.pull_request;
+            const body = pr.body || "";
+            const boxRe = /- \[[ xX]\]/;
+            const newBody = body
+              .split("\n")
+              .map(line => {
+                const item = items.find(i => line.includes(i.match) && boxRe.test(line));
+                return item ? line.replace(boxRe, item.pass ? "- [x]" : "- [ ]") : line;
+              })
+              .join("\n");
+            if (newBody !== body) {
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                body: newBody,
+              });
+            }
 
-            const body = `
-            ## CI Results
+            // 2) Post / refresh a single summary comment.
+            const marker = "<!-- ci-summary -->";
+            const commentBody = [
+              marker,
+              "## CI Results",
+              "",
+              `- Commit lint: ${icon(res.commits)}`,
+              `- ESLint: ${icon(res.lint)}`,
+              `- TypeScript: ${icon(res.typecheck)}`,
+              `- Security audit: ${icon(res.security)}`,
+              `- Build: ${icon(res.build)}`,
+              "",
+              "### Checklist",
+              `- ${icon(res.title)} PR title follows Conventional Commits`,
+              `- ${icon(res.dev)} \`npm run dev\` runs without errors`,
+              `- ${icon(res.build)} \`npm run build\` passes with no errors`,
+              `- ${icon(res.secrets)} No API key / secret committed`,
+              "",
+              "> Architecture and documentation items require manual review.",
+            ].join("\n");
 
-            - Commit lint: ${icon(results.commits)}
-            - ESLint: ${icon(results.lint)}
-            - TypeScript: ${icon(results.typecheck)}
-            - Security audit: ${icon(results.security)}
-            - Build: ${icon(results.build)}
-            `;
-
-            github.rest.issues.createComment({
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body
+              issue_number: pr.number,
             });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: commentBody,
+              });
+            }

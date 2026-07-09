@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Location, RouteOption, Step, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
@@ -16,6 +17,7 @@ import {
   IconStar,
   MODE_ICON,
 } from "@/src/components/ui";
+import { SaveBundleModal } from "@/src/components/SaveBundleModal";
 
 
 
@@ -294,7 +296,7 @@ export function BundleView(props: BundleViewProps) {
         {/* Logistics */}
         <section className="col-span-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
           <LogisticsCard icon={<IconMap size={20} />} title="Fenêtre de voyage" value={dateLabel} hint={`${nights} jour${nights > 1 ? "s" : ""} sur place`} />
-          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleId}`} />
+          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleRef}`} />
           <LogisticsCard
             icon={<IconLeaf size={20} />}
             title="Empreinte carbone"
@@ -306,7 +308,7 @@ export function BundleView(props: BundleViewProps) {
 
       {/* Final action */}
       <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleId}</p>
+        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleRef}</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button kind="ghost" onClick={() => onEdit("home")} className="sm:w-auto">
             Modifier
@@ -316,6 +318,10 @@ export function BundleView(props: BundleViewProps) {
           </Button>
         </div>
       </div>
+
+      {bundleId && saveOpen && (
+        <SaveBundleModal bundleId={bundleId} onClose={() => setSaveOpen(false)} />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { computeDirectRoute, computeBusRoute, computePlaneRoute, computeTrainRou
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { airports } from "@/src/utils/constants/airports";
 import { priceEstimate, findNearest } from "@/src/utils/travel";
+import { dateOnly } from "@/src/utils/date";
 
 export async function computeOptions(
   from: { name: string; coords: LatLng },
@@ -64,12 +65,18 @@ export async function computeOptions(
   return Array.from(uniqueOptions.values()).sort((a, b) => a.durationMin - b.durationMin);
 }
 
-export async function fetchFlightInfo(from: LatLng, to: LatLng): Promise<FlightInfo[]> {
+export async function fetchFlightInfo(
+  from: LatLng,
+  to: LatLng,
+  departISO?: string
+): Promise<FlightInfo[]> {
   const dep = findNearest(from, airports);
   const arr = findNearest(to, airports);
   if (dep.id === arr.id) return [];
   try {
-    const res = await fetch(`/api/flights/search?origin=${dep.iataCode}&destination=${arr.iataCode}`);
+    const params = new URLSearchParams({ origin: dep.iataCode, destination: arr.iataCode });
+    if (departISO) params.set("departure_at", dateOnly(departISO));
+    const res = await fetch(`/api/flights/search?${params}`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.flights || [];
@@ -78,7 +85,11 @@ export async function fetchFlightInfo(from: LatLng, to: LatLng): Promise<FlightI
   }
 }
 
-export async function fetchTrainInfo(from: LatLng, to: LatLng): Promise<TrainJourney[]> {
+export async function fetchTrainInfo(
+  from: LatLng,
+  to: LatLng,
+  departISO?: string
+): Promise<TrainJourney[]> {
   try {
     const [d, a] = await Promise.all([
       fetch(`/api/stations?lat=${from.lat}&lng=${from.lng}&radius=50`),
@@ -92,7 +103,9 @@ export async function fetchTrainInfo(from: LatLng, to: LatLng): Promise<TrainJou
     let arr = as[0];
     if (dep.id === arr.id && as.length > 1) arr = as[1];
     if (dep.id === arr.id) return [];
-    const res = await fetch(`/api/trains/search?from=${dep.sncfId}&to=${arr.sncfId}`);
+    const params = new URLSearchParams({ from: dep.sncfId, to: arr.sncfId });
+    if (departISO) params.set("datetime", departISO);
+    const res = await fetch(`/api/trains/search?${params}`);
     if (!res.ok) return [];
     return (await res.json()).journeys || [];
   } catch {
