@@ -40,9 +40,8 @@ export function HomeView(props: HomeViewProps) {
     onCompose,
   } = props;
   
-  const ready = !!(departure && venue && checkin && (!roundTrip || checkout));
+  const ready = !!(departure && venue);
   const today = useMemo(() => isoPlusDays(0), []);
-  const minDateTime = `${today}T00:00`;
 
   return (
     <div>
@@ -229,7 +228,7 @@ export function HomeView(props: HomeViewProps) {
               <input
                 type="datetime-local"
                 value={checkin}
-                min={minDateTime}
+                min={today}
                 max={checkout || undefined}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
@@ -260,7 +259,7 @@ export function HomeView(props: HomeViewProps) {
                 <input
                   type="datetime-local"
                   value={checkout}
-                  min={checkin || minDateTime}
+                  min={checkin || today}
                   onChange={(e) => setCheckout(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
                   className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
