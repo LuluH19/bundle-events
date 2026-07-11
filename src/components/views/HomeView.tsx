@@ -71,7 +71,7 @@ export function HomeView(props: HomeViewProps) {
           <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
             {departure ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2">
                 <Image
                   src="/cible.svg"
                   alt=""
@@ -92,7 +92,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2">
                   <Image
                     src="/cible.svg"
                     alt=""
@@ -137,7 +137,7 @@ export function HomeView(props: HomeViewProps) {
           <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
             {venue ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2">
                 <Image
                   src="/carte.svg"
                   alt=""
@@ -161,7 +161,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2">
                   <Image
                     src="/carte.svg"
                     alt=""
@@ -211,7 +211,7 @@ export function HomeView(props: HomeViewProps) {
           <div className="flex flex-col gap-1 md:flex-row md:items-center">
           <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure aller</label>
-            <div className="flex items-center gap-2.5 whitespace-nowrap">
+            <div className="flex items-center gap-2.5 whitespace-nowrap rounded-lg bg-white/35 px-3 py-2">
               <Image
                 src="/calendrier.svg"
                 alt=""
@@ -242,7 +242,7 @@ export function HomeView(props: HomeViewProps) {
 
             <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
               <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure retour</label>
-              <div className="flex items-center gap-2.5 whitespace-nowrap">
+              <div className="flex items-center gap-2.5 whitespace-nowrap rounded-lg bg-white/35 px-3 py-2">
                 <Image
                   src="/calendrier.svg"
                   alt=""
@@ -316,7 +316,7 @@ export function HomeView(props: HomeViewProps) {
       </section>
 
       <footer className="border-t border-line px-5 py-8 md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[11px] tracking-widest text-slate-400 sm:flex-row">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[13px] font-medium tracking-widest text-slate-600 sm:flex-row">
           <span>© 2026 BUNDLE EVENTS</span>
           <div className="flex flex-col items-center gap-2 uppercase sm:flex-row sm:gap-4">
             {[
