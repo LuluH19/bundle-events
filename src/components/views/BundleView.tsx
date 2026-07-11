@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { Location, RouteOption, Step, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
@@ -17,9 +16,6 @@ import {
   IconStar,
   MODE_ICON,
 } from "@/src/components/ui";
-import { SaveBundleModal } from "@/src/components/SaveBundleModal";
-
-
 
 export function BundleView(props: BundleViewProps) {
   const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit } = props;
@@ -78,7 +74,7 @@ export function BundleView(props: BundleViewProps) {
             const ModeIcon = mode ? MODE_ICON[mode] : null;
 
             return (
-              <div key={idx} className="flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line">
+              <div key={idx} className="flex flex-col overflow-hidden rounded-4xl bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line">
                 <div className="relative h-44 overflow-hidden bg-gradient-to-br from-navy to-ink">
                   <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_85%_-10%,rgba(249,108,26,0.35),transparent_55%)]" />
                   <div className="absolute bottom-6 left-6 flex items-center gap-3">
@@ -120,7 +116,7 @@ export function BundleView(props: BundleViewProps) {
                 </div>
 
                 {t.option ? (
-                  <div className="flex flex-grow flex-col p-7 md:p-8">
+                  <div className="flex grow flex-col p-7 md:p-8">
                     <div className="mb-7 grid grid-cols-2 gap-6">
                       <div className="space-y-1">
                         <p className="eyebrow text-slate-400">Départ</p>
@@ -158,7 +154,7 @@ export function BundleView(props: BundleViewProps) {
         </section>
 
         {/* Destination route widget */}
-        <section className="col-span-12 flex flex-col justify-between rounded-[2rem] bg-mist p-6 ring-1 ring-line lg:col-span-5">
+        <section className="col-span-12 flex flex-col justify-between rounded-4xl bg-mist p-6 ring-1 ring-line lg:col-span-5">
           <div className="space-y-4">
             <h3 className="flex items-center gap-2 text-[18px] font-bold text-ink">
               <IconMap size={18} className="text-ember" /> Itinéraire
@@ -197,7 +193,7 @@ export function BundleView(props: BundleViewProps) {
         </section>
 
         {/* Hotel */}
-        <section className="col-span-12 flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line md:flex-row">
+        <section className="col-span-12 flex flex-col overflow-hidden rounded-4xl bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line md:flex-row">
           <div className="relative h-64 w-full shrink-0 overflow-hidden bg-gradient-to-br from-navy to-ink md:h-auto md:w-2/5">
             {selectedHotel?.photo ? (
               <Image
@@ -218,7 +214,7 @@ export function BundleView(props: BundleViewProps) {
               </div>
             )}
             <div className="absolute left-6 top-6">
-              <span className="rounded-full bg-ember px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-white shadow-lg">
+              <span className="rounded-full bg-ember px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white shadow-lg">
                 Hébergement
               </span>
             </div>
@@ -296,7 +292,7 @@ export function BundleView(props: BundleViewProps) {
         {/* Logistics */}
         <section className="col-span-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
           <LogisticsCard icon={<IconMap size={20} />} title="Fenêtre de voyage" value={dateLabel} hint={`${nights} jour${nights > 1 ? "s" : ""} sur place`} />
-          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleRef}`} />
+          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleId}`} />
           <LogisticsCard
             icon={<IconLeaf size={20} />}
             title="Empreinte carbone"
@@ -308,7 +304,7 @@ export function BundleView(props: BundleViewProps) {
 
       {/* Final action */}
       <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleRef}</p>
+        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleId}</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button kind="ghost" onClick={() => onEdit("home")} className="sm:w-auto">
             Modifier
@@ -318,17 +314,13 @@ export function BundleView(props: BundleViewProps) {
           </Button>
         </div>
       </div>
-
-      {bundleId && saveOpen && (
-        <SaveBundleModal bundleId={bundleId} onClose={() => setSaveOpen(false)} />
-      )}
     </div>
   );
 }
 
 function EmptyBlock({ label, cta, onClick }: { label: string; cta: string; onClick: () => void }) {
   return (
-    <div className="flex flex-grow flex-col items-center justify-center gap-3 p-10 text-center">
+    <div className="flex grow flex-col items-center justify-center gap-3 p-10 text-center">
       <p className="text-[14px] text-slate-400">{label}</p>
       <button
         onClick={onClick}
@@ -353,7 +345,7 @@ function LogisticsCard({
   hint: string;
 }) {
   return (
-    <div className="rounded-[1.5rem] bg-mist p-6 ring-1 ring-line">
+    <div className="rounded-3xl bg-mist p-6 ring-1 ring-line">
       <div className="mb-4 flex items-center gap-3">
         <span className="text-ink">{icon}</span>
         <h4 className="font-bold text-ink">{title}</h4>
