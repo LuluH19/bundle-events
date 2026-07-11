@@ -11,3 +11,4 @@ export * from "./step";
 export * from "./geocoding";
 export * from "./sncf";
 export * from "./components";
+export * from "./bundle";
