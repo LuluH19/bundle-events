@@ -1,5 +1,5 @@
 import type { Location } from "./location";
-import type { RouteOption, TransportMode } from "./route";
+import type { RouteOption } from "./route";
 import type { HotelMapItem } from "./hotel";
 
 /**
@@ -12,8 +12,8 @@ export interface BundleSnapshot {
   checkin: string;
   checkout: string;
   roundTrip: boolean;
-  selectedMode: TransportMode | null;
-  selectedOption: RouteOption | null;
+  outboundOption: RouteOption | null;
+  returnOption: RouteOption | null;
   selectedHotel: HotelMapItem | null;
 }
 
@@ -33,8 +33,8 @@ export function emptySnapshot(): BundleSnapshot {
     checkin: "",
     checkout: "",
     roundTrip: true,
-    selectedMode: null,
-    selectedOption: null,
+    outboundOption: null,
+    returnOption: null,
     selectedHotel: null,
   };
 }

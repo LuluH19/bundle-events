@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import BundleBuilder from "@/src/components/BundleBuilder";
 import type { Step } from "@/src/types";
 
-const STEP_SEGMENTS: Step[] = ["hotels", "routes", "bundle"];
+const STEP_SEGMENTS: Step[] = ["hotels", "routes-outbound", "routes-return", "bundle"];
 
 export default async function BundlePage({
   params,
