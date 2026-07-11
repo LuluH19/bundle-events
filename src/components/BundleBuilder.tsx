@@ -457,6 +457,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
               venueResults={venueResults}
               venueFocus={venueFocus}
               setVenueFocus={setVenueFocus}
+              roundTrip={roundTrip}
+              setRoundTrip={setRoundTrip}
               dateLabel={dateLabel}
               checkin={checkin}
               checkout={checkout}

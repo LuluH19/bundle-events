@@ -33,6 +33,8 @@ export function HomeView(props: HomeViewProps) {
     venueResults,
     venueFocus,
     setVenueFocus,
+    roundTrip,
+    setRoundTrip,
     checkin,
     checkout,
     setCheckin,
@@ -208,6 +210,34 @@ export function HomeView(props: HomeViewProps) {
 
 
 
+          <div role="radiogroup" className="flex items-center gap-2 px-4 md:px-6">
+            {[
+              { value: true, label: "Aller-retour" },
+              { value: false, label: "Aller simple" },
+            ].map((opt) => {
+              const active = roundTrip === opt.value;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => {
+                    setRoundTrip(opt.value);
+                    if (!opt.value) setCheckout("");
+                  }}
+                  className={`flex-1 rounded-[4px] px-5 py-2.5 text-[13px] font-bold transition-colors ${
+                    active
+                      ? "bg-navy-700 text-white shadow-lg shadow-navy-700/25 hover:bg-navy-500"
+                      : "bg-white text-slate-600 ring-1 ring-inset ring-line hover:bg-mist hover:text-ink"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="flex flex-col gap-1 md:flex-row md:items-center">
           <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure aller</label>
@@ -240,6 +270,7 @@ export function HomeView(props: HomeViewProps) {
           </div>
 
 
+            {roundTrip && (
             <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
               <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure retour</label>
               <div className="flex items-center gap-2.5 whitespace-nowrap rounded-lg bg-white/35 px-3 py-2">
@@ -268,6 +299,7 @@ export function HomeView(props: HomeViewProps) {
                 />
               </div>
             </div>
+            )}
           </div>
 
           <div className="px-4 md:px-6">
