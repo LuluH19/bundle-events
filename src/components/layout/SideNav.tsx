@@ -1,22 +1,17 @@
 "use client";
 
-import { Step, Location } from "@/src/types";
+import { Step, SideNavProps } from "@/src/types";
 import { IconMap, IconBed, IconBag } from "@/src/components/ui";
 
-const NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
+const BASE_NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
   { id: "hotels", label: "Hôtels", Icon: IconBed },
-  { id: "routes", label: "Itinéraires", Icon: IconMap },
+  { id: "routes-outbound", label: "Aller", Icon: IconMap },
+  { id: "routes-return", label: "Retour", Icon: IconMap },
   { id: "bundle", label: "Bundle", Icon: IconBag },
 ];
 
-interface SideNavProps {
-  step: Step;
-  go: (s: Step) => void;
-  canReach: (s: Step) => boolean;
-  venue: Location | null;
-}
-
-export function SideNav({ step, go, canReach, venue }: SideNavProps) {
+export function SideNav({ step, go, canReach, venue, roundTrip }: SideNavProps) {
+  const items = BASE_NAV_ITEMS.filter((i) => roundTrip || i.id !== "routes-return");
   return (
     <aside className="sticky top-[65px] hidden h-[calc(100dvh-65px)] w-64 shrink-0 flex-col border-r border-line bg-page p-4 lg:flex">
       <div className="px-4 py-6">
@@ -29,7 +24,7 @@ export function SideNav({ step, go, canReach, venue }: SideNavProps) {
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV_ITEMS.map(({ id, label, Icon }) => {
+        {items.map(({ id, label, Icon }) => {
           const active = id === step;
           const reachable = canReach(id);
           return (

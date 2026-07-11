@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { Location, RouteResult, HotelMapItem } from "@/src/types";
+import type { Location, TravelMapProps } from "@/src/types";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -21,17 +21,7 @@ const MODE_DASH: Record<string, number[]> = {
   bus: [],
 };
 
-interface TravelMapProps {
-  departure: Location | null;
-  venue: Location | null;
-  hotel: Location | null;
-  route: RouteResult | null;
-  hotelResults: HotelMapItem[];
-  selectedHotelId: string | null;
-  onHotelSelect: (hotel: HotelMapItem) => void;
-  hotelRadius: number;
-  showHotels: boolean;
-}
+
 
 export default function TravelMap({
   departure,

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Image from "next/image";
-import { Location, LatLng } from "@/src/types";
+import { HomeViewProps } from "@/src/types";
 import { isoPlusDays } from "@/src/utils/date";
 import {
   IconPin,
@@ -13,33 +13,7 @@ import {
   IconTicket,
 } from "@/src/components/ui";
 
-interface HomeViewProps {
-  departure: Location | null;
-  venue: Location | null;
-  depSearch: string;
-  setDepSearch: (v: string) => void;
-  depResults: { displayName: string; address: string; coords: LatLng }[];
-  depFocus: boolean;
-  setDepFocus: (v: boolean) => void;
-  onPickDeparture: (r: { displayName: string; address: string; coords: LatLng }) => void;
-  onClearDeparture: () => void;
-  onPickVenue: (id: string) => void;
-  onClearVenue: () => void;
-  venueSearch: string;
-  setVenueSearch: (v: string) => void;
-  venueResults: { id: string; name: string; city: string }[];
-  venueFocus: boolean;
-  setVenueFocus: (v: boolean) => void;
-  roundTrip: boolean;
-  setRoundTrip: (v: boolean) => void;
-  dateLabel: string;
-  checkin: string;
-  checkout: string;
-  setCheckin: (v: string) => void;
-  setCheckout: (v: string) => void;
-  onCompose: () => void;
-  pickEvent: (id: string) => void;
-}
+
 
 export function HomeView(props: HomeViewProps) {
   const {
@@ -59,8 +33,6 @@ export function HomeView(props: HomeViewProps) {
     venueResults,
     venueFocus,
     setVenueFocus,
-    roundTrip,
-    setRoundTrip,
     checkin,
     checkout,
     setCheckin,
@@ -68,9 +40,8 @@ export function HomeView(props: HomeViewProps) {
     onCompose,
   } = props;
   
-  const ready = !!(departure && venue && checkin && (!roundTrip || checkout));
+  const ready = !!(departure && venue);
   const today = useMemo(() => isoPlusDays(0), []);
-  const minDateTime = `${today}T00:00`;
 
   return (
     <div>
@@ -235,30 +206,7 @@ export function HomeView(props: HomeViewProps) {
           </div>
           </div>
 
-          <div role="radiogroup" className="flex items-center gap-2 px-4 md:px-6">
-            {[
-              { value: true, label: "Aller-retour" },
-              { value: false, label: "Aller simple" },
-            ].map((opt) => {
-              const active = roundTrip === opt.value;
-              return (
-                <button
-                  key={opt.label}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setRoundTrip(opt.value)}
-                  className={`flex-1 rounded-[4px] px-5 py-2.5 text-[13px] font-bold transition-colors ${
-                    active
-                      ? "bg-navy-700 text-white shadow-lg shadow-navy-700/25"
-                      : "bg-white text-slate-600 ring-1 ring-inset ring-line hover:bg-mist"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
+
 
           <div className="flex flex-col gap-1 md:flex-row md:items-center">
           <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
@@ -280,7 +228,7 @@ export function HomeView(props: HomeViewProps) {
               <input
                 type="datetime-local"
                 value={checkin}
-                min={minDateTime}
+                min={today}
                 max={checkout || undefined}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
@@ -291,7 +239,7 @@ export function HomeView(props: HomeViewProps) {
             </div>
           </div>
 
-          {roundTrip && (
+
             <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
               <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure retour</label>
               <div className="flex items-center gap-2.5 whitespace-nowrap">
@@ -311,7 +259,7 @@ export function HomeView(props: HomeViewProps) {
                 <input
                   type="datetime-local"
                   value={checkout}
-                  min={checkin || minDateTime}
+                  min={checkin || today}
                   onChange={(e) => setCheckout(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
                   className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
@@ -320,7 +268,6 @@ export function HomeView(props: HomeViewProps) {
                 />
               </div>
             </div>
-          )}
           </div>
 
           <div className="px-4 md:px-6">

@@ -21,7 +21,9 @@ export interface RouteResult {
 }
 
 export interface RouteOption {
+  id: string;
   mode: TransportMode;
+  accessMode?: TransportMode;
   route: RouteResult;
   durationMin: number;
   distanceKm: number;

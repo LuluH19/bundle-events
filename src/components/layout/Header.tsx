@@ -1,13 +1,7 @@
 "use client";
 
+import { HeaderProps } from "@/src/types";
 import Image from "next/image";
-import { Step } from "@/src/types";
-
-interface HeaderProps {
-  step: Step;
-  go: (s: Step) => void;
-  canReach: (s: Step) => boolean;
-}
 
 export function Header({ go }: HeaderProps) {
   const startBundle = () => {
