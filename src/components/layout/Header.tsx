@@ -1,6 +1,7 @@
 "use client";
 
 import { HeaderProps } from "@/src/types";
+import Image from "next/image";
 
 export function Header({ go }: HeaderProps) {
   const startBundle = () => {
