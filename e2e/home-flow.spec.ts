@@ -106,7 +106,7 @@ test.describe("Parcours de composition d'un bundle", () => {
     await page.goto("/");
 
     // --- Depart : geocodage (mocke) ---
-    await page.getByPlaceholder("Ville actuelle").fill("Lyon");
+    await page.getByPlaceholder("Lieu du départ").fill("Lyon");
     const depOption = page.getByRole("button", { name: /Lyon, Auvergne/i });
     await expect(depOption).toBeVisible();
     await depOption.click();
@@ -114,7 +114,7 @@ test.describe("Parcours de composition d'un bundle", () => {
     await expect(page.getByText("Lyon", { exact: true })).toBeVisible();
 
     // --- Evenement : recherche locale sur la constante venues ---
-    await page.getByPlaceholder("Votre événement").fill("Accor");
+    await page.getByPlaceholder("Lieu de l'évènement").fill("Accor");
     const venueOption = page.getByRole("button", { name: /Accor Arena — Paris/i });
     await expect(venueOption).toBeVisible();
     await venueOption.click();

@@ -118,7 +118,7 @@ export function HomeView(props: HomeViewProps) {
                     onChange={(e) => setDepSearch(e.target.value)}
                     onFocus={() => setDepFocus(true)}
                     onBlur={() => setTimeout(() => setDepFocus(false), 150)}
-                    placeholder="Ville actuelle"
+                    placeholder="Lieu du départ"
                     className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
                   />
                 </div>
@@ -187,7 +187,7 @@ export function HomeView(props: HomeViewProps) {
                     onChange={(e) => setVenueSearch(e.target.value)}
                     onFocus={() => setVenueFocus(true)}
                     onBlur={() => setTimeout(() => setVenueFocus(false), 150)}
-                    placeholder="Votre événement"
+                    placeholder="Lieu de l'évènement"
                     className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
                   />
                 </div>
