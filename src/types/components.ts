@@ -53,6 +53,8 @@ export interface HomeViewProps {
   venueResults: { id: string; name: string; city: string }[];
   venueFocus: boolean;
   setVenueFocus: (v: boolean) => void;
+  roundTrip: boolean;
+  setRoundTrip: (v: boolean) => void;
   dateLabel: string;
   checkin: string;
   checkout: string;

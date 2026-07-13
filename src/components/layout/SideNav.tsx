@@ -4,10 +4,10 @@ import { Step, SideNavProps } from "@/src/types";
 import { IconMap, IconBed, IconBag } from "@/src/components/ui";
 
 const BASE_NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
-  { id: "hotels", label: "Hôtels", Icon: IconBed },
-  { id: "routes-outbound", label: "Aller", Icon: IconMap },
-  { id: "routes-return", label: "Retour", Icon: IconMap },
-  { id: "bundle", label: "Bundle", Icon: IconBag },
+  { id: "hotels", label: "Mon logement", Icon: IconBed },
+  { id: "routes-outbound", label: "Trajet aller", Icon: IconMap },
+  { id: "routes-return", label: "Trajet retour", Icon: IconMap },
+  { id: "bundle", label: "Mon Bundle final", Icon: IconBag },
 ];
 
 export function SideNav({ step, go, canReach, venue, roundTrip }: SideNavProps) {

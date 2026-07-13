@@ -22,11 +22,10 @@ export function Header({ go }: HeaderProps) {
           height={40}
           loading="lazy"
           unoptimized
-          className="h-9 w-auto"
+          className="h-16 w-auto"
         />
       </button>
-      <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
-        {/*
+      {/* <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
           <a
             key="Événements"
             href="#"
@@ -51,14 +50,13 @@ export function Header({ go }: HeaderProps) {
           >
             Contact
           </a>
-        */}
-      </nav>
-      <button
+      </nav> */}
+      {/* <button
         onClick={startBundle}
         className="ml-auto shrink-0 rounded-[4px] bg-ember-ink px-[20px] py-[8px] text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
       >
         Créer mon bundle
-      </button>
+      </button> */}
     </header>
   );
 }

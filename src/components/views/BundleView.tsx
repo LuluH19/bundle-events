@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Location, RouteOption, Step, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
@@ -17,10 +18,44 @@ import {
   MODE_ICON,
 } from "@/src/components/ui";
 
+const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-mist">
+      <p className="text-sm text-slate-400">Chargement de la carte…</p>
+    </div>
+  ),
+});
+
+type Leg = {
+  option: RouteOption | null;
+  direction: "outbound" | "return";
+  title: string;
+  dep: Location | null;
+  arr: Location | null;
+  editStep: Step;
+};
+
 export function BundleView(props: BundleViewProps) {
   const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit } = props;
 
+  const legs: Leg[] = [
+    { option: outboundOption, direction: "outbound", title: "Trajet Aller", dep: departure, arr: venue, editStep: "routes-outbound" },
+    roundTrip
+      ? { option: returnOption, direction: "return", title: "Trajet Retour", dep: venue, arr: departure, editStep: "routes-return" }
+      : null,
+  ].filter(Boolean) as Leg[];
+
   const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
+  const fmtDateTime = (iso: string) =>
+    iso
+      ? new Date(iso.length <= 10 ? `${iso}T00:00` : iso).toLocaleString("fr-FR", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
   const transportCost = (outboundOption?.price || 0) + (roundTrip && returnOption ? returnOption.price : 0);
   const hotelCost = selectedHotel?.pricePerNight ? selectedHotel.pricePerNight * nights : 0;
   const total = transportCost + hotelCost;
@@ -32,7 +67,6 @@ export function BundleView(props: BundleViewProps) {
   if (selectedHotel) {
     if (selectedHotel.stars) hotelFacts.push({ icon: <IconStar size={18} />, label: `${selectedHotel.stars} étoiles` });
     if (selectedHotel.rating) hotelFacts.push({ icon: <IconCheck size={18} />, label: `Note ${selectedHotel.rating}` });
-    hotelFacts.push({ icon: <IconBed size={18} />, label: `${nights} nuit${nights > 1 ? "s" : ""}` });
     if (selectedHotel.pricePerNight)
       hotelFacts.push({ icon: <IconLeaf size={18} />, label: `€${selectedHotel.pricePerNight} / nuit` });
   }
@@ -63,12 +97,7 @@ export function BundleView(props: BundleViewProps) {
       <div className="grid grid-cols-12 gap-5 md:gap-6">
         {/* Transport */}
         <section className="col-span-12 flex flex-col gap-5 lg:col-span-7">
-          {(
-            [
-              { option: outboundOption, direction: "outbound", title: "Trajet Aller", dep: departure, arr: venue, editStep: "routes-outbound" as Step },
-              roundTrip ? { option: returnOption, direction: "return", title: "Trajet Retour", dep: venue, arr: departure, editStep: "routes-return" as Step } : null
-            ].filter(Boolean) as { option: RouteOption | null; direction: string; title: string; dep: Location | null; arr: Location | null; editStep: Step }[]
-          ).map((t, idx) => {
+          {legs.map((t, idx) => {
             const mode = t.option?.mode ?? null;
             const modeMeta = mode ? MODE_META[mode] : null;
             const ModeIcon = mode ? MODE_ICON[mode] : null;
@@ -153,43 +182,62 @@ export function BundleView(props: BundleViewProps) {
           })}
         </section>
 
-        {/* Destination route widget */}
-        <section className="col-span-12 flex flex-col justify-between rounded-4xl bg-mist p-6 ring-1 ring-line lg:col-span-5">
-          <div className="space-y-4">
-            <h3 className="flex items-center gap-2 text-[18px] font-bold text-ink">
-              <IconMap size={18} className="text-ember" /> Itinéraire
-            </h3>
-            <div className="relative h-56 overflow-hidden rounded-2xl bg-gradient-to-br from-navy to-ink">
-              <div className="absolute inset-0 bg-[radial-gradient(100%_100%_at_50%_0%,rgba(255,255,255,0.12),transparent_60%)]" />
-              <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="flex items-center gap-3 rounded-2xl border border-white/40 bg-white/90 p-4 shadow-xl backdrop-blur-xl">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ember text-white">
-                    <IconPin size={20} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-ink">{selectedHotel?.name ?? venue?.name ?? "Destination"}</p>
-                    <p className="truncate text-[12px] text-slate-500">
-                      {selectedHotel?.locationName || venue?.address || "—"}
-                    </p>
+        {/* Itineraries — one map per leg (aller + retour) */}
+        <section className="col-span-12 flex flex-col gap-5 lg:col-span-5">
+          {legs.map((leg, idx) => (
+            <div key={idx} className="flex flex-col justify-between rounded-4xl bg-mist p-6 ring-1 ring-line">
+              <div className="space-y-4">
+                <h3 className="flex items-center gap-2 text-[18px] font-bold text-ink">
+                  <IconMap size={18} className="text-ember" /> Itinéraire{roundTrip ? (leg.direction === "outbound" ? " aller" : " retour") : ""}
+                </h3>
+                <div className="relative h-56 overflow-hidden rounded-2xl bg-mist">
+                  {leg.option ? (
+                    <TravelMap
+                      departure={leg.dep}
+                      venue={leg.arr}
+                      hotel={null}
+                      route={leg.option.route}
+                      hotelResults={[]}
+                      selectedHotelId={null}
+                      onHotelSelect={() => {}}
+                      hotelRadius={0}
+                      showHotels={false}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-navy to-ink text-[13px] text-white/50">
+                      Aucun itinéraire sélectionné
+                    </div>
+                  )}
+                  {/* Destination label — constrained so it never overflows the map */}
+                  <div className="pointer-events-none absolute inset-x-4 bottom-4">
+                    <div className="flex max-w-full items-center gap-3 rounded-2xl border border-white/40 bg-white/90 p-4 shadow-xl backdrop-blur-xl">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ember text-white">
+                        <IconPin size={20} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-ink">{leg.arr?.name ?? "Destination"}</p>
+                        <p className="truncate text-[12px] text-slate-500">{leg.arr?.address ?? "—"}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="eyebrow text-slate-400">Temps de trajet</p>
+                  <p className="font-display text-[18px] font-extrabold text-ink">
+                    {leg.option ? formatDuration(leg.option.durationMin) : "—"}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="eyebrow text-slate-400">Empreinte CO₂</p>
+                  <p className="flex items-center gap-1.5 font-display text-[18px] font-extrabold text-ink">
+                    <IconLeaf size={16} className="text-[#0d5c63]" /> {leg.option ? MODE_META[leg.option.mode].co2 : "—"}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-white p-4">
-              <p className="eyebrow text-slate-400">Temps de trajet</p>
-              <p className="font-display text-[18px] font-extrabold text-ink">
-                {outboundOption ? formatDuration(outboundOption.durationMin) : "—"}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-white p-4">
-              <p className="eyebrow text-slate-400">Empreinte CO₂</p>
-              <p className="flex items-center gap-1.5 font-display text-[18px] font-extrabold text-ink">
-                <IconLeaf size={16} className="text-[#0d5c63]" /> {outboundOption ? MODE_META[outboundOption.mode].co2 : "—"}
-              </p>
-            </div>
-          </div>
+          ))}
         </section>
 
         {/* Hotel */}
@@ -237,6 +285,12 @@ export function BundleView(props: BundleViewProps) {
                           <span className="ml-2 text-[13px] font-medium text-slate-400">{selectedHotel.rating} / 5</span>
                         )}
                       </div>
+                      {selectedHotel.locationName && (
+                        <p className="flex items-center gap-1.5 text-[13px] text-slate-500">
+                          <IconPin size={14} className="shrink-0 text-ember" />
+                          <span className="truncate">{selectedHotel.locationName}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-display text-[26px] font-black text-ink md:text-[30px]">
@@ -244,6 +298,23 @@ export function BundleView(props: BundleViewProps) {
                       </p>
                       <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-slate-400">
                         {nights} nuit{nights > 1 ? "s" : ""} {selectedHotel.type ? `· ${selectedHotel.type}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-7 grid grid-cols-3 gap-4 border-t border-line pt-6">
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Aller</p>
+                      <p className="text-[15px] font-bold text-ink">{fmtDateTime(checkin)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Retour</p>
+                      <p className="text-[15px] font-bold text-ink">{fmtDateTime(checkout)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Durée</p>
+                      <p className="text-[15px] font-bold text-ink">
+                        {nights} nuit{nights > 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>

@@ -257,7 +257,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   // departure autocomplete
   useEffect(() => {
-    if (depSearch.length < 3) {
+    if (depSearch.trim().length < 1) {
+      setDepResults([]);
       return;
     }
     const t = setTimeout(async () => {
@@ -457,6 +458,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
               venueResults={venueResults}
               venueFocus={venueFocus}
               setVenueFocus={setVenueFocus}
+              roundTrip={roundTrip}
+              setRoundTrip={setRoundTrip}
               dateLabel={dateLabel}
               checkin={checkin}
               checkout={checkout}

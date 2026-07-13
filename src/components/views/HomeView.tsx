@@ -13,7 +13,12 @@ import {
   IconTicket,
 } from "@/src/components/ui";
 
-
+function formatDateTime(iso: string): string {
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00` : iso);
+  const date = d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${date} • ${time}`;
+}
 
 export function HomeView(props: HomeViewProps) {
   const {
@@ -33,6 +38,8 @@ export function HomeView(props: HomeViewProps) {
     venueResults,
     venueFocus,
     setVenueFocus,
+    roundTrip,
+    setRoundTrip,
     checkin,
     checkout,
     setCheckin,
@@ -67,11 +74,11 @@ export function HomeView(props: HomeViewProps) {
         <div
           id="search-card"
           className="relative mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-xl bg-white/85 p-4 shadow-[0_24px_48px_-12px_rgba(0,11,58,0.45)] backdrop-blur-2xl md:mt-12 md:p-6">
-          <div className="flex flex-col gap-1 md:flex-row md:items-center">
-          <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
-            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
+          <div className="flex flex-col gap-3 md:flex-row">
+          <div className="relative w-full flex-1 text-left">
+            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
             {departure ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
                 <Image
                   src="/cible.svg"
                   alt=""
@@ -92,7 +99,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
                   <Image
                     src="/cible.svg"
                     alt=""
@@ -111,12 +118,12 @@ export function HomeView(props: HomeViewProps) {
                     onChange={(e) => setDepSearch(e.target.value)}
                     onFocus={() => setDepFocus(true)}
                     onBlur={() => setTimeout(() => setDepFocus(false), 150)}
-                    placeholder="Ville actuelle"
+                    placeholder="Lieu du départ"
                     className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
                   />
                 </div>
                 {depFocus && depResults.length > 0 && (
-                  <ul className="absolute left-3 right-3 z-20 mt-3 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line md:left-5 md:right-5">
+                  <ul className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
                     {depResults.map((r, i) => (
                       <li key={i}>
                         <button
@@ -134,10 +141,10 @@ export function HomeView(props: HomeViewProps) {
             )}
           </div>
 
-          <div className="relative w-full flex-1 px-4 py-2 text-left md:px-6">
-            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
+          <div className="relative w-full flex-1 text-left">
+            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
             {venue ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
                 <Image
                   src="/carte.svg"
                   alt=""
@@ -161,7 +168,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
                   <Image
                     src="/carte.svg"
                     alt=""
@@ -180,12 +187,12 @@ export function HomeView(props: HomeViewProps) {
                     onChange={(e) => setVenueSearch(e.target.value)}
                     onFocus={() => setVenueFocus(true)}
                     onBlur={() => setTimeout(() => setVenueFocus(false), 150)}
-                    placeholder="Votre événement"
+                    placeholder="Lieu de l'évènement"
                     className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
                   />
                 </div>
                 {venueFocus && venueResults.length > 0 && (
-                  <ul className="absolute left-3 right-3 z-20 mt-3 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line md:left-5 md:right-5">
+                  <ul className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
                     {venueResults.map((v) => (
                       <li key={v.id}>
                         <button
@@ -206,12 +213,50 @@ export function HomeView(props: HomeViewProps) {
           </div>
           </div>
 
+          <div role="radiogroup" className="flex h-14 w-full overflow-hidden rounded-lg ring-1 ring-inset ring-line">
+            {[
+              { value: true, label: "Aller-retour" },
+              { value: false, label: "Aller simple" },
+            ].map((opt, i) => {
+              const active = roundTrip === opt.value;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => {
+                    setRoundTrip(opt.value);
+                    if (!opt.value) setCheckout("");
+                  }}
+                  className={`group relative flex h-full flex-1 items-center justify-center overflow-hidden px-5 text-[13px] font-bold ring-inset transition-all duration-300 ${
+                    i > 0 ? "rounded-r-lg border-l border-line" : "rounded-l-lg"
+                  } ${
+                    active
+                      ? "bg-navy-700 text-white ring-0 ring-white/50 hover:bg-navy-800 hover:ring-2"
+                      : "bg-white text-slate-600 ring-0 ring-navy-700/40 hover:bg-mist hover:text-ink hover:ring-2"
+                  }`}
+                >
+                  <span
+                    aria-hidden
+                    className={`pointer-events-none absolute inset-0 -translate-x-[120%] skew-x-[-20deg] transition-transform duration-[1100ms] ease-out group-hover:translate-x-[120%] ${
+                      active
+                        ? "bg-linear-to-r from-transparent via-white/25 to-transparent"
+                        : "bg-linear-to-r from-transparent via-navy-700/10 to-transparent"
+                    }`}
+                  />
+                  <span className="relative transition-transform duration-300 ease-out group-hover:scale-110">
+                    {opt.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-
-          <div className="flex flex-col gap-1 md:flex-row md:items-center">
-          <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
-            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure aller</label>
-            <div className="flex items-center gap-2.5 whitespace-nowrap">
+          <div className="flex flex-col gap-3 md:flex-row">
+          <div className="w-full flex-1 text-left">
+            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Aller</label>
+            <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
               <Image
                 src="/calendrier.svg"
                 alt=""
@@ -225,6 +270,9 @@ export function HomeView(props: HomeViewProps) {
                 unoptimized
                 className="shrink-0"
               />
+              <span className={`flex-1 truncate text-[16px] font-medium ${checkin ? "text-ink" : "text-slate-400"}`}>
+                {checkin ? formatDateTime(checkin) : "sam. 11 juil. • 23:00"}
+              </span>
               <input
                 type="datetime-local"
                 value={checkin}
@@ -232,54 +280,54 @@ export function HomeView(props: HomeViewProps) {
                 max={checkout || undefined}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
-                className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
-                  checkin ? "text-ink" : "text-slate-400"
-                }`}
+                aria-label="Date et heure aller"
+                className="absolute inset-0 cursor-pointer opacity-0"
               />
             </div>
           </div>
 
-
-            <div className="w-full flex-1 px-4 py-2 text-left md:px-6">
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Date &amp; heure retour</label>
-              <div className="flex items-center gap-2.5 whitespace-nowrap">
-                <Image
-                  src="/calendrier.svg"
-                  alt=""
-                  width={20}
-                  height={20}
-                  quality={75}
-                  loading="lazy"
-                  preload={false}
-                  decoding="async"
-                  placeholder="empty"
-                  unoptimized
-                  className="shrink-0"
-                />
-                <input
-                  type="datetime-local"
-                  value={checkout}
-                  min={checkin || today}
-                  onChange={(e) => setCheckout(e.target.value)}
-                  onClick={(e) => e.currentTarget.showPicker?.()}
-                  className={`min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none [&::-webkit-calendar-picker-indicator]:hidden ${
-                    checkout ? "text-ink" : "text-slate-400"
-                  }`}
-                />
-              </div>
+          {roundTrip && (
+          <div className="w-full flex-1 text-left">
+            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Retour</label>
+            <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
+              <Image
+                src="/calendrier.svg"
+                alt=""
+                width={20}
+                height={20}
+                quality={75}
+                loading="lazy"
+                preload={false}
+                decoding="async"
+                placeholder="empty"
+                unoptimized
+                className="shrink-0"
+              />
+              <span className={`flex-1 truncate text-[16px] font-medium ${checkout ? "text-ink" : "text-slate-400"}`}>
+                {checkout ? formatDateTime(checkout) : "sam. 11 juil. • 23:00"}
+              </span>
+              <input
+                type="datetime-local"
+                value={checkout}
+                min={checkin || today}
+                onChange={(e) => setCheckout(e.target.value)}
+                onClick={(e) => e.currentTarget.showPicker?.()}
+                aria-label="Date et heure retour"
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
             </div>
           </div>
-
-          <div className="px-4 md:px-6">
-            <button
-              onClick={onCompose}
-              disabled={!ready}
-              className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-ember-ink px-8 text-[15px] font-bold text-white shadow-lg shadow-ember-ink/25 transition-transform hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40">
-              <IconSearch size={20} /> Créer mon bundle
-            </button>
+          )}
           </div>
 
-          <p className="px-4 text-[13px] text-slate-500 md:px-6 md:text-center">
+          <button
+            onClick={onCompose}
+            disabled={!ready}
+            className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-ember-ink px-8 text-[15px] font-bold text-white shadow-lg shadow-ember-ink/25 transition-transform hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40">
+            <IconSearch size={20} /> Créer mon bundle
+          </button>
+
+          <p className="px-3 text-[13px] text-slate-500 md:text-center">
             <IconLeaf size={14} className="mr-1.5 inline align-text-bottom text-[#0d5c63]" />
             Empreinte carbone affichée pour chaque trajet.
           </p>
@@ -316,7 +364,7 @@ export function HomeView(props: HomeViewProps) {
       </section>
 
       <footer className="border-t border-line px-5 py-8 md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[11px] tracking-widest text-slate-400 sm:flex-row">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[13px] font-medium tracking-widest text-slate-600 sm:flex-row">
           <span>© 2026 BUNDLE EVENTS</span>
           <div className="flex flex-col items-center gap-2 uppercase sm:flex-row sm:gap-4">
             {[

@@ -6,7 +6,7 @@ export const MODE_META: Record<
 > = {
   train: { label: "Train", provider: "SNCF", co2: "Bas" },
   plane: { label: "Avion", provider: "Air France", co2: "Élevé" },
-  car: { label: "Voiture", provider: "Itinéraire routier", co2: "Élevé" },
+  car: { label: "Voiture personnelle", provider: "Itinéraire routier", co2: "Élevé" },
   bus: { label: "Bus", provider: "Autocar longue distance", co2: "Bas" },
   walking: { label: "À pied", provider: "Marche", co2: "Bas" },
 };
