@@ -47,6 +47,15 @@ export function BundleView(props: BundleViewProps) {
   ].filter(Boolean) as Leg[];
 
   const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
+  const fmtDateTime = (iso: string) =>
+    iso
+      ? new Date(iso.length <= 10 ? `${iso}T00:00` : iso).toLocaleString("fr-FR", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
   const transportCost = (outboundOption?.price || 0) + (roundTrip && returnOption ? returnOption.price : 0);
   const hotelCost = selectedHotel?.pricePerNight ? selectedHotel.pricePerNight * nights : 0;
   const total = transportCost + hotelCost;
@@ -58,7 +67,6 @@ export function BundleView(props: BundleViewProps) {
   if (selectedHotel) {
     if (selectedHotel.stars) hotelFacts.push({ icon: <IconStar size={18} />, label: `${selectedHotel.stars} étoiles` });
     if (selectedHotel.rating) hotelFacts.push({ icon: <IconCheck size={18} />, label: `Note ${selectedHotel.rating}` });
-    hotelFacts.push({ icon: <IconBed size={18} />, label: `${nights} nuit${nights > 1 ? "s" : ""}` });
     if (selectedHotel.pricePerNight)
       hotelFacts.push({ icon: <IconLeaf size={18} />, label: `€${selectedHotel.pricePerNight} / nuit` });
   }
@@ -277,6 +285,12 @@ export function BundleView(props: BundleViewProps) {
                           <span className="ml-2 text-[13px] font-medium text-slate-400">{selectedHotel.rating} / 5</span>
                         )}
                       </div>
+                      {selectedHotel.locationName && (
+                        <p className="flex items-center gap-1.5 text-[13px] text-slate-500">
+                          <IconPin size={14} className="shrink-0 text-ember" />
+                          <span className="truncate">{selectedHotel.locationName}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-display text-[26px] font-black text-ink md:text-[30px]">
@@ -284,6 +298,23 @@ export function BundleView(props: BundleViewProps) {
                       </p>
                       <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-slate-400">
                         {nights} nuit{nights > 1 ? "s" : ""} {selectedHotel.type ? `· ${selectedHotel.type}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-7 grid grid-cols-3 gap-4 border-t border-line pt-6">
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Aller</p>
+                      <p className="text-[15px] font-bold text-ink">{fmtDateTime(checkin)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Retour</p>
+                      <p className="text-[15px] font-bold text-ink">{fmtDateTime(checkout)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Durée</p>
+                      <p className="text-[15px] font-bold text-ink">
+                        {nights} nuit{nights > 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
