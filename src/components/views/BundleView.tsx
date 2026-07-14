@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
-import { Location, RouteOption, HotelMapItem, Step } from "@/src/types";
+import dynamic from "next/dynamic";
+import { Location, RouteOption, Step, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
 import {
@@ -17,41 +17,56 @@ import {
   IconStar,
   MODE_ICON,
 } from "@/src/components/ui";
-import { SaveBundleModal } from "@/src/components/SaveBundleModal";
 
-interface BundleViewProps {
-  /** Present once the bundle is persisted; enables "save by email". */
-  bundleId?: string;
-  departure: Location | null;
-  venue: Location | null;
-  dateLabel: string;
-  selectedOption: RouteOption | null;
-  selectedHotel: HotelMapItem | null;
-  checkin: string;
-  checkout: string;
-  onEdit: (s: Step) => void;
-}
+const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-mist">
+      <p className="text-sm text-slate-400">Chargement de la carte…</p>
+    </div>
+  ),
+});
+
+type Leg = {
+  option: RouteOption | null;
+  direction: "outbound" | "return";
+  title: string;
+  dep: Location | null;
+  arr: Location | null;
+  editStep: Step;
+};
 
 export function BundleView(props: BundleViewProps) {
-  const { bundleId, departure, venue, dateLabel, selectedOption, selectedHotel, checkin, checkout, onEdit } = props;
-  const [saveOpen, setSaveOpen] = useState(false);
+  const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit } = props;
+
+  const legs: Leg[] = [
+    { option: outboundOption, direction: "outbound", title: "Trajet Aller", dep: departure, arr: venue, editStep: "routes-outbound" },
+    roundTrip
+      ? { option: returnOption, direction: "return", title: "Trajet Retour", dep: venue, arr: departure, editStep: "routes-return" }
+      : null,
+  ].filter(Boolean) as Leg[];
 
   const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
-  const transportCost = selectedOption ? selectedOption.price : 0;
+  const fmtDateTime = (iso: string) =>
+    iso
+      ? new Date(iso.length <= 10 ? `${iso}T00:00` : iso).toLocaleString("fr-FR", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
+  const transportCost = (outboundOption?.price || 0) + (roundTrip && returnOption ? returnOption.price : 0);
   const hotelCost = selectedHotel?.pricePerNight ? selectedHotel.pricePerNight * nights : 0;
   const total = transportCost + hotelCost;
 
-  const mode = selectedOption?.mode ?? null;
-  const modeMeta = mode ? MODE_META[mode] : null;
-  const ModeIcon = mode ? MODE_ICON[mode] : null;
-  const bundleRef = `BE-${(total * 7 + 100000).toString().slice(0, 6)}-FR`;
+  const bundleId = `BE-${(total * 7 + 100000).toString().slice(0, 6)}-FR`;
   const stars = selectedHotel?.stars ?? (selectedHotel?.rating ? Math.round(selectedHotel.rating) : 0);
 
   const hotelFacts: { icon: React.ReactNode; label: string }[] = [];
   if (selectedHotel) {
     if (selectedHotel.stars) hotelFacts.push({ icon: <IconStar size={18} />, label: `${selectedHotel.stars} étoiles` });
     if (selectedHotel.rating) hotelFacts.push({ icon: <IconCheck size={18} />, label: `Note ${selectedHotel.rating}` });
-    hotelFacts.push({ icon: <IconBed size={18} />, label: `${nights} nuit${nights > 1 ? "s" : ""}` });
     if (selectedHotel.pricePerNight)
       hotelFacts.push({ icon: <IconLeaf size={18} />, label: `€${selectedHotel.pricePerNight} / nuit` });
   }
@@ -81,98 +96,152 @@ export function BundleView(props: BundleViewProps) {
       {/* Bento grid */}
       <div className="grid grid-cols-12 gap-5 md:gap-6">
         {/* Transport */}
-        <section className="col-span-12 flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line lg:col-span-7">
-          <div className="relative h-44 overflow-hidden bg-gradient-to-br from-navy to-ink">
-            <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_85%_-10%,rgba(249,108,26,0.35),transparent_55%)]" />
-            <div className="absolute bottom-6 left-6 flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-md">
-                {ModeIcon ? <ModeIcon size={22} /> : <IconMap size={22} />}
-              </span>
-              <div>
-                <h2 className="font-display text-[22px] font-bold leading-tight text-white">
-                  {modeMeta ? modeMeta.label : "Trajet"}
-                </h2>
-                {modeMeta && <p className="text-[13px] text-white/60">{modeMeta.provider}</p>}
-              </div>
-            </div>
-          </div>
+        <section className="col-span-12 flex flex-col gap-5 lg:col-span-7">
+          {legs.map((t, idx) => {
+            const mode = t.option?.mode ?? null;
+            const modeMeta = mode ? MODE_META[mode] : null;
+            const ModeIcon = mode ? MODE_ICON[mode] : null;
 
-          {selectedOption ? (
-            <div className="flex flex-grow flex-col p-7 md:p-8">
-              <div className="mb-7 grid grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <p className="eyebrow text-slate-400">Départ</p>
-                  <p className="truncate text-[17px] font-bold text-ink">{departure?.name ?? "—"}</p>
-                  <p className="text-[13px] text-slate-500">{dateLabel}</p>
+            return (
+              <div key={idx} className="flex flex-col overflow-hidden rounded-4xl bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line">
+                <div className="relative h-44 overflow-hidden bg-gradient-to-br from-navy to-ink">
+                  <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_85%_-10%,rgba(249,108,26,0.35),transparent_55%)]" />
+                  <div className="absolute bottom-6 left-6 flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-md">
+                      {ModeIcon ? <ModeIcon size={22} /> : <IconMap size={22} />}
+                    </span>
+                    <div>
+                      <h2 className="font-display text-[22px] font-bold leading-tight text-white">
+                        {t.title}
+                        {t.option ? (() => {
+                          const counts: Record<string, number> = { plane: 0, train: 0, bus: 0, car: 0 };
+                          t.option.route.segments.forEach(seg => {
+                            if (counts[seg.mode] !== undefined) counts[seg.mode]++;
+                          });
+                          
+                          const parts: string[] = [];
+                          const order = ["plane", "train", "bus", "car"];
+                          
+                          order.forEach(m => {
+                            const c = counts[m];
+                            if (c > 0) {
+                              let name = MODE_META[m as keyof typeof MODE_META].label;
+                              if (c === 1) {
+                                parts.push(name);
+                              } else {
+                                if (name === "Train") name = "Trains";
+                                if (name === "Avion") name = "Avions";
+                                if (name === "Voiture") name = "Voitures";
+                                parts.push(`${c} ${name}`);
+                              }
+                            }
+                          });
+                          return parts.length > 0 ? ` · ${parts.join(" + ")}` : (modeMeta ? ` · ${modeMeta.label}` : "");
+                        })() : ""}
+                      </h2>
+                      {modeMeta && <p className="text-[13px] text-white/60">{modeMeta.provider}</p>}
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="eyebrow text-slate-400">Arrivée</p>
-                  <p className="truncate text-[17px] font-bold text-ink">{venue?.name ?? "—"}</p>
-                  <p className="text-[13px] text-slate-500">
-                    {formatDuration(selectedOption.durationMin)} · {formatDistance(selectedOption.distanceKm)}
-                  </p>
-                </div>
+
+                {t.option ? (
+                  <div className="flex grow flex-col p-7 md:p-8">
+                    <div className="mb-7 grid grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <p className="eyebrow text-slate-400">Départ</p>
+                        <p className="truncate text-[17px] font-bold text-ink">{t.dep?.name ?? "—"}</p>
+                        <p className="text-[13px] text-slate-500">{t.direction === "outbound" ? dateLabel : ""}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="eyebrow text-slate-400">Arrivée</p>
+                        <p className="truncate text-[17px] font-bold text-ink">{t.arr?.name ?? "—"}</p>
+                        <p className="text-[13px] text-slate-500">
+                          {formatDuration(t.option.durationMin)} · {formatDistance(t.option.distanceKm)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-auto flex items-center justify-between border-t border-line pt-6">
+                      <div>
+                        <p className="font-display text-[24px] font-extrabold text-ink">€{t.option.price.toLocaleString("fr-FR")}</p>
+                        <p className="text-[12px] text-slate-400">Prix du trajet estimé</p>
+                      </div>
+                      <button
+                        onClick={() => onEdit(t.editStep)}
+                        className="flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-navy-700"
+                      >
+                        Modifier <span className="hidden sm:inline">le trajet</span>
+                        <IconArrow size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyBlock label="Aucun trajet sélectionné" cta="Choisir un trajet" onClick={() => onEdit(t.editStep)} />
+                )}
               </div>
-              <div className="mt-auto flex items-center justify-between border-t border-line pt-6">
-                <div>
-                  <p className="font-display text-[24px] font-extrabold text-ink">€{transportCost.toLocaleString("fr-FR")}</p>
-                  <p className="text-[12px] text-slate-400">Prix du trajet estimé</p>
-                </div>
-                <button
-                  onClick={() => onEdit("routes")}
-                  className="flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-navy-700"
-                >
-                  Modifier le trajet
-                  <IconArrow size={15} />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <EmptyBlock label="Aucun trajet sélectionné" cta="Choisir un trajet" onClick={() => onEdit("routes")} />
-          )}
+            );
+          })}
         </section>
 
-        {/* Destination route widget */}
-        <section className="col-span-12 flex flex-col justify-between rounded-[2rem] bg-mist p-6 ring-1 ring-line lg:col-span-5">
-          <div className="space-y-4">
-            <h3 className="flex items-center gap-2 text-[18px] font-bold text-ink">
-              <IconMap size={18} className="text-ember" /> Itinéraire
-            </h3>
-            <div className="relative h-56 overflow-hidden rounded-2xl bg-gradient-to-br from-navy to-ink">
-              <div className="absolute inset-0 bg-[radial-gradient(100%_100%_at_50%_0%,rgba(255,255,255,0.12),transparent_60%)]" />
-              <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="flex items-center gap-3 rounded-2xl border border-white/40 bg-white/90 p-4 shadow-xl backdrop-blur-xl">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ember text-white">
-                    <IconPin size={20} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-ink">{selectedHotel?.name ?? venue?.name ?? "Destination"}</p>
-                    <p className="truncate text-[12px] text-slate-500">
-                      {selectedHotel?.locationName || venue?.address || "—"}
-                    </p>
+        {/* Itineraries — one map per leg (aller + retour) */}
+        <section className="col-span-12 flex flex-col gap-5 lg:col-span-5">
+          {legs.map((leg, idx) => (
+            <div key={idx} className="flex flex-col justify-between rounded-4xl bg-mist p-6 ring-1 ring-line">
+              <div className="space-y-4">
+                <h3 className="flex items-center gap-2 text-[18px] font-bold text-ink">
+                  <IconMap size={18} className="text-ember" /> Itinéraire{roundTrip ? (leg.direction === "outbound" ? " aller" : " retour") : ""}
+                </h3>
+                <div className="relative h-56 overflow-hidden rounded-2xl bg-mist">
+                  {leg.option ? (
+                    <TravelMap
+                      departure={leg.dep}
+                      venue={leg.arr}
+                      hotel={null}
+                      route={leg.option.route}
+                      hotelResults={[]}
+                      selectedHotelId={null}
+                      onHotelSelect={() => {}}
+                      hotelRadius={0}
+                      showHotels={false}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-navy to-ink text-[13px] text-white/50">
+                      Aucun itinéraire sélectionné
+                    </div>
+                  )}
+                  {/* Destination label — constrained so it never overflows the map */}
+                  <div className="pointer-events-none absolute inset-x-4 bottom-4">
+                    <div className="flex max-w-full items-center gap-3 rounded-2xl border border-white/40 bg-white/90 p-4 shadow-xl backdrop-blur-xl">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ember text-white">
+                        <IconPin size={20} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-ink">{leg.arr?.name ?? "Destination"}</p>
+                        <p className="truncate text-[12px] text-slate-500">{leg.arr?.address ?? "—"}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="eyebrow text-slate-400">Temps de trajet</p>
+                  <p className="font-display text-[18px] font-extrabold text-ink">
+                    {leg.option ? formatDuration(leg.option.durationMin) : "—"}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white p-4">
+                  <p className="eyebrow text-slate-400">Empreinte CO₂</p>
+                  <p className="flex items-center gap-1.5 font-display text-[18px] font-extrabold text-ink">
+                    <IconLeaf size={16} className="text-[#0d5c63]" /> {leg.option ? MODE_META[leg.option.mode].co2 : "—"}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-white p-4">
-              <p className="eyebrow text-slate-400">Temps de trajet</p>
-              <p className="font-display text-[18px] font-extrabold text-ink">
-                {selectedOption ? formatDuration(selectedOption.durationMin) : "—"}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-white p-4">
-              <p className="eyebrow text-slate-400">Empreinte CO₂</p>
-              <p className="flex items-center gap-1.5 font-display text-[18px] font-extrabold text-ink">
-                <IconLeaf size={16} className="text-[#0d5c63]" /> {modeMeta ? modeMeta.co2 : "—"}
-              </p>
-            </div>
-          </div>
+          ))}
         </section>
 
         {/* Hotel */}
-        <section className="col-span-12 flex flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line md:flex-row">
+        <section className="col-span-12 flex flex-col overflow-hidden rounded-4xl bg-white shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line md:flex-row">
           <div className="relative h-64 w-full shrink-0 overflow-hidden bg-gradient-to-br from-navy to-ink md:h-auto md:w-2/5">
             {selectedHotel?.photo ? (
               <Image
@@ -193,7 +262,7 @@ export function BundleView(props: BundleViewProps) {
               </div>
             )}
             <div className="absolute left-6 top-6">
-              <span className="rounded-full bg-ember px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-white shadow-lg">
+              <span className="rounded-full bg-ember px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white shadow-lg">
                 Hébergement
               </span>
             </div>
@@ -216,6 +285,12 @@ export function BundleView(props: BundleViewProps) {
                           <span className="ml-2 text-[13px] font-medium text-slate-400">{selectedHotel.rating} / 5</span>
                         )}
                       </div>
+                      {selectedHotel.locationName && (
+                        <p className="flex items-center gap-1.5 text-[13px] text-slate-500">
+                          <IconPin size={14} className="shrink-0 text-ember" />
+                          <span className="truncate">{selectedHotel.locationName}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-display text-[26px] font-black text-ink md:text-[30px]">
@@ -223,6 +298,23 @@ export function BundleView(props: BundleViewProps) {
                       </p>
                       <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-slate-400">
                         {nights} nuit{nights > 1 ? "s" : ""} {selectedHotel.type ? `· ${selectedHotel.type}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-7 grid grid-cols-3 gap-4 border-t border-line pt-6">
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Aller</p>
+                      <p className="text-[15px] font-bold text-ink">{fmtDateTime(checkin)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Retour</p>
+                      <p className="text-[15px] font-bold text-ink">{fmtDateTime(checkout)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="eyebrow text-slate-400">Durée</p>
+                      <p className="text-[15px] font-bold text-ink">
+                        {nights} nuit{nights > 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
@@ -271,44 +363,35 @@ export function BundleView(props: BundleViewProps) {
         {/* Logistics */}
         <section className="col-span-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
           <LogisticsCard icon={<IconMap size={20} />} title="Fenêtre de voyage" value={dateLabel} hint={`${nights} jour${nights > 1 ? "s" : ""} sur place`} />
-          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleRef}`} />
+          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleId}`} />
           <LogisticsCard
             icon={<IconLeaf size={20} />}
             title="Empreinte carbone"
-            value={modeMeta ? `Impact ${modeMeta.co2.toLowerCase()}` : "—"}
-            hint={modeMeta ? `Via ${modeMeta.provider}` : "Trajet non défini"}
+            value={outboundOption ? `Impact ${MODE_META[outboundOption.mode].co2.toLowerCase()}` : "—"}
+            hint={outboundOption ? `Via ${MODE_META[outboundOption.mode].provider}` : "Trajet non défini"}
           />
         </section>
       </div>
 
       {/* Final action */}
       <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleRef}</p>
+        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleId}</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button kind="ghost" onClick={() => onEdit("home")} className="sm:w-auto">
             Modifier
           </Button>
-          {bundleId && (
-            <Button kind="dark" onClick={() => setSaveOpen(true)} className="sm:w-auto">
-              Sauvegarder mon bundle
-            </Button>
-          )}
-          <Button kind="primary" disabled={!selectedOption || !selectedHotel}>
+          <Button kind="primary" disabled={!selectedHotel}>
             Réserver mon bundle <IconArrow size={16} />
           </Button>
         </div>
       </div>
-
-      {bundleId && saveOpen && (
-        <SaveBundleModal bundleId={bundleId} onClose={() => setSaveOpen(false)} />
-      )}
     </div>
   );
 }
 
 function EmptyBlock({ label, cta, onClick }: { label: string; cta: string; onClick: () => void }) {
   return (
-    <div className="flex flex-grow flex-col items-center justify-center gap-3 p-10 text-center">
+    <div className="flex grow flex-col items-center justify-center gap-3 p-10 text-center">
       <p className="text-[14px] text-slate-400">{label}</p>
       <button
         onClick={onClick}
@@ -333,7 +416,7 @@ function LogisticsCard({
   hint: string;
 }) {
   return (
-    <div className="rounded-[1.5rem] bg-mist p-6 ring-1 ring-line">
+    <div className="rounded-3xl bg-mist p-6 ring-1 ring-line">
       <div className="mb-4 flex items-center gap-3">
         <span className="text-ink">{icon}</span>
         <h4 className="font-bold text-ink">{title}</h4>

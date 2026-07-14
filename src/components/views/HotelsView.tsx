@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Location, HotelMapItem } from "@/src/types";
+import { HotelsViewProps } from "@/src/types";
 import { getHotelDistance } from "@/src/utils/hotel";
 import { formatDistance } from "@/src/utils/format";
 import {
@@ -28,21 +28,7 @@ const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
   ),
 });
 
-interface HotelsViewProps {
-  venue: Location | null;
-  hotelRadius: number;
-  setHotelRadius: (n: number) => void;
-  hotelResults: HotelMapItem[];
-  hotelLoading: boolean;
-  hotelError: string;
-  selectedHotel: HotelMapItem | null;
-  onSelectHotel: (h: HotelMapItem | null) => void;
-  departure: Location | null;
-  hotelLocation: Location | null;
-  mobileMapOpen: boolean;
-  setMobileMapOpen: (v: boolean) => void;
-  onContinue: () => void;
-}
+
 
 export function HotelsView(props: HotelsViewProps) {
   const {
@@ -106,12 +92,12 @@ export function HotelsView(props: HotelsViewProps) {
   );
 
   return (
-    <div className="flex flex-col md:h-[calc(100dvh-65px)] md:flex-row">
+    <div className="flex flex-col flex-1 min-h-0 md:h-[calc(100dvh-65px)] md:flex-row">
       {/* List */}
-      <aside className="scroll-slim w-full overflow-y-auto bg-page px-5 pt-5 pb-28 md:w-[560px] md:p-7">
+      <aside className="scroll-slim flex flex-col flex-1 w-full overflow-y-auto bg-page px-5 pt-5 pb-28 md:w-[560px] md:p-7">
         <Eyebrow className="mb-2">Hébergements disponibles</Eyebrow>
         <h2 className="font-display text-[30px] font-extrabold tracking-tight text-ink md:text-[40px]">
-          Votre base près de <span className="text-ember">{venue.name}</span>.
+          Votre logement près de <span className="text-ember">{venue.name}</span>.
         </h2>
         <p className="mt-2 text-[14px] text-slate-500">{venue.address || venue.name}</p>
 
@@ -262,9 +248,9 @@ export function HotelsView(props: HotelsViewProps) {
           )}
         </div>
 
-        <div className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 px-5 py-3 md:sticky md:inset-x-auto md:bottom-0 md:z-auto md:mt-6 md:border-0 md:px-0 md:py-1 md:pt-2">
+        <div className="mt-auto px-5 py-3 md:sticky md:inset-x-auto md:bottom-0 md:z-auto md:mt-6 md:border-0 md:px-0 md:py-1 md:pt-2">
           <Button onClick={onContinue} disabled={!selectedHotel} className="w-full">
-            {selectedHotel ? "Voir mon bundle" : "Choisissez un hôtel"} <IconArrow size={16} />
+            {selectedHotel ? "Voir mes transports" : "Choisissez un hôtel"} <IconArrow size={16} />
           </Button>
         </div>
       </aside>

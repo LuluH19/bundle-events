@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Location, TransportMode, RouteResult, RouteOption, TrainJourney, FlightInfo } from "@/src/types";
+import { RoutesViewProps } from "@/src/types";
 import { MODE_META } from "@/src/utils/constants/transport";
 import { formatDuration, formatDistance, timeOf } from "@/src/utils/format";
 import { Button, Chip, Eyebrow, MODE_ICON, IconArrow } from "@/src/components/ui";
@@ -15,28 +15,13 @@ const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
   ),
 });
 
-interface RoutesViewProps {
-  departure: Location | null;
-  venue: Location | null;
-  dateLabel: string;
-  options: RouteOption[];
-  loading: boolean;
-  selectedMode: TransportMode | null;
-  onSelectMode: (m: TransportMode) => void;
-  trainJourneys: TrainJourney[];
-  flights: FlightInfo[];
-  journeyRoute: RouteResult | null;
-  onContinue: () => void;
-}
-
 export function RoutesView(props: RoutesViewProps) {
   const {
     departure,
     venue,
-    dateLabel,
     options,
     loading,
-    selectedMode,
+    selectedModeId,
     onSelectMode,
     trainJourneys,
     flights,
@@ -46,7 +31,7 @@ export function RoutesView(props: RoutesViewProps) {
   const fastest = options[0]?.mode;
 
   return (
-    <div className="flex flex-col md:h-[calc(100dvh-65px)] md:flex-row-reverse">
+    <div className="flex flex-col flex-1 min-h-0 md:h-[calc(100dvh-65px)] md:flex-row-reverse">
       {/* Map */}
       <div className="h-[300px] shrink-0 md:h-full md:flex-1">
         <TravelMap
@@ -63,7 +48,7 @@ export function RoutesView(props: RoutesViewProps) {
       </div>
 
       {/* List */}
-      <aside className="scroll-slim w-full overflow-y-auto border-line bg-page p-5 md:w-[460px] md:border-r md:p-7">
+      <aside className="scroll-slim flex flex-col flex-1 w-full overflow-y-auto border-line bg-page p-5 md:w-[460px] md:border-r md:p-7">
         <Eyebrow className="mb-2">Étape 02 · Transport</Eyebrow>
         <h2 className="font-display text-[30px] font-extrabold leading-tight tracking-tight text-ink md:text-[40px]">
           {options.length || loading ? (
@@ -74,10 +59,6 @@ export function RoutesView(props: RoutesViewProps) {
             "Choisissez votre trajet."
           )}
         </h2>
-        <p className="mt-2 text-[14px] text-slate-500">
-          {departure?.name} <span className="text-slate-400">→</span> {venue?.name} · {dateLabel}
-        </p>
-
         <div className="mt-6 flex flex-col gap-3">
           {loading &&
             [0, 1, 2].map((i) => <div key={i} className="h-[92px] animate-pulse rounded-2xl bg-mist" />)}
@@ -86,33 +67,125 @@ export function RoutesView(props: RoutesViewProps) {
             options.map((o) => {
               const Icon = MODE_ICON[o.mode];
               const meta = MODE_META[o.mode];
-              const selected = o.mode === selectedMode;
+              const selected = o.id === selectedModeId;
+              
               return (
                 <button
-                  key={o.mode}
-                  onClick={() => onSelectMode(o.mode)}
-                  className={`grid grid-cols-[48px_1fr_auto] items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
+                  key={o.id}
+                  onClick={() => onSelectMode(o.id)}
+                  className={`flex flex-col items-stretch gap-0 rounded-2xl border p-4 text-left transition-all ${
                     selected ? "border-ink bg-ink text-white" : "border-line bg-white hover:border-ember/50"
                   }`}
                 >
-                  <span className={`flex h-12 w-12 items-center justify-center rounded-xl ${selected ? "bg-ember text-white" : "bg-mist text-ink"}`}>
-                    <Icon size={22} />
-                  </span>
-                  <span>
-                    <span className="flex items-center gap-2">
-                      <span className="text-[15px] font-semibold">{meta.label}</span>
-                      {o.mode === fastest && <Chip className={selected ? "bg-ember text-white" : ""}>Le + rapide</Chip>}
+                  <div className="grid w-full grid-cols-[48px_1fr_auto] items-center gap-3">
+                    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-ember text-white" : "bg-mist text-ink"}`}>
+                      <Icon size={22} />
                     </span>
-                    <span className={`mt-0.5 block font-mono text-[11px] tracking-wide ${selected ? "text-white/60" : "text-slate-400"}`}>
-                      {formatDuration(o.durationMin).toUpperCase()} · {formatDistance(o.distanceKm)} · CO₂ {meta.co2.toUpperCase()}
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate text-[15px] font-semibold">
+                          {(() => {
+                            const counts: Record<string, number> = { plane: 0, train: 0, bus: 0, car: 0 };
+                            o.route.segments.forEach(seg => {
+                              if (counts[seg.mode] !== undefined) counts[seg.mode]++;
+                            });
+                            
+                            const parts: string[] = [];
+                            const order = ["plane", "train", "bus", "car"];
+                            
+                            order.forEach(m => {
+                              const c = counts[m];
+                              if (c > 0) {
+                                let name = MODE_META[m as keyof typeof MODE_META].label;
+                                if (c === 1) {
+                                  parts.push(name);
+                                } else {
+                                  if (name === "Train") name = "Trains";
+                                  if (name === "Avion") name = "Avions";
+                                  if (name === "Voiture") name = "Voitures";
+                                  parts.push(`${c} ${name}`);
+                                }
+                              }
+                            });
+                            return parts.length > 0 ? parts.join(" + ") : meta.label;
+                          })()}
+                        </span>
+                        {o.mode === fastest && !o.accessMode && <Chip className={selected ? "bg-ember text-white" : ""}>Le + rapide</Chip>}
+                      </span>
+                      <span className={`mt-0.5 block truncate font-mono text-[11px] tracking-wide ${selected ? "text-white/60" : "text-slate-400"}`}>
+                        {formatDuration(o.durationMin).toUpperCase()} · {formatDistance(o.distanceKm)} · CO₂ {meta.co2.toUpperCase()}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-right">
-                    <span className="font-display text-[24px] font-bold leading-none">{o.price > 0 ? `€${o.price}` : "Gratuit"}</span>
-                    <span className={`mt-1 block font-mono text-[10px] tracking-widest ${selected ? "text-white/60" : "text-slate-400"}`}>
-                      {o.price > 0 ? "EST. / PERS." : ""}
+                    <span className="shrink-0 text-right">
+                      <span className="font-display text-[24px] font-bold leading-none">{o.price > 0 ? `€${o.price}` : "Gratuit"}</span>
+                      <span className={`mt-1 block font-mono text-[10px] tracking-widest ${selected ? "text-white/60" : "text-slate-400"}`}>
+                        {o.price > 0 ? "EST. / PERS." : ""}
+                      </span>
                     </span>
-                  </span>
+                  </div>
+
+                  {selected && o.route.segments.length > 0 && (
+                    <div className="mt-4 flex w-full flex-col gap-0 border-t border-white/20 pt-4 text-[13px]">
+                      <div className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-white/50">Détail de l&apos;itinéraire</div>
+                      {o.route.segments.map((seg, idx) => {
+                        const SegIcon = MODE_ICON[seg.mode];
+                        let displayLabel = seg.label || "";
+                        if (!displayLabel) {
+                          if (seg.mode === "plane" && flights.length > 0) {
+                            displayLabel = `${flights[0].airline} ${flights[0].flightNumber}`;
+                          } else if (seg.mode === "bus") {
+                            displayLabel = "Opérateur local";
+                          } else if (seg.mode === "train" && trainJourneys.length > 0) {
+                            const train = trainJourneys[0].trains[0];
+                            if (train) displayLabel = `${train.name} ${train.number}`;
+                          }
+                        }
+
+                        const getLineColor = () => {
+                          if (seg.color) return seg.color;
+                          switch (seg.mode) {
+                            case "walking": return "#94a3b8";
+                            case "car": return "#64748b";
+                            case "bus": return "#0d5c63";
+                            case "plane": return "#0ea5e9";
+                            case "train": return "#9f4200";
+                            default: return "#0e3c60";
+                          }
+                        };
+                        const color = getLineColor();
+
+                        return (
+                          <div key={idx} className="flex gap-4">
+                            <div className="flex w-4 flex-col items-center">
+                              <div className="z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/20">
+                                <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+                              </div>
+                              <div className="my-1 w-[2px] flex-1" style={{ backgroundColor: color }} />
+                            </div>
+                            <div className="mb-4 flex-1">
+                              <div className="font-semibold text-white">{seg.from.name}</div>
+                              <div className="mt-1.5 flex items-center gap-2 text-white/70">
+                                <span className="flex items-center justify-center rounded p-1" style={{ backgroundColor: color, color: "#fff" }}>
+                                  <SegIcon size={12} />
+                                </span>
+                                <span className="font-mono text-[10px]">
+                                  {MODE_META[seg.mode].label}{displayLabel ? ` · ${displayLabel}` : ""} · {formatDuration(seg.durationMinutes)} · {formatDistance(seg.distanceKm)}
+                                </span>
+                              </div>
+                              {idx === o.route.segments.length - 1 && (
+                                <div className="mt-4 flex items-center gap-4">
+                                  <div className="absolute -ml-8 flex h-4 w-4 items-center justify-center rounded-full bg-ember">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                  </div>
+                                  <div className="font-semibold text-ember">{seg.to.name}</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -160,9 +233,12 @@ export function RoutesView(props: RoutesViewProps) {
           </div>
         )}
 
-        <div className="sticky bottom-0 mt-6 bg-page pt-2 pb-1">
-          <Button onClick={onContinue} disabled={!selectedMode} className="w-full">
-            Continuer vers les hôtels <IconArrow size={16} />
+        <div className="sticky bottom-0 mt-auto bg-page pt-2 pb-1 flex flex-col gap-2">
+          <Button onClick={onContinue} disabled={!selectedModeId && selectedModeId !== "skip"} className="w-full">
+            Continuer <IconArrow size={16} />
+          </Button>
+          <Button kind="ghost" onClick={() => { onSelectMode("skip"); onContinue(); }} className="w-full">
+            Passer cette étape
           </Button>
         </div>
       </aside>

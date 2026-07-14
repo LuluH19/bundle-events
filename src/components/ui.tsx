@@ -1,11 +1,11 @@
 "use client";
 
-import type { TransportMode } from "@/src/types";
+import type { TransportMode, IconProps, EyebrowProps, ChipProps, ButtonProps } from "@/src/types";
 
 /* ─────────────────────────────────────────────────────────────
    Icons — stroke-based, inherit currentColor.
    ───────────────────────────────────────────────────────────── */
-type IconProps = { size?: number; className?: string };
+
 
 const base = (size: number, className?: string) => ({
   width: size,
@@ -180,11 +180,7 @@ export function Eyebrow({
   children,
   className = "",
   tone = "ember",
-}: {
-  children: React.ReactNode;
-  className?: string;
-  tone?: "ember" | "navy" | "muted";
-}) {
+}: EyebrowProps) {
   const color =
     tone === "ember" ? "text-ember-ink" : tone === "navy" ? "text-navy-500" : "text-slate-400";
   return <div className={`eyebrow ${color} ${className}`}>{children}</div>;
@@ -193,10 +189,7 @@ export function Eyebrow({
 export function Chip({
   children,
   className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+}: ChipProps) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full bg-ember-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-ember-ink ${className}`}
@@ -213,14 +206,7 @@ export function Button({
   className = "",
   disabled,
   type = "button",
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  kind?: "primary" | "dark" | "ghost";
-  className?: string;
-  disabled?: boolean;
-  type?: "button" | "submit";
-}) {
+}: ButtonProps) {
   const styles = {
     primary: "bg-ember text-white hover:bg-ember-600 shadow-[0_12px_28px_-8px_rgba(249,108,26,0.6)]",
     dark: "bg-ink text-white hover:bg-navy-700",
