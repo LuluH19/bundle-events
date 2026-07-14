@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Location, RouteOption, Step, BundleViewProps } from "@/src/types";
+import { Location, RouteOption, Step, TransportMode, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
+import { getBookingLinks, BookingLink } from "@/src/utils/booking";
 import {
   Button,
   Chip,
@@ -14,7 +15,9 @@ import {
   IconLeaf,
   IconMap,
   IconPin,
+  IconPlane,
   IconStar,
+  IconTicket,
   MODE_ICON,
 } from "@/src/components/ui";
 
@@ -36,6 +39,18 @@ type Leg = {
   editStep: Step;
 };
 
+/** Short mode labels used on the booking buttons (compact than MODE_META). */
+const SHORT_MODE: Record<TransportMode, string> = {
+  plane: "Avion",
+  train: "Train",
+  bus: "Bus",
+  car: "Voiture",
+  walking: "À pied",
+};
+
+/** A ticket can be booked for these; road/walk only get a route link. */
+const isTicketed = (mode: TransportMode) => mode === "plane" || mode === "train" || mode === "bus";
+
 export function BundleView(props: BundleViewProps) {
   const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit } = props;
 
@@ -45,6 +60,13 @@ export function BundleView(props: BundleViewProps) {
       ? { option: returnOption, direction: "return", title: "Trajet Retour", dep: venue, arr: departure, editStep: "routes-return" }
       : null,
   ].filter(Boolean) as Leg[];
+
+  // A round-trip flight covers both legs, so it's surfaced once in the header
+  // (next to the total) rather than on the aller/retour cards.
+  const flightRoundTrip: BookingLink | null =
+    roundTrip && outboundOption && departure && venue
+      ? getBookingLinks(outboundOption, departure, venue, checkin, { returnDateISO: checkout }).find(l => l.mode === "plane") ?? null
+      : null;
 
   const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
   const fmtDateTime = (iso: string) =>
@@ -83,13 +105,34 @@ export function BundleView(props: BundleViewProps) {
             <span className="text-ember">assemblée.</span>
           </h1>
           <p className="max-w-lg text-[15px] text-slate-500 md:text-[17px]">
-            Chaque détail de votre voyage vers {venue?.name ?? "votre événement"} réuni dans un seul bundle premium.
+            Toutes les étapes de votre voyage vers {venue?.name ?? "votre événement"} réuni dans un seul bundle premium.
           </p>
         </div>
-        <div className="flex flex-col items-start rounded-2xl bg-white p-6 ring-1 ring-line md:items-end">
-          <span className="eyebrow text-slate-400">Total estimé</span>
-          <span className="mt-1 font-display text-[40px] font-extrabold text-ink">€{total.toLocaleString("fr-FR")}</span>
-          <p className="mt-1 text-[12px] text-slate-400">Taxes et frais locaux estimés inclus</p>
+        <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-stretch">
+          {flightRoundTrip && (
+            <a
+              href={flightRoundTrip.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Réserver via ${flightRoundTrip.provider}`}
+              className="group flex items-center gap-4 rounded-2xl bg-ember p-6 text-white shadow-[0_18px_48px_-22px_rgba(249,108,26,0.65)] transition-all hover:bg-ember-600 active:scale-[0.99]"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-sm">
+                <IconPlane size={22} />
+              </span>
+              <span className="flex flex-col">
+                <span className="eyebrow text-white/70">Vol aller-retour</span>
+                <span className="font-display text-[19px] font-extrabold leading-tight text-white">Réserver le vol</span>
+                <span className="text-[12px] text-white/70">via {flightRoundTrip.provider}</span>
+              </span>
+              <IconArrow size={17} className="ml-auto text-white transition-transform group-hover:translate-x-1" />
+            </a>
+          )}
+          <div className="flex flex-col items-start justify-center rounded-2xl bg-white p-6 ring-1 ring-line md:items-end">
+            <span className="eyebrow text-slate-400">Total estimé</span>
+            <span className="mt-1 font-display text-[40px] font-extrabold text-ink">€{total.toLocaleString("fr-FR")}</span>
+            <p className="mt-1 text-[12px] text-slate-400">Taxes et frais locaux estimés inclus</p>
+          </div>
         </div>
       </header>
 
@@ -144,7 +187,22 @@ export function BundleView(props: BundleViewProps) {
                   </div>
                 </div>
 
-                {t.option ? (
+                {t.option ? (() => {
+                  const isReturn = t.direction === "return";
+                  const dir = isReturn ? "retour" : "aller";
+                  let bookingLinks = getBookingLinks(t.option, t.dep, t.arr, isReturn ? checkout : checkin);
+                  // The round-trip flight lives in the header — drop it from both cards.
+                  if (flightRoundTrip) {
+                    bookingLinks = bookingLinks.filter(l => l.mode !== "plane");
+                  }
+                  const multi = bookingLinks.length > 1;
+                  const labelFor = (link: BookingLink) => {
+                    const short = SHORT_MODE[link.mode] + (link.roundTrip ? " A/R" : "");
+                    if (multi) return `${isTicketed(link.mode) ? "Réserver" : "Itinéraire"} · ${short}`;
+                    if (link.roundTrip) return "Réserver mon vol aller-retour";
+                    return isTicketed(link.mode) ? `Réserver mon billet ${dir}` : `Voir mon itinéraire ${dir}`;
+                  };
+                  return (
                   <div className="flex grow flex-col p-7 md:p-8">
                     <div className="mb-7 grid grid-cols-2 gap-6">
                       <div className="space-y-1">
@@ -160,21 +218,38 @@ export function BundleView(props: BundleViewProps) {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-auto flex items-center justify-between border-t border-line pt-6">
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6">
                       <div>
                         <p className="font-display text-[24px] font-extrabold text-ink">€{t.option.price.toLocaleString("fr-FR")}</p>
                         <p className="text-[12px] text-slate-400">Prix du trajet estimé</p>
                       </div>
-                      <button
-                        onClick={() => onEdit(t.editStep)}
-                        className="flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-navy-700"
-                      >
-                        Modifier <span className="hidden sm:inline">le trajet</span>
-                        <IconArrow size={15} />
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => onEdit(t.editStep)}
+                          className="flex items-center gap-2 rounded-xl border border-line px-4 py-3 text-[14px] font-bold text-slate-600 transition-colors hover:bg-mist"
+                        >
+                          Modifier
+                        </button>
+                        {bookingLinks.map((link, i) => {
+                          const LinkIcon = MODE_ICON[link.mode] ?? IconTicket;
+                          return (
+                            <a
+                              key={i}
+                              href={link.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`${isTicketed(link.mode) ? "Réserver" : "Itinéraire"} via ${link.provider}`}
+                              className="flex items-center gap-2 rounded-xl bg-ember px-5 py-3 text-[14px] font-bold text-white transition-all hover:bg-ember-600 active:scale-95"
+                            >
+                              <LinkIcon size={15} /> {labelFor(link)}
+                            </a>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                ) : (
+                  );
+                })() : (
                   <EmptyBlock label="Aucun trajet sélectionné" cta="Choisir un trajet" onClick={() => onEdit(t.editStep)} />
                 )}
               </div>
@@ -363,7 +438,6 @@ export function BundleView(props: BundleViewProps) {
         {/* Logistics */}
         <section className="col-span-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
           <LogisticsCard icon={<IconMap size={20} />} title="Fenêtre de voyage" value={dateLabel} hint={`${nights} jour${nights > 1 ? "s" : ""} sur place`} />
-          <LogisticsCard icon={<IconCheck size={20} />} title="Référence du bundle" value="Paiement en attente" hint={`Bundle ID ${bundleId}`} />
           <LogisticsCard
             icon={<IconLeaf size={20} />}
             title="Empreinte carbone"
@@ -371,19 +445,6 @@ export function BundleView(props: BundleViewProps) {
             hint={outboundOption ? `Via ${MODE_META[outboundOption.mode].provider}` : "Trajet non défini"}
           />
         </section>
-      </div>
-
-      {/* Final action */}
-      <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[12px] text-slate-400">Tarif garanti pendant 24 h · {bundleId}</p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button kind="ghost" onClick={() => onEdit("home")} className="sm:w-auto">
-            Modifier
-          </Button>
-          <Button kind="primary" disabled={!selectedHotel}>
-            Réserver mon bundle <IconArrow size={16} />
-          </Button>
-        </div>
       </div>
     </div>
   );
