@@ -105,7 +105,6 @@ async function trainSegments(
   from: { name: string; coords: LatLng; sncfId?: string },
   to: { name: string; coords: LatLng; sncfId?: string }
 ): Promise<RouteSegment[]> {
-  // Try real rail route via SNCF intermediate stops + OSRM multi-waypoint
   if (from.sncfId && to.sncfId) {
     try {
       const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}&t=${Date.now()}`);
@@ -259,6 +258,52 @@ export async function computeBusRoute(
   return buildResult([toStation, await busLongSegment({ name: dep.name, coords: dep.coords }, { name: arr.name, coords: arr.coords }), fromStation]);
 }
 
+export const SHORT_HAUL_RAIL_THRESHOLD_MIN = 150; // 2h30
+
+function isInMetropolitanFrance(p: LatLng): boolean {
+  return p.lat >= 41.2 && p.lat <= 51.2 && p.lng >= -5.4 && p.lng <= 9.8;
+}
+
+async function railJourneyDurationMin(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng }
+): Promise<number | null> {
+  try {
+    const [depStations, arrStations] = await Promise.all([
+      fetchNearbyStations(from.coords),
+      fetchNearbyStations(to.coords),
+    ]);
+    if (!depStations.length || !arrStations.length) return null;
+
+    let dep = depStations[0], arr = arrStations[0];
+    if (dep.id === arr.id) {
+      if (arrStations.length > 1) arr = arrStations[1];
+      else if (depStations.length > 1) dep = depStations[1];
+    }
+    if (dep.id === arr.id || !dep.sncfId || !arr.sncfId) return null;
+
+    const res = await fetch(
+      `/api/trains/search?from=${encodeURIComponent(dep.sncfId)}&to=${encodeURIComponent(arr.sncfId)}`
+    );
+    if (!res.ok) return null;
+    const journeys = ((await res.json()).journeys || []) as { durationMinutes: number; transfers: number }[];
+    const direct = journeys.filter((j) => j.transfers === 0 && j.durationMinutes > 0);
+    if (!direct.length) return null;
+    return Math.min(...direct.map((j) => j.durationMinutes));
+  } catch {
+    return null;
+  }
+}
+
+export async function isShortHaulFlightBanned(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng }
+): Promise<boolean> {
+  if (!isInMetropolitanFrance(from.coords) || !isInMetropolitanFrance(to.coords)) return false;
+  const rail = await railJourneyDurationMin(from, to);
+  return rail !== null && rail < SHORT_HAUL_RAIL_THRESHOLD_MIN;
+}
+
 export async function computePlaneRoute(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
@@ -328,7 +373,9 @@ export async function computeMultimodalRoute(
   if (allowedModes.includes("car")) candidates.push(computeDirectRoute(from, to, "car").catch(() => null));
   if (allowedModes.includes("bus")) candidates.push(computeBusRoute(from, to, access).catch(() => null));
   if (allowedModes.includes("train") && dist > 20) candidates.push(computeTrainRoute(from, to, access).catch(() => null));
-  if (allowedModes.includes("plane") && dist > 150) candidates.push(computePlaneRoute(from, to, access).catch(() => null));
+  if (allowedModes.includes("plane") && dist > 150 && !(await isShortHaulFlightBanned(from, to))) {
+    candidates.push(computePlaneRoute(from, to, access).catch(() => null));
+  }
 
   if (candidates.length === 0) return computeDirectRoute(from, to, "car");
   const results = (await Promise.all(candidates)).filter(Boolean) as RouteResult[];
@@ -346,7 +393,9 @@ export async function computeRoute(
     switch (modes[0]) {
       case "car": case "walking": return computeDirectRoute(from, to, modes[0]);
       case "bus": return computeBusRoute(from, to, access);
-      case "plane": return computePlaneRoute(from, to, access);
+      case "plane":
+        if (await isShortHaulFlightBanned(from, to)) return computeTrainRoute(from, to, access);
+        return computePlaneRoute(from, to, access);
       case "train": return computeTrainRoute(from, to, access);
     }
   }
