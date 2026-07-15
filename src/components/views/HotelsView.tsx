@@ -50,7 +50,10 @@ export function HotelsView(props: HotelsViewProps) {
   const [sortBy, setSortBy] = useState<"distance" | "price-asc" | "price-desc">("distance");
 
   const sorted = useMemo(() => {
-    const arr = [...hotelResults];
+    const arr = hotelResults.filter((h) => {
+      const d = getHotelDistance(h, venue);
+      return d == null || d <= hotelRadius;
+    });
     if (sortBy === "price-asc" || sortBy === "price-desc") {
       return arr.sort((a, b) => {
         const pa = a.pricePerNight;
@@ -66,7 +69,7 @@ export function HotelsView(props: HotelsViewProps) {
       const db = getHotelDistance(b, venue) ?? 0;
       return da - db;
     });
-  }, [hotelResults, venue, sortBy]);
+  }, [hotelResults, venue, sortBy, hotelRadius]);
 
   if (!venue) {
     return (
@@ -83,7 +86,7 @@ export function HotelsView(props: HotelsViewProps) {
       venue={venue}
       hotel={hotelLocation}
       route={null}
-      hotelResults={hotelResults}
+      hotelResults={sorted}
       selectedHotelId={selectedHotel?.id ?? null}
       onHotelSelect={onSelectHotel}
       hotelRadius={hotelRadius}
@@ -130,7 +133,7 @@ export function HotelsView(props: HotelsViewProps) {
             </select>
           </div>
           <span className="text-[13px] text-slate-400">
-            {hotelLoading ? "Recherche…" : `${hotelResults.length} hôtel${hotelResults.length > 1 ? "s" : ""}`}
+            {hotelLoading ? "Recherche…" : `${sorted.length} hôtel${sorted.length > 1 ? "s" : ""}`}
           </span>
           <button
             onClick={() => setMobileMapOpen(true)}

@@ -45,7 +45,7 @@ export class LiteApiHotelAdapter implements HotelProvider {
           guestNationality: "FR",
           checkin,
           checkout,
-          limit: 20,
+          limit: 100,
           maxRatesPerHotel: 1,
           includeHotelData: true,
         }),

@@ -251,8 +251,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const handleHotelRadiusChange = (newRadius: number) => {
     setHotelRadius(newRadius);
-    setHotelError("");
-    setHotelLoading(true);
   };
 
   // departure autocomplete
@@ -341,10 +339,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     const checkinDate = dateOnly(checkin);
     const stayCheckout = checkout ? dateOnly(checkout) : addDaysIso(checkinDate, 1);
     let cancelled = false;
+    const FETCH_RADIUS_KM = 50;
     const params = new URLSearchParams({
       lat: String(venue.coords.lat),
       lng: String(venue.coords.lng),
-      radius: String(hotelRadius),
+      radius: String(FETCH_RADIUS_KM),
       checkin: checkinDate,
       checkout: stayCheckout,
     });
@@ -368,7 +367,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [venue, hotelRadius, checkin, checkout]);
+  }, [venue, checkin, checkout]);
 
   const pathFor = useCallback(
     (s: Step) => {
