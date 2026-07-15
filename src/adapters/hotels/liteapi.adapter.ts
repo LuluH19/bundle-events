@@ -2,35 +2,27 @@ import { HotelMapItem, HotelProvider, HotelSearchCriteria } from "@/src/types";
 import { getDaysDiff } from "@/src/utils/date";
 import { liteApiConfig } from "@/src/config";
 
-export class LiteApiHotelAdapter implements HotelProvider {
-  private async fetchHotelDetails(apiKey: string, hotelIds: string[]): Promise<Map<string, { name: string; address: string; city: string; zip: string; location?: { latitude: number; longitude: number }; starRating: number; main_photo: string; rating: number }>> {
-    const map = new Map();
-    // Fetch in parallel (max 5 concurrent)
-    const chunks = [];
-    for (let i = 0; i < hotelIds.length; i += 5) {
-      chunks.push(hotelIds.slice(i, i + 5));
-    }
-    for (const chunk of chunks) {
-      const results = await Promise.all(
-        chunk.map(async (id) => {
-          try {
-            const res = await fetch(`${liteApiConfig.baseUrl}/data/hotel?hotelId=${id}`, {
-              headers: { "X-API-Key": apiKey },
-              signal: AbortSignal.timeout(liteApiConfig.timeoutMs),
-            });
-            if (!res.ok) return null;
-            const data = await res.json();
-            return { id, detail: data.data };
-          } catch { return null; }
-        })
-      );
-      for (const r of results) {
-        if (r?.detail) map.set(r.id, r.detail);
-      }
-    }
-    return map;
-  }
+type LiteApiHotelMeta = {
+  id: string;
+  name?: string;
+  main_photo?: string;
+  address?: string;
+  city_name?: string;
+  latitude?: number;
+  longitude?: number;
+  stars?: number;
+  rating?: number;
+};
 
+type LiteApiRate = {
+  hotelId: string;
+  roomTypes?: {
+    offerRetailRate?: { amount?: number; currency?: string };
+    rates?: { retailRate?: { total?: { amount?: number; currency?: string }[] } }[];
+  }[];
+};
+
+export class LiteApiHotelAdapter implements HotelProvider {
   async searchHotels(criteria: HotelSearchCriteria): Promise<HotelMapItem[]> {
     const { lat, lng, radiusKm, checkin, checkout } = criteria;
     if (!checkin || !checkout) {
@@ -64,21 +56,19 @@ export class LiteApiHotelAdapter implements HotelProvider {
         return [];
       }
       const data = await res.json();
-      if (!data.data?.length) return [];
+      const rates: LiteApiRate[] = data.data || [];
+      if (!rates.length) return [];
 
-      // Fetch hotel details for each result
-      const hotelIds: string[] = data.data.map((h: { hotelId: string }) => h.hotelId);
-      const details = await this.fetchHotelDetails(apiKey, hotelIds);
+      // Hotel metadata (name/photo/coords/stars/rating) comes straight from the
+      // same rates response under `data.hotels[]` (keyed by id === rate.hotelId),
+      // so we don't fire a separate /data/hotel call per hotel.
+      const meta = new Map<string, LiteApiHotelMeta>(
+        ((data.hotels || []) as LiteApiHotelMeta[]).map((h) => [h.id, h])
+      );
 
-      return data.data
-        .map((h: {
-          hotelId: string;
-          roomTypes?: {
-            offerRetailRate?: { amount?: number; currency?: string };
-            rates?: { retailRate?: { total?: { amount?: number; currency?: string }[] } }[];
-          }[];
-        }) => {
-          const detail = details.get(h.hotelId);
+      return rates
+        .map((h) => {
+          const detail = meta.get(h.hotelId);
           let price: number | undefined;
           let currency = "EUR";
           for (const rt of h.roomTypes || []) {
@@ -104,12 +94,12 @@ export class LiteApiHotelAdapter implements HotelProvider {
           return {
             id: `lite-${h.hotelId}`,
             name: detail?.name || h.hotelId,
-            locationName: [detail?.address, [detail?.zip, detail?.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+            locationName: [detail?.address, detail?.city_name].filter(Boolean).join(", "),
             coords: {
-              lat: detail?.location?.latitude ?? Number(lat),
-              lng: detail?.location?.longitude ?? Number(lng),
+              lat: detail?.latitude ?? Number(lat),
+              lng: detail?.longitude ?? Number(lng),
             },
-            stars: detail?.starRating,
+            stars: detail?.stars,
             photo: detail?.main_photo,
             pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
             currency,
