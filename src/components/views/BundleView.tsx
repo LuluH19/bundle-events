@@ -81,8 +81,6 @@ export function BundleView(props: BundleViewProps) {
   const transportCost = (outboundOption?.price || 0) + (roundTrip && returnOption ? returnOption.price : 0);
   const hotelCost = selectedHotel?.pricePerNight ? selectedHotel.pricePerNight * nights : 0;
   const total = transportCost + hotelCost;
-
-  const bundleId = `BE-${(total * 7 + 100000).toString().slice(0, 6)}-FR`;
   const stars = selectedHotel?.stars ?? (selectedHotel?.rating ? Math.round(selectedHotel.rating) : 0);
 
   const hotelFacts: { icon: React.ReactNode; label: string }[] = [];
