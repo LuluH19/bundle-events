@@ -105,8 +105,15 @@ function fakeFetch(input: RequestInfo | URL): Promise<Response> {
     const b = parse(params.get("to"));
     if (!a || !b) return Promise.resolve(jsonResponse({ journeys: [] }));
     const km = haversineDistance(a, b);
-    const durationMinutes = (km / 250) * 60 + 20; // TGV effectif + acces quais
-    return Promise.resolve(jsonResponse({ journeys: [{ durationMinutes, transfers: 0 }] }));
+    const durationMinutes = (km / 250) * 60 + 20;
+    const dep = new Date("2026-08-14T08:00:00");
+    const arr = new Date(dep.getTime() + durationMinutes * 60000);
+    const iso = (d: Date) => d.toISOString().slice(0, 19);
+    return Promise.resolve(
+      jsonResponse({
+        journeys: [{ trains: [{ type: "TGV INOUI", departureTime: iso(dep), arrivalTime: iso(arr) }] }],
+      })
+    );
   }
 
   // --- OpenRailRouting (fallback rail) ---

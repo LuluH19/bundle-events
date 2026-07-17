@@ -264,35 +264,64 @@ function isInMetropolitanFrance(p: LatLng): boolean {
   return p.lat >= 41.2 && p.lat <= 51.2 && p.lng >= -5.4 && p.lng <= 9.8;
 }
 
+const LOCAL_RAIL_MODES = ["RER", "TRANSILIEN", "METRO", "MÉTRO", "TRAMWAY", "TRAM", "BUS", "NAVETTE", "CAR"];
+const MIN_MAIN_LEG_MIN = 25;
+function isLongDistanceLeg(mode: string): boolean {
+  const m = (mode || "").toUpperCase();
+  return m !== "" && !LOCAL_RAIL_MODES.some((l) => m.includes(l));
+}
+
+async function railMainLegForPair(fromSncfId: string, toSncfId: string): Promise<number | null> {
+  try {
+    const res = await fetch(
+      `/api/trains/search?from=${encodeURIComponent(fromSncfId)}&to=${encodeURIComponent(toSncfId)}`
+    );
+    if (!res.ok) return null;
+    const journeys = ((await res.json()).journeys || []) as {
+      trains?: { type?: string; departureTime?: string; arrivalTime?: string }[];
+    }[];
+
+    let best: number | null = null;
+    for (const j of journeys) {
+      const mainLegs = (j.trains || [])
+        .map((t) => {
+          const d = t.departureTime ? Date.parse(t.departureTime) : NaN;
+          const a = t.arrivalTime ? Date.parse(t.arrivalTime) : NaN;
+          const minutes = Number.isFinite(d) && Number.isFinite(a) ? (a - d) / 60000 : NaN;
+          return { intercity: isLongDistanceLeg(t.type || ""), minutes };
+        })
+        .filter((l) => l.intercity && Number.isFinite(l.minutes) && l.minutes >= MIN_MAIN_LEG_MIN);
+      if (mainLegs.length === 1) {
+        best = best == null ? mainLegs[0].minutes : Math.min(best, mainLegs[0].minutes);
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
+
 async function railJourneyDurationMin(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng }
 ): Promise<number | null> {
-  try {
-    const [depStations, arrStations] = await Promise.all([
-      fetchNearbyStations(from.coords),
-      fetchNearbyStations(to.coords),
-    ]);
-    if (!depStations.length || !arrStations.length) return null;
+  const [depStations, arrStations] = await Promise.all([
+    fetchNearbyStations(from.coords),
+    fetchNearbyStations(to.coords),
+  ]);
+  const deps = depStations.filter((s) => s.sncfId).slice(0, 5);
+  const arrs = arrStations.filter((s) => s.sncfId).slice(0, 5);
+  if (!deps.length || !arrs.length) return null;
 
-    let dep = depStations[0], arr = arrStations[0];
-    if (dep.id === arr.id) {
-      if (arrStations.length > 1) arr = arrStations[1];
-      else if (depStations.length > 1) dep = depStations[1];
-    }
-    if (dep.id === arr.id || !dep.sncfId || !arr.sncfId) return null;
+  const pairs = new Map<string, [string, string]>();
+  for (const a of arrs) pairs.set(`${deps[0].sncfId}|${a.sncfId}`, [deps[0].sncfId!, a.sncfId!]);
+  for (const d of deps) pairs.set(`${d.sncfId}|${arrs[0].sncfId}`, [d.sncfId!, arrs[0].sncfId!]);
 
-    const res = await fetch(
-      `/api/trains/search?from=${encodeURIComponent(dep.sncfId)}&to=${encodeURIComponent(arr.sncfId)}`
-    );
-    if (!res.ok) return null;
-    const journeys = ((await res.json()).journeys || []) as { durationMinutes: number; transfers: number }[];
-    const direct = journeys.filter((j) => j.transfers === 0 && j.durationMinutes > 0);
-    if (!direct.length) return null;
-    return Math.min(...direct.map((j) => j.durationMinutes));
-  } catch {
-    return null;
-  }
+  const results = await Promise.all(
+    [...pairs.values()].filter(([f, t]) => f !== t).map(([f, t]) => railMainLegForPair(f, t))
+  );
+  const valid = results.filter((d): d is number => d != null);
+  return valid.length ? Math.min(...valid) : null;
 }
 
 export async function isShortHaulFlightBanned(
