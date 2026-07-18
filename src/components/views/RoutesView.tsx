@@ -191,8 +191,7 @@ export function RoutesView(props: RoutesViewProps) {
           )}
         </div>
 
-        {/* live detail for selected option */}
-        {trainJourneys.length > 0 && (
+        {/* {trainJourneys.length > 0 && (
           <div className="mt-5 rounded-2xl border border-line bg-white p-4">
             <Eyebrow tone="navy" className="mb-3">Trains disponibles · SNCF</Eyebrow>
             <div className="flex flex-col gap-2">
@@ -225,7 +224,7 @@ export function RoutesView(props: RoutesViewProps) {
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="sticky bottom-0 mt-auto bg-page pt-2 pb-1 flex flex-col gap-2">
           <Button onClick={onContinue} disabled={!selectedModeId && selectedModeId !== "skip"} className="w-full">
