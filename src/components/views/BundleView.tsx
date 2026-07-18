@@ -431,17 +431,6 @@ export function BundleView(props: BundleViewProps) {
             )}
           </div>
         </section>
-
-        {/* Logistics */}
-        <section className="col-span-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
-          <LogisticsCard icon={<IconMap size={20} />} title="Fenêtre de voyage" value={dateLabel} hint={`${nights} jour${nights > 1 ? "s" : ""} sur place`} />
-          <LogisticsCard
-            icon={<IconLeaf size={20} />}
-            title="Empreinte carbone"
-            value={outboundOption ? `Impact ${MODE_META[outboundOption.mode].co2.toLowerCase()}` : "—"}
-            hint={outboundOption ? `Via ${MODE_META[outboundOption.mode].provider}` : "Trajet non défini"}
-          />
-        </section>
       </div>
     </div>
   );
