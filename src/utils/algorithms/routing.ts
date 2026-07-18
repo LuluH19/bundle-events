@@ -105,7 +105,6 @@ async function trainSegments(
   from: { name: string; coords: LatLng; sncfId?: string },
   to: { name: string; coords: LatLng; sncfId?: string }
 ): Promise<RouteSegment[]> {
-  // Try real rail route via SNCF intermediate stops + OSRM multi-waypoint
   if (from.sncfId && to.sncfId) {
     try {
       const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}&t=${Date.now()}`);
@@ -259,6 +258,81 @@ export async function computeBusRoute(
   return buildResult([toStation, await busLongSegment({ name: dep.name, coords: dep.coords }, { name: arr.name, coords: arr.coords }), fromStation]);
 }
 
+export const SHORT_HAUL_RAIL_THRESHOLD_MIN = 150; // 2h30
+
+function isInMetropolitanFrance(p: LatLng): boolean {
+  return p.lat >= 41.2 && p.lat <= 51.2 && p.lng >= -5.4 && p.lng <= 9.8;
+}
+
+const LOCAL_RAIL_MODES = ["RER", "TRANSILIEN", "METRO", "MÉTRO", "TRAMWAY", "TRAM", "BUS", "NAVETTE", "CAR"];
+const MIN_MAIN_LEG_MIN = 25;
+function isLongDistanceLeg(mode: string): boolean {
+  const m = (mode || "").toUpperCase();
+  return m !== "" && !LOCAL_RAIL_MODES.some((l) => m.includes(l));
+}
+
+async function railMainLegForPair(fromSncfId: string, toSncfId: string): Promise<number | null> {
+  try {
+    const res = await fetch(
+      `/api/trains/search?from=${encodeURIComponent(fromSncfId)}&to=${encodeURIComponent(toSncfId)}`
+    );
+    if (!res.ok) return null;
+    const journeys = ((await res.json()).journeys || []) as {
+      trains?: { type?: string; departureTime?: string; arrivalTime?: string }[];
+    }[];
+
+    let best: number | null = null;
+    for (const j of journeys) {
+      const mainLegs = (j.trains || [])
+        .map((t) => {
+          const d = t.departureTime ? Date.parse(t.departureTime) : NaN;
+          const a = t.arrivalTime ? Date.parse(t.arrivalTime) : NaN;
+          const minutes = Number.isFinite(d) && Number.isFinite(a) ? (a - d) / 60000 : NaN;
+          return { intercity: isLongDistanceLeg(t.type || ""), minutes };
+        })
+        .filter((l) => l.intercity && Number.isFinite(l.minutes) && l.minutes >= MIN_MAIN_LEG_MIN);
+      if (mainLegs.length === 1) {
+        best = best == null ? mainLegs[0].minutes : Math.min(best, mainLegs[0].minutes);
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
+
+async function railJourneyDurationMin(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng }
+): Promise<number | null> {
+  const [depStations, arrStations] = await Promise.all([
+    fetchNearbyStations(from.coords),
+    fetchNearbyStations(to.coords),
+  ]);
+  const deps = depStations.filter((s) => s.sncfId).slice(0, 5);
+  const arrs = arrStations.filter((s) => s.sncfId).slice(0, 5);
+  if (!deps.length || !arrs.length) return null;
+
+  const pairs = new Map<string, [string, string]>();
+  for (const a of arrs) pairs.set(`${deps[0].sncfId}|${a.sncfId}`, [deps[0].sncfId!, a.sncfId!]);
+  for (const d of deps) pairs.set(`${d.sncfId}|${arrs[0].sncfId}`, [d.sncfId!, arrs[0].sncfId!]);
+
+  const results = await Promise.all(
+    [...pairs.values()].filter(([f, t]) => f !== t).map(([f, t]) => railMainLegForPair(f, t))
+  );
+  const valid = results.filter((d): d is number => d != null);
+  return valid.length ? Math.min(...valid) : null;
+}
+
+export async function isShortHaulFlightBanned(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng }
+): Promise<boolean> {
+  if (!isInMetropolitanFrance(from.coords) || !isInMetropolitanFrance(to.coords)) return false;
+  const rail = await railJourneyDurationMin(from, to);
+  return rail !== null && rail < SHORT_HAUL_RAIL_THRESHOLD_MIN;
+}
+
 export async function computePlaneRoute(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
@@ -328,7 +402,9 @@ export async function computeMultimodalRoute(
   if (allowedModes.includes("car")) candidates.push(computeDirectRoute(from, to, "car").catch(() => null));
   if (allowedModes.includes("bus")) candidates.push(computeBusRoute(from, to, access).catch(() => null));
   if (allowedModes.includes("train") && dist > 20) candidates.push(computeTrainRoute(from, to, access).catch(() => null));
-  if (allowedModes.includes("plane") && dist > 150) candidates.push(computePlaneRoute(from, to, access).catch(() => null));
+  if (allowedModes.includes("plane") && dist > 150 && !(await isShortHaulFlightBanned(from, to))) {
+    candidates.push(computePlaneRoute(from, to, access).catch(() => null));
+  }
 
   if (candidates.length === 0) return computeDirectRoute(from, to, "car");
   const results = (await Promise.all(candidates)).filter(Boolean) as RouteResult[];
@@ -346,7 +422,9 @@ export async function computeRoute(
     switch (modes[0]) {
       case "car": case "walking": return computeDirectRoute(from, to, modes[0]);
       case "bus": return computeBusRoute(from, to, access);
-      case "plane": return computePlaneRoute(from, to, access);
+      case "plane":
+        if (await isShortHaulFlightBanned(from, to)) return computeTrainRoute(from, to, access);
+        return computePlaneRoute(from, to, access);
       case "train": return computeTrainRoute(from, to, access);
     }
   }

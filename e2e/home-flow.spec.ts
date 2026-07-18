@@ -6,8 +6,29 @@ import { test, expect, type Page } from "@playwright/test";
 // alimentee par /api/hotels/search. Toutes les frontieres externes sont
 // interceptees pour rendre le scenario deterministe et hors-ligne.
 
-// coord du depart renvoye par le faux geocodage (Lyon)
 const LYON = { lat: 45.7578, lng: 4.832 };
+
+const BUNDLE_UUID = "11111111-1111-4111-8111-111111111111";
+
+const SAVED_BUNDLE = {
+  uuid: BUNDLE_UUID,
+  data: {
+    departure: { id: "dep-e2e", name: "Lyon", coords: LYON, type: "departure", address: "Lyon, France" },
+    venue: {
+      id: "accor-arena",
+      name: "Accor Arena",
+      coords: { lat: 48.8388, lng: 2.3786 },
+      type: "venue",
+      address: "8 Bd de Bercy, 75012 Paris",
+    },
+    checkin: "2026-08-16T09:00",
+    checkout: "2026-08-18T09:00",
+    roundTrip: true,
+    outboundOption: null,
+    returnOption: null,
+    selectedHotel: null,
+  },
+};
 
 // Style Mapbox v8 minimal mais VALIDE : sans lui, mapbox-gl plante en interne
 // (".slice" sur style.layers indefini) quand on stubbe le style par un objet vide.
@@ -52,7 +73,24 @@ async function stubNetwork(page: Page) {
     })
   );
 
-  // 3) Recherche d'hotels (etape hotels)
+  await page.route("**/api/bundles", (route) => {
+    if (route.request().method() === "POST") {
+      return route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ uuid: BUNDLE_UUID }),
+      });
+    }
+    return route.continue();
+  });
+
+  await page.route("**/api/bundles/**", (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(SAVED_BUNDLE) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+
   await page.route("**/api/hotels/search**", (route) =>
     route.fulfill({
       status: 200,
@@ -86,7 +124,7 @@ async function stubNetwork(page: Page) {
 function futureDate(daysFromNow: number): string {
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
 }
 
 test.describe("Parcours de composition d'un bundle", () => {
@@ -120,7 +158,7 @@ test.describe("Parcours de composition d'un bundle", () => {
     await venueOption.click();
 
     // --- Dates ---
-    const dateInputs = page.locator('input[type="date"]');
+    const dateInputs = page.locator('input[type="datetime-local"]');
     await dateInputs.nth(0).fill(futureDate(30));
     await dateInputs.nth(1).fill(futureDate(32));
 
@@ -131,13 +169,11 @@ test.describe("Parcours de composition d'un bundle", () => {
     await expect(cta).toBeEnabled();
     await cta.click();
 
+    await page.waitForURL(new RegExp(`/${BUNDLE_UUID}/hotels$`), { timeout: 30000 });
+
     // --- Etape hotels ---
     await expect(
-      page.getByRole("heading", { name: /Votre base pr[eè]s de/i })
-    ).toBeVisible();
-    // le nom de l'evenement apparait dans le titre de l'etape hotels
-    await expect(
-      page.getByRole("heading", { name: /Votre base pr[eè]s de Accor/i })
+      page.getByRole("heading", { name: /Votre logement pr[eè]s de Accor/i })
     ).toBeVisible();
     // les hotels mockes sont rendus
     await expect(page.getByText("Hotel Bercy Test")).toBeVisible();
