@@ -19,6 +19,12 @@ export interface BookingLink {
   roundTrip?: boolean;
 }
 
+export interface HotelBookingLink {
+  href: string;
+  provider: string;
+  external: boolean;
+}
+
 const coordStr = (c: LatLng) => `${c.lat},${c.lng}`;
 
 /** Order buttons appear in — mirrors the card's "Avion + Train" mode summary. */
@@ -129,4 +135,32 @@ export function getBookingLinks(
   }
 
   return links;
+}
+
+function setBookingDate(p: URLSearchParams, kind: "checkin" | "checkout", iso: string) {
+  const [y, m, d] = dateOnly(iso).split("-");
+  if (!y || !m || !d) return;
+  p.set(`${kind}_year`, y);
+  p.set(`${kind}_month`, String(Number(m)));
+  p.set(`${kind}_monthday`, String(Number(d)));
+}
+
+export function getHotelBookingLink(
+  hotel: { name: string; locationName?: string },
+  checkinISO: string,
+  checkoutISO: string,
+  opts?: { adults?: number }
+): HotelBookingLink {
+  const city = hotel.locationName?.split(",").pop()?.trim();
+  const p = new URLSearchParams({
+    ss: [hotel.name, city].filter(Boolean).join(" "),
+    group_adults: String(opts?.adults ?? 2),
+    group_children: "0",
+    no_rooms: "1",
+    lang: "fr",
+    selected_currency: "EUR",
+  });
+  if (checkinISO) setBookingDate(p, "checkin", checkinISO);
+  if (checkoutISO) setBookingDate(p, "checkout", checkoutISO);
+  return { href: `https://www.booking.com/searchresults.html?${p}`, provider: "Booking.com", external: true };
 }

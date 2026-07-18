@@ -5,9 +5,8 @@ import dynamic from "next/dynamic";
 import { Location, RouteOption, Step, TransportMode, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
-import { getBookingLinks, BookingLink } from "@/src/utils/booking";
+import { getBookingLinks, getHotelBookingLink, BookingLink } from "@/src/utils/booking";
 import {
-  Button,
   Chip,
   IconArrow,
   IconBed,
@@ -411,20 +410,20 @@ export function BundleView(props: BundleViewProps) {
                   >
                     Changer d&apos;hôtel
                   </button>
-                  {selectedHotel.website ? (
-                    <a
-                      href={selectedHotel.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-ember px-7 py-3.5 text-[14px] font-bold text-white transition-all hover:bg-ember-600 active:scale-95"
-                    >
-                      Réserver l&apos;hôtel <IconArrow size={15} />
-                    </a>
-                  ) : (
-                    <Button kind="primary" className="rounded-xl">
-                      Réserver l&apos;hôtel <IconArrow size={15} />
-                    </Button>
-                  )}
+                  {(() => {
+                    const booking = getHotelBookingLink(selectedHotel, checkin, checkout);
+                    return (
+                      <a
+                        href={booking.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Réserver via ${booking.provider}`}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-ember px-7 py-3.5 text-[14px] font-bold text-white transition-all hover:bg-ember-600 active:scale-95"
+                      >
+                        Réserver l&apos;hôtel <IconArrow size={15} />
+                      </a>
+                    );
+                  })()}
                 </div>
               </>
             ) : (
