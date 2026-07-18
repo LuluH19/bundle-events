@@ -77,7 +77,7 @@ export function RoutesView(props: RoutesViewProps) {
                     selected ? "border-ink bg-ink text-white" : "border-line bg-white hover:border-ember/50"
                   }`}
                 >
-                  <div className="grid w-full grid-cols-[48px_1fr_auto] items-center gap-3">
+                  <div className="grid w-full grid-cols-[48px_1fr] items-center gap-3">
                     <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-ember text-white" : "bg-mist text-ink"}`}>
                       <Icon size={22} />
                     </span>
@@ -114,12 +114,6 @@ export function RoutesView(props: RoutesViewProps) {
                       </span>
                       <span className={`mt-0.5 block truncate font-mono text-[11px] tracking-wide ${selected ? "text-white/60" : "text-slate-400"}`}>
                         {formatDuration(o.durationMin).toUpperCase()} · {formatDistance(o.distanceKm)} · CO₂ {meta.co2.toUpperCase()}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="font-display text-[24px] font-bold leading-none">{o.price > 0 ? `€${o.price}` : "Gratuit"}</span>
-                      <span className={`mt-1 block font-mono text-[10px] tracking-widest ${selected ? "text-white/60" : "text-slate-400"}`}>
-                        {o.price > 0 ? "EST. / PERS." : ""}
                       </span>
                     </span>
                   </div>
