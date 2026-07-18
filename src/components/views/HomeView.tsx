@@ -335,11 +335,6 @@ export function HomeView(props: HomeViewProps) {
       </section>
 
       <section className="relative overflow-hidden bg-gradient-to-br from-ink to-navy-700 py-20 text-center md:py-24">
-        <div className="absolute inset-0 opacity-10">
-          <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100">
-            <path d="M0 0 L100 100 M100 0 L0 100" fill="none" stroke="white" strokeWidth="0.5" />
-          </svg>
-        </div>
         <div className="relative z-10 mx-auto max-w-4xl px-5 md:px-8">
           <h2 className="font-display text-[34px] font-extrabold text-white md:text-[40px]">
             Prêt à écrire votre prochain chapitre&nbsp;?

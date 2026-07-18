@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { LatLng } from "@/src/types";
 import { computeOptions } from "@/src/services/travel";
-import { computeRoute } from "@/src/utils/algorithms/routing";
+import { computeRoute, isShortHaulFlightBanned } from "@/src/utils/algorithms/routing";
 import { priceEstimate } from "@/src/utils/travel";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { airports } from "@/src/utils/constants/airports";
@@ -17,6 +17,10 @@ const PARIS: { name: string; coords: LatLng } = {
 const MARSEILLE: { name: string; coords: LatLng } = {
   name: "Marseille",
   coords: { lat: 43.2965, lng: 5.3698 },
+};
+const BORDEAUX: { name: string; coords: LatLng } = {
+  name: "Bordeaux",
+  coords: { lat: 44.8378, lng: -0.5792 },
 };
 
 function jsonResponse(data: unknown, ok = true, status = 200) {
@@ -89,6 +93,27 @@ function fakeFetch(input: RequestInfo | URL): Promise<Response> {
   // --- Geometrie train SNCF : indisponible -> force le fallback OpenRailRouting ---
   if (url.includes("/api/trains/route-geometry")) {
     return Promise.resolve(jsonResponse({}, false, 404));
+  }
+
+  if (url.includes("/api/trains/search")) {
+    const params = new URL(url, "http://localhost").searchParams;
+    const parse = (id: string | null) => {
+      const m = (id || "").match(/sncf-([\-\d.]+)_([\-\d.]+)-/);
+      return m ? { lat: +m[1], lng: +m[2] } : null;
+    };
+    const a = parse(params.get("from"));
+    const b = parse(params.get("to"));
+    if (!a || !b) return Promise.resolve(jsonResponse({ journeys: [] }));
+    const km = haversineDistance(a, b);
+    const durationMinutes = (km / 250) * 60 + 20;
+    const dep = new Date("2026-08-14T08:00:00");
+    const arr = new Date(dep.getTime() + durationMinutes * 60000);
+    const iso = (d: Date) => d.toISOString().slice(0, 19);
+    return Promise.resolve(
+      jsonResponse({
+        journeys: [{ trains: [{ type: "TGV INOUI", departureTime: iso(dep), arrivalTime: iso(arr) }] }],
+      })
+    );
   }
 
   // --- OpenRailRouting (fallback rail) ---
@@ -188,6 +213,25 @@ describe("integration : services/travel + routing + geodesic", () => {
       expect(opt.distanceKm).toBe(opt.route.totalDistanceKm);
       expect(opt.durationMin).toBe(opt.route.totalDurationMinutes);
     }
+  });
+
+  it("interdiction vols courts : Paris-Bordeaux (TGV direct < 2h30) retire l'avion du bundle", async () => {
+    const options = await computeOptions(PARIS, BORDEAUX);
+    const modes = options.map((o) => o.mode);
+    expect(modes).not.toContain("plane");
+    expect(modes).toContain("train");
+    expect(modes).toContain("car");
+  });
+
+  it("isShortHaulFlightBanned : vrai pour Paris-Bordeaux (<2h30), faux pour Paris-Marseille (>2h30)", async () => {
+    expect(await isShortHaulFlightBanned(PARIS, BORDEAUX)).toBe(true);
+    expect(await isShortHaulFlightBanned(PARIS, MARSEILLE)).toBe(false);
+  });
+
+  it("computeRoute(plane) sur une route interdite bascule automatiquement sur le train", async () => {
+    const route = await computeRoute(PARIS, BORDEAUX, ["plane"]);
+    expect(route.segments.some((s) => s.mode === "plane")).toBe(false);
+    expect(route.segments.some((s) => s.mode === "train")).toBe(true);
   });
 
   it("computeOptions sur une courte distance propose la marche et exclut l'avion", async () => {

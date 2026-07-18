@@ -41,10 +41,7 @@ interface BundleBuilderProps {
 
 export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const router = useRouter();
-
-  const [maxStepIdx, setMaxStepIdx] = useState(0);
   const [hydrated, setHydrated] = useState(!uuid);
-
   const [departure, setDeparture] = useState<Location | null>(null);
   const [venue, setVenue] = useState<Location | null>(null);
   const [checkin, setCheckin] = useState("");
@@ -86,8 +83,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   // hotels
   const [hotelRadius, setHotelRadius] = useState(10);
   const [hotelResults, setHotelResults] = useState<HotelMapItem[]>([]);
-  const [hotelLoading, setHotelLoading] = useState(false);
+  const [hotelFetching, setHotelFetching] = useState(false);
   const [hotelError, setHotelError] = useState("");
+  const hotelLoading = hotelFetching && !!venue && !!checkin;
   const [selectedHotel, setSelectedHotel] = useState<HotelMapItem | null>(null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
 
@@ -106,7 +104,37 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     [selectedHotel]
   );
 
-  const canReach = useCallback((s: Step) => (uuid ? true : idxOf(s) <= maxStepIdx), [maxStepIdx, uuid]);
+  const stepComplete = useCallback(
+    (s: Step): boolean => {
+      switch (s) {
+        case "home":
+          return !!(departure && venue);
+        case "hotels":
+          return !!selectedHotel;
+        case "routes-outbound":
+          return !!selectedOutboundId;
+        case "routes-return":
+          return !roundTrip || !!selectedReturnId;
+        case "bundle":
+          return true;
+      }
+    },
+    [departure, venue, selectedHotel, selectedOutboundId, selectedReturnId, roundTrip]
+  );
+
+  const canReach = useCallback(
+    (s: Step): boolean => {
+      const idx = idxOf(s);
+      if (idx <= 0) return true;
+      for (let i = 0; i < idx; i++) {
+        const prev = STEPS[i].id;
+        if (prev === "routes-return" && !roundTrip) continue;
+        if (!stepComplete(prev)) return false;
+      }
+      return true;
+    },
+    [stepComplete, roundTrip]
+  );
 
   const buildSnapshot = useCallback(
     (): BundleSnapshot => ({
@@ -147,7 +175,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         setSelectedOutboundId(outOpt?.id ?? null);
         setSelectedReturnId(retOpt?.id ?? null);
         setSelectedHotel(d.selectedHotel ?? null);
-        setMaxStepIdx(idxOf("bundle"));
         setHydrated(true);
       })
       .catch(() => {
@@ -189,8 +216,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     setDepSearch(r.displayName);
     setDepResults([]);
     resetRoutes();
-    // le trajet change → itinéraires & bundle à refaire, les hôtels restent valides
-    setMaxStepIdx((m) => Math.min(m, idxOf("hotels")));
     if (venue) {
       setOptionsLoading(true);
     }
@@ -200,7 +225,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     setDeparture(null);
     setDepSearch("");
     resetRoutes();
-    setMaxStepIdx((m) => Math.min(m, idxOf("hotels")));
   };
 
   const handleVenueSearchChange = (val: string) => {
@@ -220,8 +244,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       resetRoutes();
       setHotelResults([]);
       setHotelError("");
-      setHotelLoading(true);
-      setMaxStepIdx((m) => Math.min(m, idxOf("home")));
+      setHotelFetching(true);
       if (departure) {
         setOptionsLoading(true);
       }
@@ -236,7 +259,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     resetRoutes();
     setHotelResults([]);
     setHotelError("");
-    setMaxStepIdx((m) => Math.min(m, idxOf("home")));
   };
 
   const handleSelectMode = (id: string) => {
@@ -251,16 +273,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const handleHotelRadiusChange = (newRadius: number) => {
     setHotelRadius(newRadius);
-    setHotelError("");
-    setHotelLoading(true);
   };
 
   // departure autocomplete
   useEffect(() => {
-    if (depSearch.trim().length < 1) {
-      setDepResults([]);
-      return;
-    }
+    if (!depSearch.trim()) return;
     const t = setTimeout(async () => {
       try {
         const r = await searchLocation(depSearch);
@@ -331,24 +348,20 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   // live hotel search around the venue
   useEffect(() => {
-    if (!venue) {
-      return;
-    }
-    if (!checkin) {
-      setHotelLoading(false);
-      return;
-    }
+    if (!venue || !checkin) return;
     const checkinDate = dateOnly(checkin);
     const stayCheckout = checkout ? dateOnly(checkout) : addDaysIso(checkinDate, 1);
     let cancelled = false;
+    const FETCH_RADIUS_KM = 50;
     const params = new URLSearchParams({
       lat: String(venue.coords.lat),
       lng: String(venue.coords.lng),
-      radius: String(hotelRadius),
+      radius: String(FETCH_RADIUS_KM),
       checkin: checkinDate,
       checkout: stayCheckout,
     });
     const t = setTimeout(() => {
+      setHotelFetching(true);
       fetch(`/api/hotels/search?${params}`)
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
         .then((data: HotelMapItem[]) => {
@@ -362,13 +375,13 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             setHotelError("La recherche d'hôtels a échoué. Réessayez.");
           }
         })
-        .finally(() => !cancelled && setHotelLoading(false));
+        .finally(() => !cancelled && setHotelFetching(false));
     }, 400);
     return () => {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [venue, hotelRadius, checkin, checkout]);
+  }, [venue, checkin, checkout]);
 
   const pathFor = useCallback(
     (s: Step) => {
@@ -380,7 +393,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const go = useCallback(
     (s: Step) => {
-      setMaxStepIdx((m) => Math.max(m, idxOf(s)));
       if (s !== "home" && !uuid) return;
       router.push(pathFor(s));
     },
@@ -414,8 +426,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     resetRoutes();
     setHotelResults([]);
     setHotelError("");
-    setHotelLoading(true);
-    setMaxStepIdx((m) => Math.min(m, idxOf("home")));
+    setHotelFetching(true);
     if (departure) {
       setOptionsLoading(true);
     }
@@ -435,7 +446,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <Header step={step} go={go} canReach={canReach} />
 
       <main className={`flex flex-col flex-1 min-h-0 ${showTabBar ? "pb-16 lg:pb-0" : ""}`}>

@@ -16,8 +16,15 @@ import {
   IconMap,
   IconArrow,
 } from "@/src/components/ui";
+import { Dropdown } from "@/src/components/Dropdown";
 
-const RADIUS_OPTIONS = [5, 10, 20, 25, 50];
+const RADIUS_OPTIONS = [5, 10, 20, 25, 50].map((r) => ({ value: r, label: `${r} km` }));
+
+const SORT_OPTIONS = [
+  { value: "distance" as const, label: "Plus proche" },
+  { value: "price-asc" as const, label: "Moins cher" },
+  { value: "price-desc" as const, label: "Plus cher" },
+];
 
 const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
   ssr: false,
@@ -50,7 +57,10 @@ export function HotelsView(props: HotelsViewProps) {
   const [sortBy, setSortBy] = useState<"distance" | "price-asc" | "price-desc">("distance");
 
   const sorted = useMemo(() => {
-    const arr = [...hotelResults];
+    const arr = hotelResults.filter((h) => {
+      const d = getHotelDistance(h, venue);
+      return d == null || d <= hotelRadius;
+    });
     if (sortBy === "price-asc" || sortBy === "price-desc") {
       return arr.sort((a, b) => {
         const pa = a.pricePerNight;
@@ -66,7 +76,7 @@ export function HotelsView(props: HotelsViewProps) {
       const db = getHotelDistance(b, venue) ?? 0;
       return da - db;
     });
-  }, [hotelResults, venue, sortBy]);
+  }, [hotelResults, venue, sortBy, hotelRadius]);
 
   if (!venue) {
     return (
@@ -83,7 +93,7 @@ export function HotelsView(props: HotelsViewProps) {
       venue={venue}
       hotel={hotelLocation}
       route={null}
-      hotelResults={hotelResults}
+      hotelResults={sorted}
       selectedHotelId={selectedHotel?.id ?? null}
       onHotelSelect={onSelectHotel}
       hotelRadius={hotelRadius}
@@ -103,34 +113,10 @@ export function HotelsView(props: HotelsViewProps) {
 
         {/* Filters */}
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-line">
-            <span className="text-[12px] font-medium text-slate-500">Rayon</span>
-            <select
-              value={hotelRadius}
-              onChange={(e) => setHotelRadius(Number(e.target.value))}
-              className="bg-transparent text-[13px] font-semibold text-ink outline-none"
-            >
-              {RADIUS_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r} km
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-line">
-            <span className="text-[12px] font-medium text-slate-500">Trier</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as "distance" | "price-asc" | "price-desc")}
-              className="bg-transparent text-[13px] font-semibold text-ink outline-none"
-            >
-              <option value="distance">Plus proche</option>
-              <option value="price-asc">Moins cher</option>
-              <option value="price-desc">Plus cher</option>
-            </select>
-          </div>
+          <Dropdown label="Rayon" value={hotelRadius} options={RADIUS_OPTIONS} onChange={setHotelRadius} />
+          <Dropdown label="Trier" value={sortBy} options={SORT_OPTIONS} onChange={setSortBy} />
           <span className="text-[13px] text-slate-400">
-            {hotelLoading ? "Recherche…" : `${hotelResults.length} hôtel${hotelResults.length > 1 ? "s" : ""}`}
+            {hotelLoading ? "Recherche…" : `${sorted.length} hôtel${sorted.length > 1 ? "s" : ""}`}
           </span>
           <button
             onClick={() => setMobileMapOpen(true)}

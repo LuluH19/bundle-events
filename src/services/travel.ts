@@ -1,5 +1,5 @@
 import { LatLng, RouteOption, TrainJourney, FlightInfo, TransportMode } from "@/src/types";
-import { computeDirectRoute, computeBusRoute, computePlaneRoute, computeTrainRoute } from "@/src/utils/algorithms/routing";
+import { computeDirectRoute, computeBusRoute, computePlaneRoute, computeTrainRoute, isShortHaulFlightBanned } from "@/src/utils/algorithms/routing";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { airports } from "@/src/utils/constants/airports";
 import { priceEstimate, findNearest } from "@/src/utils/travel";
@@ -46,7 +46,7 @@ export async function computeOptions(
     promises.push(addOption(computeTrainRoute(from, to, ["car"]), "train", "car"));
   }
   
-  if (dist > 200) {
+  if (dist > 200 && !(await isShortHaulFlightBanned(from, to))) {
     promises.push(addOption(computePlaneRoute(from, to, ["walking"]), "plane", "walking"));
     promises.push(addOption(computePlaneRoute(from, to, ["bus"]), "plane", "bus"));
     promises.push(addOption(computePlaneRoute(from, to, ["train"]), "plane", "train"));
