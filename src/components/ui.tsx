@@ -210,7 +210,7 @@ export function Button({
   const styles = {
     primary: "bg-ember text-white hover:bg-ember-600 shadow-[0_12px_28px_-8px_rgba(249,108,26,0.6)]",
     dark: "bg-ink text-white hover:bg-navy-700",
-    ghost: "bg-transparent text-ink ring-1 ring-inset ring-line hover:ring-ink hover:bg-mist",
+    ghost: "bg-page text-ink ring-1 ring-inset ring-line hover:bg-line",
   }[kind];
   return (
     <button

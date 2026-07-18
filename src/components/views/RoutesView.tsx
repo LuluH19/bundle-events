@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { RoutesViewProps } from "@/src/types";
 import { MODE_META } from "@/src/utils/constants/transport";
-import { formatDuration, formatDistance, timeOf } from "@/src/utils/format";
+import { formatDuration, formatDistance } from "@/src/utils/format";
 import { Button, Chip, Eyebrow, MODE_ICON, IconArrow } from "@/src/components/ui";
 
 const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
@@ -168,7 +168,7 @@ export function RoutesView(props: RoutesViewProps) {
                               </div>
                               {idx === o.route.segments.length - 1 && (
                                 <div className="mt-4 flex items-center gap-4">
-                                  <div className="absolute -ml-8 flex h-4 w-4 items-center justify-center rounded-full bg-ember">
+                                  <div className="-ml-8 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-ember">
                                     <div className="h-1.5 w-1.5 rounded-full bg-white" />
                                   </div>
                                   <div className="font-semibold text-ember">{seg.to.name}</div>
@@ -226,7 +226,7 @@ export function RoutesView(props: RoutesViewProps) {
           </div>
         )} */}
 
-        <div className="sticky bottom-0 mt-auto bg-page pt-2 pb-1 flex flex-col gap-2">
+        <div className="sticky z-10 bottom-0 mt-auto pt-2 pb-1 flex flex-col gap-2">
           <Button onClick={onContinue} disabled={!selectedModeId && selectedModeId !== "skip"} className="w-full">
             Continuer <IconArrow size={16} />
           </Button>
