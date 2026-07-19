@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
   const toLat = Number(sp.get("toLat"));
   const toLng = Number(sp.get("toLng"));
   const date = sp.get("date"); // YYYY-MM-DD
+  const returnDate = sp.get("returnDate");
 
   if (!fromName || !toName || !date) {
     return NextResponse.json({ error: "fromName, toName and date required" }, { status: 400 });
@@ -59,17 +60,20 @@ export async function GET(request: NextRequest) {
   }
 
   // FlixBus wants the ride date as DD.MM.YYYY.
-  const [y, m, d] = date.split("-");
-  const rideDate = `${d}.${m}.${y}`;
+  const toFlixDate = (iso: string) => {
+    const [y, m, d] = iso.split("-");
+    return `${d}.${m}.${y}`;
+  };
 
   const params = new URLSearchParams({
     departureCity,
     arrivalCity,
-    rideDate,
+    rideDate: toFlixDate(date),
     adult: "1",
     _locale: "fr",
     currency: "EUR",
   });
+  if (returnDate) params.set("returnDate", toFlixDate(returnDate));
 
   return NextResponse.redirect(`https://shop.flixbus.com/search?${params}`);
 }

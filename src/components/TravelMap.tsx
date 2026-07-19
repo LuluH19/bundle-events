@@ -33,6 +33,7 @@ export default function TravelMap({
   onHotelSelect,
   hotelRadius,
   showHotels,
+  fitPadding = 90,
 }: TravelMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -148,9 +149,9 @@ export default function TravelMap({
     } else if (locs.length > 1) {
       const bounds = new mapboxgl.LngLatBounds();
       locs.forEach((l) => bounds.extend([l.coords.lng, l.coords.lat]));
-      map.fitBounds(bounds, { padding: 90, maxZoom: 13.5, duration: 800 });
+      map.fitBounds(bounds, { padding: fitPadding, maxZoom: 13.5, duration: 800 });
     }
-  }, [departure, venue, hotel, showHotels]);
+  }, [departure, venue, hotel, showHotels, fitPadding]);
 
   useEffect(() => {
     const map = mapRef.current;

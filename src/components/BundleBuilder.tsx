@@ -31,6 +31,8 @@ import { HomeView } from "@/src/components/views/HomeView";
 import { RoutesView } from "@/src/components/views/RoutesView";
 import { HotelsView } from "@/src/components/views/HotelsView";
 import { BundleView } from "@/src/components/views/BundleView";
+import { SaveBundleModal } from "@/src/components/SaveBundleModal";
+import { IconBookmark } from "@/src/components/ui";
 
 const idxOf = (s: Step) => STEPS.findIndex((x) => x.id === s);
 
@@ -88,6 +90,15 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const hotelLoading = hotelFetching && !!venue && !!checkin;
   const [selectedHotel, setSelectedHotel] = useState<HotelMapItem | null>(null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveAutoShown, setSaveAutoShown] = useState(false);
+  useEffect(() => {
+    if (step === "bundle" && uuid && hydrated && !saveAutoShown) {
+      setSaveOpen(true);
+      setSaveAutoShown(true);
+    }
+  }, [step, uuid, hydrated, saveAutoShown]);
 
   const selectedOption = useMemo(() => {
     if (step === "routes-outbound") {
@@ -392,11 +403,29 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   );
 
   const go = useCallback(
-    (s: Step) => {
+    async (s: Step) => {
       if (s !== "home" && !uuid) return;
+      if (uuid && hydrated) {
+        try {
+          await updateBundle(uuid, buildSnapshot());
+        } catch {}
+      }
       router.push(pathFor(s));
     },
-    [uuid, router, pathFor]
+    [uuid, hydrated, buildSnapshot, router, pathFor]
+  );
+
+  const handleChooseHotel = useCallback(
+    async (hotel: HotelMapItem) => {
+      setSelectedHotel(hotel);
+      if (uuid) {
+        try {
+          await updateBundle(uuid, { ...buildSnapshot(), selectedHotel: hotel });
+        } catch {}
+      }
+      router.push(pathFor("routes-outbound"));
+    },
+    [uuid, buildSnapshot, router, pathFor]
   );
 
   const [composing, setComposing] = useState(false);
@@ -451,7 +480,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
       <main className={`flex flex-col flex-1 min-h-0 ${showTabBar ? "pb-16 lg:pb-0" : ""}`}>
         {step === "home" && (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             <HomeView
               departure={departure}
               venue={venue}
@@ -485,7 +514,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         {(step === "routes-outbound" || step === "routes-return") && (
           <div className="flex flex-col lg:flex-row flex-1 min-h-0">
             <SideNav step={step} go={go} canReach={canReach} venue={venue} roundTrip={roundTrip} />
-            <div className="min-w-0 flex-1 flex flex-col">
+            <div className="min-w-0 flex-1 flex flex-col min-h-0">
               <RoutesView
                 departure={departure}
                 venue={venue}
@@ -515,7 +544,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         {step === "hotels" && (
           <div className="flex flex-col lg:flex-row flex-1 min-h-0">
             <SideNav step={step} go={go} canReach={canReach} venue={venue} roundTrip={roundTrip} />
-            <div className="min-w-0 flex-1 flex flex-col">
+            <div className="min-w-0 flex-1 flex flex-col min-h-0">
               <HotelsView
                 venue={venue}
                 hotelRadius={hotelRadius}
@@ -527,9 +556,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
                 onSelectHotel={setSelectedHotel}
                 departure={departure}
                 hotelLocation={hotelLocation}
+                checkin={checkin}
+                checkout={checkout}
                 mobileMapOpen={mobileMapOpen}
                 setMobileMapOpen={setMobileMapOpen}
-                onContinue={() => go("routes-outbound")}
+                onChooseHotel={handleChooseHotel}
               />
             </div>
           </div>
@@ -538,7 +569,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         {step === "bundle" && (
           <div className="flex flex-col lg:flex-row flex-1 min-h-0">
             <SideNav step={step} go={go} canReach={canReach} venue={venue} roundTrip={roundTrip} />
-            <div className="min-w-0 flex-1 flex flex-col overflow-y-auto">
+            <div className="min-w-0 flex-1 flex flex-col overflow-y-auto min-h-0">
               <BundleView
                 departure={departure}
                 venue={venue}
@@ -557,6 +588,18 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       </main>
 
       {showTabBar && <MobileTabBar step={step} go={go} canReach={canReach} roundTrip={roundTrip} />}
+
+      {step === "bundle" && uuid && !saveOpen && (
+        <button
+          onClick={() => setSaveOpen(true)}
+          className="fixed bottom-20 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-ink px-6 py-3.5 text-[15px] font-semibold text-white shadow-[0_12px_28px_-8px_rgba(0,17,58,0.5)] transition-all hover:bg-navy-700 active:scale-95 lg:bottom-6"
+        >
+          <IconBookmark size={15} /> Sauvegarder mon bundle
+        </button>
+      )}
+      {step === "bundle" && uuid && saveOpen && (
+        <SaveBundleModal bundleId={uuid} onClose={() => setSaveOpen(false)} />
+      )}
 
       {composing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm">

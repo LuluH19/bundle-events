@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { RoutesViewProps } from "@/src/types";
 import { MODE_META } from "@/src/utils/constants/transport";
-import { formatDuration, formatDistance, timeOf } from "@/src/utils/format";
+import { formatDuration, formatDistance } from "@/src/utils/format";
 import { Button, Chip, Eyebrow, MODE_ICON, IconArrow } from "@/src/components/ui";
 
 const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
@@ -77,7 +77,7 @@ export function RoutesView(props: RoutesViewProps) {
                     selected ? "border-ink bg-ink text-white" : "border-line bg-white hover:border-ember/50"
                   }`}
                 >
-                  <div className="grid w-full grid-cols-[48px_1fr_auto] items-center gap-3">
+                  <div className="grid w-full grid-cols-[48px_1fr] items-center gap-3">
                     <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-ember text-white" : "bg-mist text-ink"}`}>
                       <Icon size={22} />
                     </span>
@@ -110,16 +110,9 @@ export function RoutesView(props: RoutesViewProps) {
                             return parts.length > 0 ? parts.join(" + ") : meta.label;
                           })()}
                         </span>
-                        {o.mode === fastest && !o.accessMode && <Chip className={selected ? "bg-ember text-white" : ""}>Le + rapide</Chip>}
                       </span>
                       <span className={`mt-0.5 block truncate font-mono text-[11px] tracking-wide ${selected ? "text-white/60" : "text-slate-400"}`}>
                         {formatDuration(o.durationMin).toUpperCase()} · {formatDistance(o.distanceKm)} · CO₂ {meta.co2.toUpperCase()}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="font-display text-[24px] font-bold leading-none">{o.price > 0 ? `€${o.price}` : "Gratuit"}</span>
-                      <span className={`mt-1 block font-mono text-[10px] tracking-widest ${selected ? "text-white/60" : "text-slate-400"}`}>
-                        {o.price > 0 ? "EST. / PERS." : ""}
                       </span>
                     </span>
                   </div>
@@ -162,19 +155,19 @@ export function RoutesView(props: RoutesViewProps) {
                               </div>
                               <div className="my-1 w-[2px] flex-1" style={{ backgroundColor: color }} />
                             </div>
-                            <div className="mb-4 flex-1">
-                              <div className="font-semibold text-white">{seg.from.name}</div>
-                              <div className="mt-1.5 flex items-center gap-2 text-white/70">
-                                <span className="flex items-center justify-center rounded p-1" style={{ backgroundColor: color, color: "#fff" }}>
+                            <div className="mb-4 min-w-0 flex-1">
+                              <div className="truncate font-semibold text-white">{seg.from.name}</div>
+                              <div className="mt-1.5 flex min-w-0 items-center gap-2 text-white/70">
+                                <span className="flex shrink-0 items-center justify-center rounded p-1" style={{ backgroundColor: color, color: "#fff" }}>
                                   <SegIcon size={12} />
                                 </span>
-                                <span className="font-mono text-[10px]">
+                                <span className="truncate font-mono text-[10px]">
                                   {MODE_META[seg.mode].label}{displayLabel ? ` · ${displayLabel}` : ""} · {formatDuration(seg.durationMinutes)} · {formatDistance(seg.distanceKm)}
                                 </span>
                               </div>
                               {idx === o.route.segments.length - 1 && (
                                 <div className="mt-4 flex items-center gap-4">
-                                  <div className="absolute -ml-8 flex h-4 w-4 items-center justify-center rounded-full bg-ember">
+                                  <div className="-ml-8 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-ember">
                                     <div className="h-1.5 w-1.5 rounded-full bg-white" />
                                   </div>
                                   <div className="font-semibold text-ember">{seg.to.name}</div>
@@ -197,8 +190,7 @@ export function RoutesView(props: RoutesViewProps) {
           )}
         </div>
 
-        {/* live detail for selected option */}
-        {trainJourneys.length > 0 && (
+        {/* {trainJourneys.length > 0 && (
           <div className="mt-5 rounded-2xl border border-line bg-white p-4">
             <Eyebrow tone="navy" className="mb-3">Trains disponibles · SNCF</Eyebrow>
             <div className="flex flex-col gap-2">
@@ -231,9 +223,9 @@ export function RoutesView(props: RoutesViewProps) {
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
-        <div className="sticky bottom-0 mt-auto bg-page pt-2 pb-1 flex flex-col gap-2">
+        <div className="sticky z-10 bottom-0 mt-auto pt-2 pb-1 flex flex-col gap-2">
           <Button onClick={onContinue} disabled={!selectedModeId && selectedModeId !== "skip"} className="w-full">
             Continuer <IconArrow size={16} />
           </Button>
