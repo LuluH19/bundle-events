@@ -110,7 +110,6 @@ export function RoutesView(props: RoutesViewProps) {
                             return parts.length > 0 ? parts.join(" + ") : meta.label;
                           })()}
                         </span>
-                        {o.mode === fastest && !o.accessMode && <Chip className={selected ? "bg-ember text-white" : ""}>Le + rapide</Chip>}
                       </span>
                       <span className={`mt-0.5 block truncate font-mono text-[11px] tracking-wide ${selected ? "text-white/60" : "text-slate-400"}`}>
                         {formatDuration(o.durationMin).toUpperCase()} · {formatDistance(o.distanceKm)} · CO₂ {meta.co2.toUpperCase()}
