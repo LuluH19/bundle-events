@@ -1,9 +1,10 @@
 "use client";
 
 import { Step, MobileTabBarProps } from "@/src/types";
-import { IconMap, IconBed, IconBag } from "@/src/components/ui";
+import { IconMap, IconBed, IconBag, IconTicket } from "@/src/components/ui";
 
 const BASE_NAV_ITEMS: { id: Step; label: string; Icon: (p: { size?: number; className?: string }) => React.ReactElement }[] = [
+  { id: "home", label: "Dates", Icon: IconTicket },
   { id: "hotels", label: "Logement", Icon: IconBed },
   { id: "routes-outbound", label: "Aller", Icon: IconMap },
   { id: "routes-return", label: "Retour", Icon: IconMap },

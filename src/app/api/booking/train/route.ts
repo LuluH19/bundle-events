@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
   const toLat = Number(sp.get("toLat"));
   const toLng = Number(sp.get("toLng"));
   const date = sp.get("date"); // YYYY-MM-DD
+  const returnDate = sp.get("returnDate");
 
   if (!fromName || !toName || !date) {
     return NextResponse.json({ error: "fromName, toName and date required" }, { status: 400 });
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
   }
 
   const params = new URLSearchParams({
-    journeySearchType: "single",
+    journeySearchType: returnDate ? "return" : "single",
     origin,
     destination,
     outwardDate: `${date}T08:00:00`,
@@ -68,6 +69,10 @@ export async function GET(request: NextRequest) {
     selectedTab: "train",
     lang: "fr",
   });
+  if (returnDate) {
+    params.set("inwardDate", `${returnDate}T08:00:00`);
+    params.set("inwardDateType", "departAfter");
+  }
 
   return NextResponse.redirect(`https://www.thetrainline.com/book/results?${params}`);
 }

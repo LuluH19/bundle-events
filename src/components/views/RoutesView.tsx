@@ -155,13 +155,13 @@ export function RoutesView(props: RoutesViewProps) {
                               </div>
                               <div className="my-1 w-[2px] flex-1" style={{ backgroundColor: color }} />
                             </div>
-                            <div className="mb-4 flex-1">
-                              <div className="font-semibold text-white">{seg.from.name}</div>
-                              <div className="mt-1.5 flex items-center gap-2 text-white/70">
-                                <span className="flex items-center justify-center rounded p-1" style={{ backgroundColor: color, color: "#fff" }}>
+                            <div className="mb-4 min-w-0 flex-1">
+                              <div className="truncate font-semibold text-white">{seg.from.name}</div>
+                              <div className="mt-1.5 flex min-w-0 items-center gap-2 text-white/70">
+                                <span className="flex shrink-0 items-center justify-center rounded p-1" style={{ backgroundColor: color, color: "#fff" }}>
                                   <SegIcon size={12} />
                                 </span>
-                                <span className="font-mono text-[10px]">
+                                <span className="truncate font-mono text-[10px]">
                                   {MODE_META[seg.mode].label}{displayLabel ? ` · ${displayLabel}` : ""} · {formatDuration(seg.durationMinutes)} · {formatDistance(seg.distanceKm)}
                                 </span>
                               </div>

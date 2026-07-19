@@ -30,8 +30,8 @@ const coordStr = (c: LatLng) => `${c.lat},${c.lng}`;
 /** Order buttons appear in — mirrors the card's "Avion + Train" mode summary. */
 const BOOKABLE_ORDER: TransportMode[] = ["plane", "train", "bus", "car", "walking"];
 
-function proxyParams(seg: RouteSegment, date: string): URLSearchParams {
-  return new URLSearchParams({
+function proxyParams(seg: RouteSegment, date: string, returnDate?: string): URLSearchParams {
+  const p = new URLSearchParams({
     fromName: seg.from.name,
     fromLat: String(seg.from.coords.lat),
     fromLng: String(seg.from.coords.lng),
@@ -40,11 +40,13 @@ function proxyParams(seg: RouteSegment, date: string): URLSearchParams {
     toLng: String(seg.to.coords.lng),
     date,
   });
+  if (returnDate) p.set("returnDate", returnDate);
+  return p;
 }
 
 /**
  * Build the booking link for a single leg segment of a given mode.
- * `returnDate` (plane only) turns the flight search into a round-trip one.
+ * `returnDate` (plane, train and bus) turns the search into a round-trip one.
  */
 function segmentLink(mode: TransportMode, seg: RouteSegment, date: string, returnDate?: string): BookingLink | null {
   switch (mode) {
@@ -71,10 +73,10 @@ function segmentLink(mode: TransportMode, seg: RouteSegment, date: string, retur
     }
 
     case "train":
-      return { href: `/api/booking/train?${proxyParams(seg, date)}`, provider: "Trainline", external: false, mode };
+      return { href: `/api/booking/train?${proxyParams(seg, date, returnDate)}`, provider: "Trainline", external: false, mode, roundTrip: !!returnDate };
 
     case "bus":
-      return { href: `/api/booking/bus?${proxyParams(seg, date)}`, provider: "FlixBus", external: false, mode };
+      return { href: `/api/booking/bus?${proxyParams(seg, date, returnDate)}`, provider: "FlixBus", external: false, mode, roundTrip: !!returnDate };
 
     case "car":
     case "walking": {
@@ -118,8 +120,8 @@ export function getBookingLinks(
 
     // Representative segment = the longest of this mode (the main leg).
     const seg = segs.reduce((a, b) => (b.distanceKm > a.distanceKm ? b : a));
-    // Only flights become round-trip; rail/bus are booked per leg.
-    const link = segmentLink(mode, seg, date, mode === "plane" ? returnDate : undefined);
+    const rt = mode === "car" || mode === "walking" ? undefined : returnDate;
+    const link = segmentLink(mode, seg, date, rt);
     if (link) links.push(link);
   }
 

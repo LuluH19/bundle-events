@@ -10,7 +10,6 @@ import {
   Chip,
   IconArrow,
   IconBed,
-  IconCheck,
   IconLeaf,
   IconMap,
   IconPin,
@@ -47,6 +46,12 @@ const SHORT_MODE: Record<TransportMode, string> = {
   walking: "À pied",
 };
 
+const RT_HEADER: Partial<Record<TransportMode, { eyebrow: string; cta: string }>> = {
+  plane: { eyebrow: "Vol aller-retour", cta: "Réserver le vol" },
+  train: { eyebrow: "Train aller-retour", cta: "Réserver le train" },
+  bus: { eyebrow: "Bus aller-retour", cta: "Réserver le bus" },
+};
+
 /** A ticket can be booked for these; road/walk only get a route link. */
 const isTicketed = (mode: TransportMode) => mode === "plane" || mode === "train" || mode === "bus";
 
@@ -60,12 +65,17 @@ export function BundleView(props: BundleViewProps) {
       : null,
   ].filter(Boolean) as Leg[];
 
-  // A round-trip flight covers both legs, so it's surfaced once in the header
-  // (next to the total) rather than on the aller/retour cards.
-  const flightRoundTrip: BookingLink | null =
-    roundTrip && outboundOption && departure && venue
-      ? getBookingLinks(outboundOption, departure, venue, checkin, { returnDateISO: checkout }).find(l => l.mode === "plane") ?? null
-      : null;
+  const roundTripLinks: BookingLink[] =
+    roundTrip && outboundOption && returnOption && departure && venue
+      ? (() => {
+          const retModes = new Set(
+            getBookingLinks(returnOption, venue, departure, checkout).map(l => l.mode)
+          );
+          return getBookingLinks(outboundOption, departure, venue, checkin, { returnDateISO: checkout })
+            .filter(l => l.roundTrip && retModes.has(l.mode));
+        })()
+      : [];
+  const roundTripModes = new Set(roundTripLinks.map(l => l.mode));
 
   const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
   const fmtDateTime = (iso: string) =>
@@ -85,13 +95,12 @@ export function BundleView(props: BundleViewProps) {
   const hotelFacts: { icon: React.ReactNode; label: string }[] = [];
   if (selectedHotel) {
     if (selectedHotel.stars) hotelFacts.push({ icon: <IconStar size={18} />, label: `${selectedHotel.stars} étoiles` });
-    if (selectedHotel.rating) hotelFacts.push({ icon: <IconCheck size={18} />, label: `Note ${selectedHotel.rating}` });
     if (selectedHotel.pricePerNight)
       hotelFacts.push({ icon: <IconLeaf size={18} />, label: `€${selectedHotel.pricePerNight} / nuit` });
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-10 md:px-8 md:py-14">
+    <div className="mx-auto max-w-6xl px-5 pt-10 pb-32 md:px-8 md:py-14">
       {/* Header */}
       <header className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
@@ -106,25 +115,30 @@ export function BundleView(props: BundleViewProps) {
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-stretch">
-          {flightRoundTrip && (
-            <a
-              href={flightRoundTrip.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`Réserver via ${flightRoundTrip.provider}`}
-              className="group flex items-center gap-4 rounded-2xl bg-ember p-6 text-white shadow-[0_18px_48px_-22px_rgba(249,108,26,0.65)] transition-all hover:bg-ember-600 active:scale-[0.99]"
-            >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-sm">
-                <IconPlane size={22} />
-              </span>
-              <span className="flex flex-col">
-                <span className="eyebrow text-white/70">Vol aller-retour</span>
-                <span className="font-display text-[19px] font-extrabold leading-tight text-white">Réserver le vol</span>
-                <span className="text-[12px] text-white/70">via {flightRoundTrip.provider}</span>
-              </span>
-              <IconArrow size={17} className="ml-auto text-white transition-transform group-hover:translate-x-1" />
-            </a>
-          )}
+          {roundTripLinks.map((link, i) => {
+            const meta = RT_HEADER[link.mode] ?? { eyebrow: "Aller-retour", cta: "Réserver" };
+            const RTIcon = MODE_ICON[link.mode] ?? IconPlane;
+            return (
+              <a
+                key={i}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Réserver via ${link.provider}`}
+                className="group flex items-center gap-4 rounded-2xl bg-ember p-6 text-white shadow-[0_18px_48px_-22px_rgba(249,108,26,0.65)] transition-all hover:bg-ember-600 active:scale-[0.99]"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-sm">
+                  <RTIcon size={22} />
+                </span>
+                <span className="flex flex-col">
+                  <span className="eyebrow text-white/70">{meta.eyebrow}</span>
+                  <span className="font-display text-[19px] font-extrabold leading-tight text-white">{meta.cta}</span>
+                  <span className="text-[12px] text-white/70">via {link.provider}</span>
+                </span>
+                <IconArrow size={17} className="ml-auto text-white transition-transform group-hover:translate-x-1" />
+              </a>
+            );
+          })}
           <div className="flex flex-col items-start justify-center rounded-2xl bg-white p-6 ring-1 ring-line md:items-end">
             <span className="eyebrow text-slate-400">Total estimé</span>
             <span className="mt-1 font-display text-[40px] font-extrabold text-ink">€{total.toLocaleString("fr-FR")}</span>
@@ -188,9 +202,8 @@ export function BundleView(props: BundleViewProps) {
                   const isReturn = t.direction === "return";
                   const dir = isReturn ? "retour" : "aller";
                   let bookingLinks = getBookingLinks(t.option, t.dep, t.arr, isReturn ? checkout : checkin);
-                  // The round-trip flight lives in the header — drop it from both cards.
-                  if (flightRoundTrip) {
-                    bookingLinks = bookingLinks.filter(l => l.mode !== "plane");
+                  if (roundTripModes.size) {
+                    bookingLinks = bookingLinks.filter(l => !roundTripModes.has(l.mode));
                   }
                   const multi = bookingLinks.length > 1;
                   const labelFor = (link: BookingLink) => {
@@ -353,9 +366,6 @@ export function BundleView(props: BundleViewProps) {
                         {Array.from({ length: 5 }).map((_, i) => (
                           <IconStar key={i} size={16} className={i < stars ? "text-ember" : "text-line"} />
                         ))}
-                        {selectedHotel.rating && (
-                          <span className="ml-2 text-[13px] font-medium text-slate-400">{selectedHotel.rating} / 5</span>
-                        )}
                       </div>
                       {selectedHotel.locationName && (
                         <p className="flex items-center gap-1.5 text-[13px] text-slate-500">

@@ -85,6 +85,14 @@ body {
   background: transparent;
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Mapbox popups restyled to the brand */
 .mapboxgl-popup-content {
   font-family: var(--font-sans);
