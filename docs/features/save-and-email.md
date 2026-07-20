@@ -28,4 +28,4 @@ Branché dans `BundleBuilder` sur l'étape `bundle` :
 ### Activation Brevo
 Compte → vérifier un expéditeur (code) → API key → `BREVO_API_KEY` + `EMAIL_FROM=<expéditeur vérifié>`. Les nouveaux comptes ont l'envoi transactionnel désactivé jusqu'à validation (profil + téléphone).
 
-> ⚠️ **Vercel** : saisir `EMAIL_FROM` **sans guillemets** (`Bundle Events <x@y.z>`, pas `"Bundle Events <x@y.z>"`). L'UI Vercel garde les guillemets littéraux, contrairement à `dotenv` en local → Brevo rejette (`400 valid sender email required`). `parseFrom` retire désormais les guillemets par sécurité, mais mieux vaut la bonne valeur.
+> ⚠️ **Vercel** : idéalement `EMAIL_FROM=Bundle Events <x@y.z>` (sans guillemets — l'UI Vercel les garde littéralement, contrairement à `dotenv` local). `parseFrom` est robuste : il retire les guillemets **et** extrait l'email même sans chevrons `< >` (une valeur `Bundle Events x@y.z` fonctionne aussi). L'expéditeur doit être un **sender vérifié** dans Brevo, sinon `400`.
