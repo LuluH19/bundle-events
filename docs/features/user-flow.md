@@ -15,7 +15,7 @@ Détaillé dans [hotels.md](./hotels.md). En bref : liste + carte, filtres rayon
 
 ## 03 / 04 — Aller & Retour (`RoutesView.tsx`)
 - Cartes d'options de transport par direction (`computeOptions`), libellés/icônes via `MODE_META` / `MODE_ICON`.
-- Carte de l'itinéraire sélectionné + détail live (trains SNCF via `fetchTrainInfo`, vols via `fetchFlightInfo`).
+- Carte de l'itinéraire sélectionné + détail live (trains SNCF via `fetchTrainInfo`, vols via `fetchFlightInfo`). Sur **mobile**, la carte est masquée et s'ouvre via un bouton **« Voir la carte »** (overlay plein écran), comme la vue hôtels.
 - La 1ʳᵉ option est sélectionnée par défaut ; son détail s'enrichit en asynchrone. Les libellés sont **tronqués** pour éviter les décalages de layout qui feraient rater les clics sur les autres options.
 - L'étape Retour est masquée en aller simple.
 
