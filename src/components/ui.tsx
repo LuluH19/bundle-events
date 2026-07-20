@@ -34,6 +34,31 @@ export function IconPin({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+export function IconBookmark({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
+}
+export function IconCopy({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+    </svg>
+  );
+}
+export function IconShare({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+    </svg>
+  );
+}
 export function IconTrain({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
@@ -210,7 +235,7 @@ export function Button({
   const styles = {
     primary: "bg-ember text-white hover:bg-ember-600 shadow-[0_12px_28px_-8px_rgba(249,108,26,0.6)]",
     dark: "bg-ink text-white hover:bg-navy-700",
-    ghost: "bg-transparent text-ink ring-1 ring-inset ring-line hover:ring-ink hover:bg-mist",
+    ghost: "bg-page text-ink ring-1 ring-inset ring-line hover:bg-line",
   }[kind];
   return (
     <button

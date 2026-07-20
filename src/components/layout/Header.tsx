@@ -2,6 +2,7 @@
 
 import { HeaderProps } from "@/src/types";
 import Image from "next/image";
+import Link from "next/link";
 
 export function Header({ go }: HeaderProps) {
   const startBundle = () => {
@@ -14,7 +15,7 @@ export function Header({ go }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-line bg-white/90 px-5 py-3 backdrop-blur-xl md:px-8">
-      <button onClick={() => go("home")} aria-label="Accueil Bundle Events" className="shrink-0">
+      <Link href="/" aria-label="Accueil Bundle Events" className="shrink-0">
         <Image
           src="/favicon/favicon.svg"
           alt="Bundle Events"
@@ -24,7 +25,7 @@ export function Header({ go }: HeaderProps) {
           unoptimized
           className="h-16 w-auto"
         />
-      </button>
+      </Link>
       {/* <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
           <a
             key="Événements"

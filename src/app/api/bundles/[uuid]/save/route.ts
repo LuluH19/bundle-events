@@ -45,7 +45,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     return Response.json({ error: updateError.message }, { status: 500 });
   }
 
-  const { link } = await sendBundleLinkEmail(email, uuid);
+  const { link, sent } = await sendBundleLinkEmail(email, uuid);
 
-  return Response.json({ ok: true, link });
+  return Response.json({ ok: true, link, sent });
 }

@@ -4,6 +4,8 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+> Full project documentation lives in [`docs/`](./docs/README.md) (one file per topic: architecture, api, database, design, …). Keep it in sync with every behaviour/structure/API/env change.
+
 ## Technology Stack
 - Next.js
 - React

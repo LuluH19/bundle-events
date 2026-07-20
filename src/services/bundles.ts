@@ -30,11 +30,10 @@ export async function fetchBundle(uuid: string): Promise<BundleRecord | null> {
   return (await res.json()) as BundleRecord;
 }
 
-// Attach an email to the bundle and trigger the (stubbed) link email.
 export async function saveBundleEmail(
   uuid: string,
   email: string
-): Promise<{ ok: boolean; link: string }> {
+): Promise<{ ok: boolean; link: string; sent: boolean }> {
   const res = await fetch(`/api/bundles/${uuid}/save`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -44,5 +43,5 @@ export async function saveBundleEmail(
   if (!res.ok) {
     throw new Error(json?.error || `saveBundleEmail failed: ${res.status}`);
   }
-  return json as { ok: boolean; link: string };
+  return json as { ok: boolean; link: string; sent: boolean };
 }

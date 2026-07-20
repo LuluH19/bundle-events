@@ -31,9 +31,11 @@ export interface HotelsViewProps {
   onSelectHotel: (h: HotelMapItem | null) => void;
   departure: Location | null;
   hotelLocation: Location | null;
+  checkin: string;
+  checkout: string;
   mobileMapOpen: boolean;
   setMobileMapOpen: (v: boolean) => void;
-  onContinue: () => void;
+  onChooseHotel: (h: HotelMapItem) => void;
 }
 
 export interface HomeViewProps {
@@ -87,6 +89,7 @@ export interface TravelMapProps {
   onHotelSelect: (hotel: HotelMapItem) => void;
   hotelRadius: number;
   showHotels: boolean;
+  fitPadding?: number;
 }
 
 export interface SideNavProps {
