@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useState } from "react";
 import { RoutesViewProps } from "@/src/types";
 import { MODE_META } from "@/src/utils/constants/transport";
 import { formatDuration, formatDistance } from "@/src/utils/format";
-import { Button, Chip, Eyebrow, MODE_ICON, IconArrow } from "@/src/components/ui";
+import { Button, Chip, Eyebrow, MODE_ICON, IconArrow, IconMap, IconClose } from "@/src/components/ui";
 
 const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
   ssr: false,
@@ -29,23 +30,25 @@ export function RoutesView(props: RoutesViewProps) {
     onContinue,
   } = props;
   const fastest = options[0]?.mode;
+  const [mobileMapOpen, setMobileMapOpen] = useState(false);
+
+  const mapBlock = (
+    <TravelMap
+      departure={departure}
+      venue={venue}
+      hotel={null}
+      route={journeyRoute}
+      hotelResults={[]}
+      selectedHotelId={null}
+      onHotelSelect={() => {}}
+      hotelRadius={0}
+      showHotels={false}
+    />
+  );
 
   return (
     <div className="flex flex-col flex-1 min-h-0 md:h-[calc(100dvh-65px)] md:flex-row-reverse">
-      {/* Map */}
-      <div className="h-[300px] shrink-0 md:h-full md:flex-1">
-        <TravelMap
-          departure={departure}
-          venue={venue}
-          hotel={null}
-          route={journeyRoute}
-          hotelResults={[]}
-          selectedHotelId={null}
-          onHotelSelect={() => {}}
-          hotelRadius={0}
-          showHotels={false}
-        />
-      </div>
+      <div className="hidden md:block md:h-full md:flex-1">{mapBlock}</div>
 
       {/* List */}
       <aside className="scroll-slim flex flex-col flex-1 w-full overflow-y-auto border-line bg-page p-5 md:w-[460px] md:border-r md:p-7">
@@ -59,6 +62,12 @@ export function RoutesView(props: RoutesViewProps) {
             "Choisissez votre trajet."
           )}
         </h2>
+        <button
+          onClick={() => setMobileMapOpen(true)}
+          className="mt-4 flex items-center gap-1.5 self-start rounded-full bg-ink px-3.5 py-2 text-[13px] font-medium text-white md:hidden"
+        >
+          <IconMap size={15} /> Voir la carte
+        </button>
         <div className="mt-6 flex flex-col gap-3">
           {loading &&
             [0, 1, 2].map((i) => <div key={i} className="h-[92px] animate-pulse rounded-2xl bg-mist" />)}
@@ -234,6 +243,18 @@ export function RoutesView(props: RoutesViewProps) {
           </Button>
         </div>
       </aside>
+
+      {mobileMapOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white md:hidden">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <span className="font-display font-bold text-ink">Carte du trajet</span>
+            <button onClick={() => setMobileMapOpen(false)} className="text-slate-500">
+              <IconClose size={20} />
+            </button>
+          </div>
+          <div className="flex-1">{mapBlock}</div>
+        </div>
+      )}
     </div>
   );
 }
