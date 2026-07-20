@@ -24,3 +24,7 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 - **`api/booking/bus/route.ts`** — `GET`. Résout les villes → UUIDs **FlixBus**, redirige vers `shop.flixbus.com/search` (A/R via `returnDate`). Repli : Google Maps transit.
 
 Détails : [../features/booking-links.md](../features/booking-links.md).
+
+## Diagnostic
+
+- **`api/health/email/route.ts`** — `GET`. Sans param : renvoie `{ brevoConfigured, from:{name,email} }` (vérifie si `BREVO_API_KEY` est présent et ce que `EMAIL_FROM` produit). Avec `?send=1` : tente un envoi Brevo **vers l'expéditeur lui-même** (donc non abusable) et renvoie `test:{ ok, status, body }` (la réponse exacte de Brevo : 201 OK / 400 sender invalide / 401 clé invalide). Outil de debug prod — supprimable une fois l'email fiabilisé.

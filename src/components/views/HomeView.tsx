@@ -47,7 +47,7 @@ export function HomeView(props: HomeViewProps) {
     onCompose,
   } = props;
   
-  const ready = !!(departure && venue);
+  const ready = !!(departure && venue && checkin && checkout);
   const today = useMemo(() => isoPlusDays(0), []);
 
   return (
