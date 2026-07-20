@@ -32,10 +32,37 @@ interface Sender {
 }
 
 function parseFrom(): Sender {
-  const raw = process.env.EMAIL_FROM || "no-reply@bundle-events.app";
+  const raw = (process.env.EMAIL_FROM || "no-reply@bundle-events.app")
+    .trim()
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
   const m = raw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
   if (m) return { name: m[1] || "BundleEvent", email: m[2].trim() };
-  return { name: process.env.EMAIL_FROM_NAME || "BundleEvent", email: raw.trim() };
+  return { name: process.env.EMAIL_FROM_NAME || "BundleEvent", email: raw };
+}
+
+export function emailConfig() {
+  return { brevoConfigured: !!process.env.BREVO_API_KEY, from: parseFrom() };
+}
+
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; status: number; body: string }> {
+  if (!process.env.BREVO_API_KEY) return { ok: false, status: 0, body: "BREVO_API_KEY not set" };
+  const from = parseFrom();
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: from,
+      to: [{ email: to }],
+      subject: "BundleEvent — health-check",
+      htmlContent: "<p>health-check</p>",
+    }),
+  });
+  return { ok: res.ok, status: res.status, body: await res.text() };
 }
 
 async function sendViaBrevo(to: string, subject: string, html: string, from: Sender): Promise<boolean> {
