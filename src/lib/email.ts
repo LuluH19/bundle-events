@@ -36,9 +36,16 @@ function parseFrom(): Sender {
     .trim()
     .replace(/^["']+|["']+$/g, "")
     .trim();
-  const m = raw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
-  if (m) return { name: m[1] || "BundleEvent", email: m[2].trim() };
-  return { name: process.env.EMAIL_FROM_NAME || "BundleEvent", email: raw };
+  const fallbackName = process.env.EMAIL_FROM_NAME || "BundleEvent";
+  const bracket = raw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  if (bracket) return { name: bracket[1] || fallbackName, email: bracket[2].trim() };
+  const emailMatch = raw.match(/[^\s<>]+@[^\s<>]+\.[^\s<>]+/);
+  if (emailMatch) {
+    const email = emailMatch[0];
+    const name = raw.replace(email, "").replace(/[<>]/g, "").trim();
+    return { name: name || fallbackName, email };
+  }
+  return { name: fallbackName, email: raw };
 }
 
 export function emailConfig() {
