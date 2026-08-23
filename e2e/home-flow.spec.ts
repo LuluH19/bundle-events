@@ -178,6 +178,72 @@ test.describe("Parcours de composition d'un bundle", () => {
     // les hotels mockes sont rendus
     await expect(page.getByText("Hotel Bercy Test")).toBeVisible();
     await expect(page.getByText("Hotel Nation Test")).toBeVisible();
-    await expect(page.getByText("€129")).toBeVisible();
+    await expect(page.getByText("129€")).toBeVisible();
+  });
+
+  test("un hotel choisi sur la carte est ramene dans la zone visible de la liste", async ({ page }) => {
+    const venueLng = SAVED_BUNDLE.data.venue.coords.lng;
+    const venueLat = SAVED_BUNDLE.data.venue.coords.lat;
+    const hotels = Array.from({ length: 14 }, (_, index) => ({
+      id: `hotel-scroll-${index + 1}`,
+      name: index === 13 ? "Hotel cible hors champ" : `Hotel test ${index + 1}`,
+      locationName: "Paris 12e",
+      coords: { lat: venueLat, lng: venueLng + (index + 1) * 0.0035 },
+      stars: 4,
+      pricePerNight: 100 + index,
+      currency: "EUR",
+      source: "liteapi",
+    }));
+
+    await page.route("**/api/hotels/search**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(hotels) })
+    );
+    await page.addInitScript(() => {
+      const scrollIntoView = Element.prototype.scrollIntoView;
+      const testWindow = window as typeof window & {
+        scrollTargets: { text: string; options: ScrollIntoViewOptions }[];
+      };
+      testWindow.scrollTargets = [];
+      Element.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {
+        testWindow.scrollTargets.push({
+          text: this.textContent?.trim() ?? "",
+          options: typeof options === "object" ? options : {},
+        });
+        scrollIntoView.call(this, options);
+      };
+    });
+
+    await page.goto(`/${BUNDLE_UUID}/hotels`);
+    await expect(page.getByRole("heading", { name: "Hotel cible hors champ" })).toBeVisible();
+
+    const list = page.locator("aside.scroll-slim");
+    await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(0);
+
+    const canvas = page.locator(".mapboxgl-canvas");
+    await expect(canvas).toBeVisible();
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+
+    const radiusLongitude = 10 / (111.32 * Math.cos((venueLat * Math.PI) / 180));
+    const targetLongitudeOffset = hotels.at(-1)!.coords.lng - venueLng;
+    const x = canvasBox!.width / 2 + (targetLongitudeOffset / radiusLongitude) * ((canvasBox!.width - 128) / 2);
+    await canvas.click({ position: { x, y: canvasBox!.height / 2 } });
+
+    const targetCard = page.getByRole("heading", { name: "Hotel cible hors champ" }).locator("../../../..");
+    await expect(targetCard.getByRole("button", { name: "Choisi" })).toBeVisible();
+    await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const testWindow = window as typeof window & {
+            scrollTargets: { text: string; options: ScrollIntoViewOptions }[];
+          };
+          return testWindow.scrollTargets.at(-1);
+        })
+      )
+      .toMatchObject({
+        text: expect.stringContaining("Hotel cible hors champ"),
+        options: { behavior: "smooth", block: "start" },
+      });
   });
 });
