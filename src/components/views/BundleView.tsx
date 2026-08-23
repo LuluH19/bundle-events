@@ -87,9 +87,7 @@ export function BundleView(props: BundleViewProps) {
           minute: "2-digit",
         })
       : "—";
-  const transportCost = (outboundOption?.price || 0) + (roundTrip && returnOption ? returnOption.price : 0);
   const hotelCost = selectedHotel?.pricePerNight ? selectedHotel.pricePerNight * nights : 0;
-  const total = transportCost + hotelCost;
   const stars = selectedHotel?.stars ?? (selectedHotel?.rating ? Math.round(selectedHotel.rating) : 0);
 
   const hotelFacts: { icon: React.ReactNode; label: string }[] = [];
@@ -140,9 +138,9 @@ export function BundleView(props: BundleViewProps) {
             );
           })}
           <div className="flex flex-col items-start justify-center rounded-2xl bg-white p-6 ring-1 ring-line md:items-end">
-            <span className="eyebrow text-slate-400">Total estimé</span>
-            <span className="mt-1 font-display text-[40px] font-extrabold text-ink">€{total.toLocaleString("fr-FR")}</span>
-            <p className="mt-1 text-[12px] text-slate-400">Taxes et frais locaux estimés inclus</p>
+            <span className="eyebrow text-slate-400">Estimation logement</span>
+            <span className="mt-1 font-display text-[40px] font-extrabold text-ink">€{hotelCost.toLocaleString("fr-FR")}</span>
+            <p className="mt-1 text-[12px] text-slate-400">Transport non inclus · tarif à confirmer à la réservation</p>
           </div>
         </div>
       </header>
@@ -230,8 +228,8 @@ export function BundleView(props: BundleViewProps) {
                     </div>
                     <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6">
                       <div>
-                        <p className="font-display text-[24px] font-extrabold text-ink">€{t.option.price.toLocaleString("fr-FR")}</p>
-                        <p className="text-[12px] text-slate-400">Prix du trajet estimé</p>
+                        <p className="font-display text-[18px] font-extrabold text-ink">Tarif à confirmer</p>
+                        <p className="text-[12px] text-slate-400">Prix à jour sur le site de réservation</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button

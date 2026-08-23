@@ -44,6 +44,10 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 
 `src/utils/algorithms/geodesic.ts` : `haversineDistance` (km, R=6371), `interpolateGreatCircle`, `estimateFlightDuration` (800 km/h + 60 min).
 
+## Tarifs
+
+Les options de transport ne contiennent pas de prix calculé. Les liens de réservation reconstruisent une recherche chez un fournisseur tiers sans verrouiller une offre précise ; un montant dérivé de la distance ne correspondrait donc pas nécessairement au tarif disponible. Le bundle demande de confirmer le tarif à jour sur le site de réservation et exclut le transport de l'estimation du logement.
+
 ## Empreinte carbone (état actuel)
 
 `utils/constants/transport.ts` (`MODE_META`) expose une **bande CO₂ qualitative** (Bas/Moyen/Élevé) par mode — pas de grammes précis. Pour des chiffres exacts, il faudrait des facteurs d'émission (ex. ADEME) × `distanceKm` (déjà calculée par segment).

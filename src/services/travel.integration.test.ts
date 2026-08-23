@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { LatLng } from "@/src/types";
 import { computeOptions } from "@/src/services/travel";
 import { computeRoute, isShortHaulFlightBanned } from "@/src/utils/algorithms/routing";
-import { priceEstimate } from "@/src/utils/travel";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { airports } from "@/src/utils/constants/airports";
 
@@ -193,7 +192,7 @@ describe("integration : services/travel + routing + geodesic", () => {
     expect(route.totalDurationMinutes).toBeGreaterThan(0);
   });
 
-  it("computeOptions selectionne les modes selon la distance et calcule des prix coherents", async () => {
+  it("computeOptions selectionne les modes selon la distance et conserve les metriques du trajet", async () => {
     const options = await computeOptions(PARIS, MARSEILLE);
 
     // Paris-Marseille (~660 km) : marche exclue (>8), train (>20) et avion (>200) inclus
@@ -207,11 +206,10 @@ describe("integration : services/travel + routing + geodesic", () => {
     const durations = options.map((o) => o.durationMin);
     expect([...durations].sort((a, b) => a - b)).toEqual(durations);
 
-    // le prix de chaque option provient bien de priceEstimate(mode, distance)
     for (const opt of options) {
-      expect(opt.price).toBe(priceEstimate(opt.mode, opt.distanceKm));
       expect(opt.distanceKm).toBe(opt.route.totalDistanceKm);
       expect(opt.durationMin).toBe(opt.route.totalDurationMinutes);
+      expect(opt).not.toHaveProperty("price");
     }
   });
 
@@ -244,7 +242,5 @@ describe("integration : services/travel + routing + geodesic", () => {
     expect(modes).toContain("walking");
     expect(modes).not.toContain("plane");
     expect(modes).not.toContain("train");
-    const walking = options.find((o) => o.mode === "walking");
-    expect(walking?.price).toBe(0); // priceEstimate("walking") === 0
   });
 });
