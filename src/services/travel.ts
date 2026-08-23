@@ -2,7 +2,7 @@ import { LatLng, RouteOption, TrainJourney, FlightInfo, TransportMode } from "@/
 import { computeDirectRoute, computeBusRoute, computePlaneRoute, computeTrainRoute, isShortHaulFlightBanned } from "@/src/utils/algorithms/routing";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { airports } from "@/src/utils/constants/airports";
-import { priceEstimate, findNearest } from "@/src/utils/travel";
+import { findNearest } from "@/src/utils/travel";
 import { dateOnly } from "@/src/utils/date";
 
 export async function computeOptions(
@@ -22,7 +22,6 @@ export async function computeOptions(
         route,
         durationMin: route.totalDurationMinutes,
         distanceKm: route.totalDistanceKm,
-        price: priceEstimate(mode, route.totalDistanceKm),
       } as RouteOption;
     } catch {
       return null;

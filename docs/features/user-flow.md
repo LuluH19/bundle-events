@@ -20,7 +20,7 @@ Détaillé dans [hotels.md](./hotels.md). En bref : liste + carte, filtres rayon
 - L'étape Retour est masquée en aller simple.
 
 ## 05 — Bundle (`BundleView.tsx`)
-- Récap : leg aller, leg retour, hôtel, dates, total estimé.
+- Récap : leg aller, leg retour, hôtel, dates, **estimation du logement uniquement**. Les prix de transport ne sont pas simulés : chaque carte invite à confirmer le tarif à jour chez le fournisseur au moment de réserver.
 - Liens de réservation via `getBookingLinks` (par mode) + `getHotelBookingLink` — voir [booking-links.md](./booking-links.md).
 - Les modes **communs à l'aller ET au retour** (avion/train/bus) sont regroupés en **un seul lien A/R** dans l'en-tête, retirés des cartes aller/retour.
 - Modification possible de chaque étape (`onEdit`).
