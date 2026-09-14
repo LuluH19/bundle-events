@@ -27,3 +27,4 @@ npm run dev               # http://localhost:3000
 - Reporter **toutes** les [variables d'environnement](./environment.md) dans les settings Vercel — le `.env` local n'est pas déployé.
 - Mettre `NEXT_PUBLIC_SITE_URL` sur l'URL de production (elle construit le lien du bundle dans l'email ; le lien affiché dans la popup utilise `window.location.origin` et est donc correct automatiquement).
 - Emailing : voir [../features/save-and-email.md](../features/save-and-email.md) pour l'activation Brevo.
+- Audience : activer Web Analytics dans le projet Vercel, déployer puis visiter le site pour commencer à collecter les pages vues. Le composant est déjà intégré au layout racine via `@vercel/analytics/next`. Si aucune donnée n'apparaît après 30 secondes, vérifier les bloqueurs de contenu et naviguer entre les pages du site.
