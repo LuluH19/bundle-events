@@ -35,6 +35,10 @@ BundleBuilder (client)
 
 Le composant **`BundleBuilder.tsx`** est l'orchestrateur central : il détient tout l'état, hydrate depuis Supabase, persiste, et rend l'écran de l'étape courante.
 
+## Mesure d'audience
+
+Le layout racine `src/app/layout.tsx` inclut le composant `Analytics` de `@vercel/analytics/next` pour mesurer les visiteurs et les pages vues sur l'ensemble des routes avec Vercel Web Analytics.
+
 ## Pour aller plus loin
 
 - [Routing & URLs](./routing-and-urls.md) — modèle d'URL, étapes, gating.
