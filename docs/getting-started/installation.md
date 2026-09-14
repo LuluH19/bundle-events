@@ -22,6 +22,12 @@ npm run dev               # http://localhost:3000
 | `npm run test` / `test:watch` | Vitest |
 | `npm run test:e2e` | Playwright |
 
+## Maintenance des dépendances
+
+- Versions corrigées : Next.js `16.3.5` (avec `eslint-config-next` aligné) et Vitest `4.1.11`. Le lockfile inclut les correctifs des dépendances transitives signalées par `npm audit`.
+- Utiliser `npm ci` pour reproduire les versions du lockfile, puis `npm audit` pour vérifier les vulnérabilités connues.
+- Si npm 10 échoue avec `Cannot read properties of null (reading 'edgesOut')`, lancer `npx --yes npm@11 audit fix`, puis vérifier le build, les tests et le lint.
+
 ## Déploiement (Vercel)
 
 - Reporter **toutes** les [variables d'environnement](./environment.md) dans les settings Vercel — le `.env` local n'est pas déployé.
