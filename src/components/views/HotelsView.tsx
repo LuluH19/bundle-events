@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { HotelsViewProps, HotelMapItem, Location } from "@/src/types";
@@ -50,6 +50,15 @@ const fmtStay = (iso: string, time: string) => {
   return `${day} · ${time}`;
 };
 
+function scrollHotelCardIntoList(container: HTMLElement, card: HTMLElement) {
+  const c = container.getBoundingClientRect();
+  const r = card.getBoundingClientRect();
+  const visibleTop = Math.max(c.top, 0);
+  const visibleBottom = Math.min(c.bottom, window.innerHeight);
+  if (r.top >= visibleTop && r.bottom <= visibleBottom) return;
+  card.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+}
+
 export function HotelsView(props: HotelsViewProps) {
   const {
     venue,
@@ -72,6 +81,24 @@ export function HotelsView(props: HotelsViewProps) {
   const [sortBy, setSortBy] = useState<"distance" | "price-asc" | "price-desc">("distance");
   const [modalHotel, setModalHotel] = useState<HotelMapItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const listRef = useRef<HTMLElement>(null);
+  const hotelCardRefs = useRef(new Map<string, HTMLDivElement>());
+
+  const handleMapHotelSelect = useCallback(
+    (hotel: HotelMapItem) => {
+      onSelectHotel(hotel);
+      if (mobileMapOpen) setMobileMapOpen(false);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const container = listRef.current;
+          const card = hotelCardRefs.current.get(hotel.id);
+          if (!container || !card) return;
+          scrollHotelCardIntoList(container, card);
+        })
+      );
+    },
+    [mobileMapOpen, onSelectHotel, setMobileMapOpen]
+  );
 
   const openModal = (h: HotelMapItem) => {
     setModalHotel(h);
@@ -135,7 +162,7 @@ export function HotelsView(props: HotelsViewProps) {
       route={null}
       hotelResults={sorted}
       selectedHotelId={selectedHotel?.id ?? null}
-      onHotelSelect={onSelectHotel}
+      onHotelSelect={handleMapHotelSelect}
       hotelRadius={hotelRadius}
       showHotels
     />
@@ -151,7 +178,10 @@ export function HotelsView(props: HotelsViewProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 md:h-[calc(100dvh-65px)] md:flex-row">
-      <aside className="scroll-slim flex flex-col flex-1 w-full overflow-y-auto bg-page px-5 pt-5 pb-6 md:w-[560px] md:p-7">
+      <aside
+        ref={listRef}
+        className="scroll-slim flex flex-col flex-1 w-full overflow-y-auto bg-page px-5 pt-5 pb-6 md:w-[560px] md:p-7"
+      >
         <Eyebrow className="mb-2">Hébergements disponibles</Eyebrow>
         <h2 className="font-display text-[30px] font-extrabold tracking-tight text-ink md:text-[40px]">
           Votre logement près de <span className="text-ember">{venue.name}</span>.
@@ -187,6 +217,11 @@ export function HotelsView(props: HotelsViewProps) {
               return (
                 <div
                   key={h.id}
+                  id={`hotel-card-${h.id}`}
+                  ref={(node) => {
+                    if (node) hotelCardRefs.current.set(h.id, node);
+                    else hotelCardRefs.current.delete(h.id);
+                  }}
                   className={`flex flex-col gap-4 rounded-2xl border bg-white p-3 transition-all md:flex-row ${
                     selected ? "border-ember ring-1 ring-ember" : "border-line hover:border-ember/40"
                   }`}
