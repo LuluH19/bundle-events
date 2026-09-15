@@ -37,6 +37,8 @@ Le composant **`BundleBuilder.tsx`** est l'orchestrateur central : il détient t
 
 ## Mesure d'audience
 
+PostHog est initialisé côté navigateur dans `src/instrumentation-client.ts`, avant l'hydratation React, via `posthog-js`. Les deux [variables PostHog](../getting-started/environment.md) doivent être renseignées pour activer la collecte. Les pages vues sont capturées au chargement et lors des changements d'historique (navigation App Router), avec l'autocapture du SDK. L'intégration suit le [guide Next.js de PostHog](https://posthog.com/docs/libraries/next-js), avec les defaults datés `2026-05-30`. Aucun appel `identify` ni événement métier personnalisé n'est ajouté.
+
 Le layout racine `src/app/layout.tsx` inclut le composant `Analytics` de `@vercel/analytics/next` pour mesurer les visiteurs et les pages vues sur l'ensemble des routes avec Vercel Web Analytics.
 
 ## Pour aller plus loin
