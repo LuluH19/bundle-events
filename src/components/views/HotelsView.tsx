@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { HotelsViewProps, HotelMapItem, Location } from "@/src/types";
@@ -72,6 +72,16 @@ export function HotelsView(props: HotelsViewProps) {
   const [sortBy, setSortBy] = useState<"distance" | "price-asc" | "price-desc">("distance");
   const [modalHotel, setModalHotel] = useState<HotelMapItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const hotelCardRefs = useRef(new Map<string, HTMLDivElement>());
+
+  const handleMapHotelSelect = useCallback(
+    (hotel: HotelMapItem) => {
+      onSelectHotel(hotel);
+      hotelCardRefs.current.get(hotel.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (mobileMapOpen) setMobileMapOpen(false);
+    },
+    [mobileMapOpen, onSelectHotel, setMobileMapOpen]
+  );
 
   const openModal = (h: HotelMapItem) => {
     setModalHotel(h);
@@ -135,7 +145,7 @@ export function HotelsView(props: HotelsViewProps) {
       route={null}
       hotelResults={sorted}
       selectedHotelId={selectedHotel?.id ?? null}
-      onHotelSelect={onSelectHotel}
+      onHotelSelect={handleMapHotelSelect}
       hotelRadius={hotelRadius}
       showHotels
     />
@@ -187,6 +197,10 @@ export function HotelsView(props: HotelsViewProps) {
               return (
                 <div
                   key={h.id}
+                  ref={(node) => {
+                    if (node) hotelCardRefs.current.set(h.id, node);
+                    else hotelCardRefs.current.delete(h.id);
+                  }}
                   className={`flex flex-col gap-4 rounded-2xl border bg-white p-3 transition-all md:flex-row ${
                     selected ? "border-ember ring-1 ring-ember" : "border-line hover:border-ember/40"
                   }`}

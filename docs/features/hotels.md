@@ -15,6 +15,7 @@
 ## Vue (`src/components/views/HotelsView.tsx`)
 
 - Liste + carte (`TravelMap` dynamique), rayon (`Dropdown`), tri (proximité / prix).
+- La sélection d'un hôtel depuis la carte fait défiler la liste jusqu'à sa carte, y compris si le même marqueur est sélectionné plusieurs fois. Sur mobile, la carte plein écran se ferme pour afficher immédiatement le résultat sélectionné.
 - Carte : photo, nom, `locationName`, distance au venue, prix `NNN€/nuit` (**€ après** le montant).
 - **« Vérifier la disponibilité »** → deep-link Booking.com ([booking-links.md](./booking-links.md)).
 - **« Sélectionner »** → ouvre la **modale de détail**.
