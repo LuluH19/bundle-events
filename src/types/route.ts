@@ -27,7 +27,6 @@ export interface RouteOption {
   route: RouteResult;
   durationMin: number;
   distanceKm: number;
-  price: number;
 }
 
 export interface TrainJourney {
