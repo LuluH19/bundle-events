@@ -94,6 +94,16 @@ async function sendViaBrevo(to: string, subject: string, html: string, from: Sen
   }
 }
 
+export async function sendGroupInvitationEmail(to: string, groupName: string, link: string): Promise<boolean> {
+  const safeName = groupName.replace(/[<>&"']/g, "");
+  const html = `<div style="font-family:Arial,sans-serif;padding:32px"><h1>Rejoignez ${safeName}</h1><p>Un ami vous invite à organiser un voyage sur Bundle Events.</p><p><a href="${link}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:#f96c1a;color:white;text-decoration:none;font-weight:bold">Rejoindre le groupe</a></p></div>`;
+  if (!process.env.BREVO_API_KEY) {
+    console.log(`[email:stub] Group invitation for ${to} → ${link}`);
+    return false;
+  }
+  return sendViaBrevo(to, `Invitation à rejoindre ${safeName}`, html, parseFrom());
+}
+
 function bundleEmailHtml(link: string): string {
   const font = "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif";
   return `

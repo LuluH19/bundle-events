@@ -571,6 +571,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             <SideNav step={step} go={go} canReach={canReach} venue={venue} roundTrip={roundTrip} />
             <div className="min-w-0 flex-1 flex flex-col overflow-y-auto min-h-0">
               <BundleView
+                bundleUuid={uuid}
                 departure={departure}
                 venue={venue}
                 dateLabel={dateLabel}
