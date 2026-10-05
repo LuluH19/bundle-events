@@ -8,3 +8,7 @@ Depuis le récapitulatif d’un bundle, un utilisateur peut créer un groupe pui
 - `GET /api/groups/:id` exige le jeton membre dans `Authorization: Bearer …`.
 
 Les tables nécessaires sont créées par `supabase/migrations/202610050001_groups.sql`. Elles ont la RLS activée sans policy et restent accessibles uniquement via le client service-role serveur.
+
+## Répartition du prix
+
+L’organisateur peut utiliser **Diviser équitablement** depuis le panneau du groupe. Le total est converti en centimes, divisé par le nombre de membres, puis les centimes restants sont distribués un par un dans l’ordre d’arrivée. La somme des parts est donc toujours strictement égale au total. Les parts sont persistées sur `group_members.share_cents` par la migration `202610050002_group_shares.sql` et visibles par tous les membres.

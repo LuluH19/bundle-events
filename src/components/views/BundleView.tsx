@@ -150,7 +150,7 @@ export function BundleView(props: BundleViewProps) {
 
       {/* Bento grid */}
       <div className="grid grid-cols-12 gap-5 md:gap-6">
-        {bundleUuid && <GroupPanel bundleUuid={bundleUuid} />}
+        {bundleUuid && <GroupPanel bundleUuid={bundleUuid} totalCents={Math.round(total * 100)} />}
         {/* Transport */}
         <section className="col-span-12 flex flex-col gap-5 lg:col-span-7">
           {legs.map((t, idx) => {

@@ -45,3 +45,5 @@ Cycle de persistance : voir [../architecture/state-and-persistence.md](../archit
 ## Groupes
 
 La migration `202610050001_groups.sql` ajoute `groups`, `group_members` et `group_invitations`. Les membres disposent d’un `access_token` opaque. Les invitations email en attente sont uniques par groupe ; les invitations génériques sont réutilisables. Toutes ces tables ont la RLS activée sans policy.
+
+La migration `202610050002_group_shares.sql` ajoute `group_members.share_cents`, montant individuel entier et positif utilisé par la répartition équitable.

@@ -15,6 +15,7 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 - **`api/groups/route.ts`** — `POST`, crée un groupe et sa session organisateur.
 - **`api/groups/[groupId]/route.ts`** — `GET`, retourne le groupe au membre authentifié par jeton Bearer.
 - **`api/groups/[groupId]/invitations/route.ts`** — `POST`, crée une invitation par lien ou email, sans doublon d’email en attente.
+- **`api/groups/[groupId]/split/route.ts`** — `POST`, répartit `{ totalCents }` entre les membres sans écart d’arrondi (organisateur uniquement).
 - **`api/groups/join/route.ts`** — `POST`, rejoint un groupe depuis un jeton d’invitation.
 
 ## Recherche

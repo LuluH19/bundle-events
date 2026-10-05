@@ -6,6 +6,7 @@ export interface GroupMember {
   email: string | null;
   role: GroupRole;
   joinedAt: string;
+  shareCents: number | null;
 }
 
 export interface TravelGroup {
