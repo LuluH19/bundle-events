@@ -10,6 +10,13 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 - **`api/bundles/[uuid]/route.ts`** — `GET` (récupère `uuid,email,data,created_at,updated_at`, 404 si absent) et `PATCH` (met à jour `data`).
 - **`api/bundles/[uuid]/save/route.ts`** — `POST`. Body `{ email }` (validé par regex). Enregistre l'email, appelle `sendBundleLinkEmail`, retourne `{ ok, link, sent }`.
 
+## Groupes
+
+- **`api/groups/route.ts`** — `POST`, crée un groupe et sa session organisateur.
+- **`api/groups/[groupId]/route.ts`** — `GET`, retourne le groupe au membre authentifié par jeton Bearer.
+- **`api/groups/[groupId]/invitations/route.ts`** — `POST`, crée une invitation par lien ou email, sans doublon d’email en attente.
+- **`api/groups/join/route.ts`** — `POST`, rejoint un groupe depuis un jeton d’invitation.
+
 ## Recherche
 
 - **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → `LiteApiHotelAdapter`, tri `pricePerNight` asc. → **LiteAPI**.

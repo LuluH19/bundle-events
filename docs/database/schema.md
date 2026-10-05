@@ -4,7 +4,7 @@
 
 Persistance via **Supabase** (PostgreSQL). Une seule table : **`bundles`**. Tout l'accès passe par le **client service-role serveur** (`src/lib/supabase/server.ts` → `getSupabaseAdmin`, mémoïsé), jamais depuis le navigateur.
 
-> **Aucun fichier `.sql` ni dossier de migration** dans le repo — le schéma est implicite (à créer manuellement dans l'éditeur SQL Supabase).
+Le schéma historique `bundles` est complété par des migrations SQL versionnées dans `supabase/migrations/`.
 
 ## Table `bundles`
 
@@ -41,3 +41,7 @@ Le snapshot ne stocke **que** des noms de lieux + coordonnées + mode. Il ne per
 - `SUPABASE_SERVICE_ROLE_KEY` ne doit jamais porter le préfixe `NEXT_PUBLIC_`.
 
 Cycle de persistance : voir [../architecture/state-and-persistence.md](../architecture/state-and-persistence.md).
+
+## Groupes
+
+La migration `202610050001_groups.sql` ajoute `groups`, `group_members` et `group_invitations`. Les membres disposent d’un `access_token` opaque. Les invitations email en attente sont uniques par groupe ; les invitations génériques sont réutilisables. Toutes ces tables ont la RLS activée sans policy.

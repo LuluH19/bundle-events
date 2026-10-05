@@ -18,6 +18,7 @@ import {
   IconTicket,
   MODE_ICON,
 } from "@/src/components/ui";
+import { GroupPanel } from "@/src/components/GroupPanel";
 
 const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
   ssr: false,
@@ -56,7 +57,7 @@ const RT_HEADER: Partial<Record<TransportMode, { eyebrow: string; cta: string }>
 const isTicketed = (mode: TransportMode) => mode === "plane" || mode === "train" || mode === "bus";
 
 export function BundleView(props: BundleViewProps) {
-  const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit } = props;
+  const { bundleUuid, departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit } = props;
 
   const legs: Leg[] = [
     { option: outboundOption, direction: "outbound", title: "Trajet Aller", dep: departure, arr: venue, editStep: "routes-outbound" },
@@ -149,6 +150,7 @@ export function BundleView(props: BundleViewProps) {
 
       {/* Bento grid */}
       <div className="grid grid-cols-12 gap-5 md:gap-6">
+        {bundleUuid && <GroupPanel bundleUuid={bundleUuid} />}
         {/* Transport */}
         <section className="col-span-12 flex flex-col gap-5 lg:col-span-7">
           {legs.map((t, idx) => {

@@ -67,6 +67,7 @@ export interface HomeViewProps {
 }
 
 export interface BundleViewProps {
+  bundleUuid?: string;
   departure: Location | null;
   venue: Location | null;
   dateLabel: string;
