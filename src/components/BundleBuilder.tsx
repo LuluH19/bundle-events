@@ -587,6 +587,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
                 onEdit={go}
                 payments={payments}
                 onPaymentsChange={setPayments}
+                bundleId={uuid}
               />
             </div>
           </div>

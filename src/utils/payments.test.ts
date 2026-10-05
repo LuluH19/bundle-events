@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { GroupMemberPayment } from "@/src/types";
-import { paymentSummary, setMemberPaymentStatus } from "./payments";
+import { paymentSummary, setMemberPaymentStatus, unpaidMembers } from "./payments";
 
 const members: GroupMemberPayment[] = [
   { id: "a", name: "Alice", email: "alice@example.com", amount: 50, status: "unpaid", paidAt: null },
@@ -16,5 +16,9 @@ describe("payment tracking", () => {
 
   it("computes paid and unpaid totals", () => {
     expect(paymentSummary(members)).toEqual({ paidCount: 1, unpaidCount: 1, paidAmount: 50, totalAmount: 100 });
+  });
+
+  it("targets reminders only to unpaid members", () => {
+    expect(unpaidMembers(members).map((member) => member.email)).toEqual(["alice@example.com"]);
   });
 });

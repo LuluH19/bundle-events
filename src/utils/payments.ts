@@ -22,3 +22,7 @@ export function paymentSummary(members: GroupMemberPayment[]) {
     totalAmount: members.reduce((sum, member) => sum + member.amount, 0),
   };
 }
+
+export function unpaidMembers(members: GroupMemberPayment[]): GroupMemberPayment[] {
+  return members.filter((member) => member.status === "unpaid");
+}

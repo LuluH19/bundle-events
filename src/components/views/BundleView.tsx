@@ -57,7 +57,7 @@ const RT_HEADER: Partial<Record<TransportMode, { eyebrow: string; cta: string }>
 const isTicketed = (mode: TransportMode) => mode === "plane" || mode === "train" || mode === "bus";
 
 export function BundleView(props: BundleViewProps) {
-  const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit, payments, onPaymentsChange } = props;
+  const { departure, venue, dateLabel, outboundOption, returnOption, roundTrip, selectedHotel, checkin, checkout, onEdit, payments, onPaymentsChange, bundleId } = props;
 
   const legs: Leg[] = [
     { option: outboundOption, direction: "outbound", title: "Trajet Aller", dep: departure, arr: venue, editStep: "routes-outbound" },
@@ -443,7 +443,7 @@ export function BundleView(props: BundleViewProps) {
           </div>
         </section>
 
-        <PaymentDashboard members={payments} onChange={onPaymentsChange} />
+        <PaymentDashboard members={payments} onChange={onPaymentsChange} bundleId={bundleId} />
       </div>
     </div>
   );

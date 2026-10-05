@@ -3,17 +3,21 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { GroupMemberPayment } from "@/src/types";
 import { paymentSummary, setMemberPaymentStatus } from "@/src/utils/payments";
+import { sendPaymentReminders } from "@/src/services/bundles";
 
 type Props = {
   members: GroupMemberPayment[];
   onChange: (members: GroupMemberPayment[]) => void;
+  bundleId?: string;
 };
 
-export function PaymentDashboard({ members, onChange }: Props) {
+export function PaymentDashboard({ members, onChange, bundleId }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [amount, setAmount] = useState("");
   const summary = useMemo(() => paymentSummary(members), [members]);
+  const [reminderState, setReminderState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [reminderMessage, setReminderMessage] = useState("");
 
   const addMember = (event: FormEvent) => {
     event.preventDefault();
@@ -35,6 +39,23 @@ export function PaymentDashboard({ members, onChange }: Props) {
     setAmount("");
   };
 
+  const remindUnpaid = async () => {
+    if (!bundleId || summary.unpaidCount === 0 || reminderState === "sending") return;
+    setReminderState("sending");
+    try {
+      const result = await sendPaymentReminders(bundleId);
+      setReminderMessage(
+        result.deliveryConfigured
+          ? `${result.sent} rappel${result.sent > 1 ? "s" : ""} envoyé${result.sent > 1 ? "s" : ""}.`
+          : `${result.targeted} rappel${result.targeted > 1 ? "s" : ""} préparé${result.targeted > 1 ? "s" : ""} (Brevo non configuré).`
+      );
+      setReminderState("done");
+    } catch {
+      setReminderMessage("L'envoi des rappels a échoué. Réessayez.");
+      setReminderState("error");
+    }
+  };
+
   return (
     <section className="col-span-12 rounded-4xl bg-white p-7 shadow-[0_18px_48px_-24px_rgba(0,17,58,0.35)] ring-1 ring-line md:p-10">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -48,6 +69,13 @@ export function PaymentDashboard({ members, onChange }: Props) {
           <Stat value={String(summary.unpaidCount)} label="À relancer" />
           <Stat value={`${summary.paidAmount.toLocaleString("fr-FR")} €`} label={`sur ${summary.totalAmount.toLocaleString("fr-FR")} €`} />
         </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <button type="button" onClick={remindUnpaid} disabled={!bundleId || summary.unpaidCount === 0 || reminderState === "sending"} className="rounded-xl bg-ember px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-ember-600 disabled:cursor-not-allowed disabled:opacity-45">
+          {reminderState === "sending" ? "Envoi en cours…" : `Relancer les impayés (${summary.unpaidCount})`}
+        </button>
+        {reminderMessage && <p role="status" className={`text-sm ${reminderState === "error" ? "text-red-600" : "text-slate-500"}`}>{reminderMessage}</p>}
       </div>
 
       <form onSubmit={addMember} className="mt-8 grid gap-3 rounded-2xl bg-mist p-4 md:grid-cols-[1fr_1.2fr_140px_auto]">

@@ -26,6 +26,22 @@ export async function sendBundleLinkEmail(to: string, bundleId: string): Promise
   return { to, bundleId, link, sent };
 }
 
+export async function sendPaymentReminderEmail(
+  to: string,
+  name: string,
+  amount: number,
+  bundleId: string
+): Promise<boolean> {
+  const link = `${supabaseConfig.siteUrl.replace(/\/$/, "")}/${bundleId}/bundle`;
+  const subject = "Rappel — votre participation au bundle";
+  const html = paymentReminderHtml(name, amount, link);
+  const from = parseFrom();
+
+  if (process.env.BREVO_API_KEY) return sendViaBrevo(to, subject, html, from);
+  console.log(`[email:stub] Payment reminder for ${to} → ${link}`);
+  return false;
+}
+
 interface Sender {
   name: string;
   email: string;
@@ -141,4 +157,26 @@ function bundleEmailHtml(link: string): string {
     </td></tr>
   </table>
 </div>`;
+}
+
+function paymentReminderHtml(name: string, amount: number, link: string): string {
+  const safeName = escapeHtml(name);
+  const safeLink = escapeHtml(link);
+  const safeAmount = amount.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `
+<div style="margin:0;padding:32px 16px;background:#f9f9fb;font-family:'Segoe UI',Arial,sans-serif">
+  <div style="max-width:560px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;overflow:hidden">
+    <div style="background:#00113a;padding:36px;color:#fff"><h1 style="margin:0;font-size:28px">Petit rappel, ${safeName}</h1></div>
+    <div style="height:4px;background:#f96c1a"></div>
+    <div style="padding:36px;color:#475569;font-size:16px;line-height:1.6">
+      <p>Votre participation de <strong>${safeAmount}&nbsp;€</strong> pour le bundle du groupe est toujours indiquée comme non payée.</p>
+      <p><a href="${safeLink}" style="display:inline-block;margin-top:12px;padding:14px 28px;border-radius:9999px;background:#f96c1a;color:#fff;text-decoration:none;font-weight:700">Voir le bundle</a></p>
+      <p style="margin-top:24px;font-size:12px;color:#94a3b8">Ce rappel a été envoyé par l'organisateur du groupe.</p>
+    </div>
+  </div>
+</div>`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] as string);
 }

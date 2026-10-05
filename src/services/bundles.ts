@@ -45,3 +45,14 @@ export async function saveBundleEmail(
   }
   return json as { ok: boolean; link: string; sent: boolean };
 }
+
+export async function sendPaymentReminders(uuid: string): Promise<{
+  targeted: number;
+  sent: number;
+  deliveryConfigured: boolean;
+}> {
+  const res = await fetch(`/api/bundles/${uuid}/reminders`, { method: "POST" });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error || `sendPaymentReminders failed: ${res.status}`);
+  return json;
+}

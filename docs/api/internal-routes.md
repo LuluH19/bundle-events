@@ -9,6 +9,7 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 - **`api/bundles/route.ts`** — `POST`. Crée un bundle. Body `{ data: BundleSnapshot }` → insert Supabase → `{ uuid }` (201).
 - **`api/bundles/[uuid]/route.ts`** — `GET` (récupère `uuid,email,data,created_at,updated_at`, 404 si absent) et `PATCH` (met à jour `data`).
 - **`api/bundles/[uuid]/save/route.ts`** — `POST`. Body `{ email }` (validé par regex). Enregistre l'email, appelle `sendBundleLinkEmail`, retourne `{ ok, link, sent }`.
+- **`api/bundles/[uuid]/reminders/route.ts`** — `POST`. Relit le snapshot, sélectionne uniquement les membres `unpaid`, envoie leur rappel via Brevo et retourne `{ ok, targeted, sent, deliveryConfigured }`.
 
 ## Recherche
 

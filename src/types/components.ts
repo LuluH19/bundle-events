@@ -79,6 +79,7 @@ export interface BundleViewProps {
   onEdit: (s: Step) => void;
   payments: GroupMemberPayment[];
   onPaymentsChange: (payments: GroupMemberPayment[]) => void;
+  bundleId?: string;
 }
 
 export interface TravelMapProps {
