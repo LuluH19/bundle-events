@@ -2,6 +2,17 @@ import type { Location } from "./location";
 import type { RouteOption } from "./route";
 import type { HotelMapItem } from "./hotel";
 
+export type PaymentStatus = "paid" | "unpaid";
+
+export interface GroupMemberPayment {
+  id: string;
+  name: string;
+  email: string;
+  amount: number;
+  status: PaymentStatus;
+  paidAt: string | null;
+}
+
 /**
  * Snapshot of everything the user has composed. Stored as JSONB in Supabase and
  * enough to re-render the whole bundle from a shared link.
@@ -15,6 +26,8 @@ export interface BundleSnapshot {
   outboundOption: RouteOption | null;
   returnOption: RouteOption | null;
   selectedHotel: HotelMapItem | null;
+  /** Payment tracking for people who received the private bundle link. */
+  payments: GroupMemberPayment[];
 }
 
 /** A persisted bundle row (public shape — the internal bigint id is never exposed). */
@@ -36,5 +49,6 @@ export function emptySnapshot(): BundleSnapshot {
     outboundOption: null,
     returnOption: null,
     selectedHotel: null,
+    payments: [],
   };
 }
