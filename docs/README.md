@@ -44,6 +44,7 @@ docs/
 - [Algorithme de transport](./features/transport-routing.md)
 - [Liens de réservation](./features/booking-links.md)
 - [Sauvegarde & email](./features/save-and-email.md)
+- [Paiements du groupe](./features/group-payments.md)
 
 ### Contribution
 - [Conventions](./contributing/conventions.md)

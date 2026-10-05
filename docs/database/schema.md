@@ -29,8 +29,11 @@ Persistance via **Supabase** (PostgreSQL). Une seule table : **`bundles`**. Tout
   outboundOption: RouteOption | null
   returnOption: RouteOption | null
   selectedHotel: HotelMapItem | null
+  payments: GroupMemberPayment[]
 }
 ```
+
+Chaque entrée de `payments` contient `id`, `name`, `email`, `amount`, `status` (`paid` ou `unpaid`) et `paidAt`. Les anciens bundles sans ce champ sont hydratés avec une liste vide.
 
 Le snapshot ne stocke **que** des noms de lieux + coordonnées + mode. Il ne persiste **pas** les codes IATA, IDs de gare SNCF, ni horaires — récupérés en live à l'étape trajets puis abandonnés. Les liens de réservation sont reconstruits à partir des noms/coords + dates ([../features/booking-links.md](../features/booking-links.md)).
 

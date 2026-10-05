@@ -6,7 +6,7 @@ Tout vit dans `src/components/BundleBuilder.tsx`.
 
 ## Snapshot
 
-`buildSnapshot()` → `BundleSnapshot` : `departure, venue, checkin, checkout, roundTrip, outboundOption, returnOption, selectedHotel`. C'est l'unique objet persisté (JSONB) dans Supabase (voir [schéma](../database/schema.md)).
+`buildSnapshot()` → `BundleSnapshot` : `departure, venue, checkin, checkout, roundTrip, outboundOption, returnOption, selectedHotel, payments`. C'est l'unique objet persisté (JSONB) dans Supabase (voir [schéma](../database/schema.md)).
 
 ## Hydratation
 
