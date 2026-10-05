@@ -40,11 +40,17 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   }
 
   const supabase = getSupabaseAdmin();
-  const { error } = await supabase.from("bundles").update({ data }).eq("uuid", uuid);
+  const { data: updated, error } = await supabase
+    .from("bundles")
+    .update({ data, updated_at: new Date().toISOString() })
+    .eq("uuid", uuid)
+    .select("updated_at")
+    .maybeSingle();
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  return Response.json({ ok: true });
+  if (!updated) return Response.json({ error: "Bundle not found" }, { status: 404 });
+  return Response.json({ ok: true, updatedAt: updated.updated_at });
 }

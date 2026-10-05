@@ -17,6 +17,10 @@ Au montage, si `uuid` présent et non hydraté : `fetchBundle(uuid)` recharge to
 1. **Débounce (600 ms)** : un `useEffect` sauve le snapshot via `updateBundle` 600 ms après tout changement. Sert aux modifications « en place » (dates, rayon, options) sans navigation.
 2. **Flush avant navigation** : `go()` fait `await updateBundle(uuid, buildSnapshot())` **avant** `router.push`. Indispensable car la sauvegarde débouncée est annulée au démontage — sans ce flush, la dernière modification serait perdue au changement d'étape.
 
+## Synchronisation de groupe
+
+Lorsqu’une session de groupe est présente dans `localStorage`, `BundleBuilder` interroge le bundle toutes les 2,5 secondes. Une réponse dont `updated_at` est plus récent remplace le snapshot local. Le `PATCH` renvoie le nouvel horodatage, ce qui empêche un client de retraiter sa propre écriture. L’application d’un snapshot distant suspend brièvement l’effet de sauvegarde pour éviter les boucles d’écriture.
+
 ## Cas hôtel (règle importante)
 
 `handleChooseHotel(hotel)` : le modal hôtel sélectionne l'hôtel **et** navigue dans le même clic. Comme `setState` est **asynchrone**, l'hôtel n'est pas encore dans `buildSnapshot()` au moment de la navigation. Ce handler persiste donc explicitement `{ ...buildSnapshot(), selectedHotel: hotel }` avant `router.push('/{uuid}/routes-outbound')`.

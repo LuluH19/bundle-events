@@ -13,13 +13,15 @@ export async function createBundle(data: BundleSnapshot): Promise<string> {
 }
 
 // Persist the latest composition snapshot for an existing bundle.
-export async function updateBundle(uuid: string, data: BundleSnapshot): Promise<void> {
+export async function updateBundle(uuid: string, data: BundleSnapshot): Promise<string> {
   const res = await fetch(`/api/bundles/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ data }),
   });
   if (!res.ok) throw new Error(`updateBundle failed: ${res.status}`);
+  const json = (await res.json()) as { updatedAt: string };
+  return json.updatedAt;
 }
 
 // Fetch a saved bundle by uuid. Returns null when it does not exist.
