@@ -7,7 +7,7 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 ## Bundles (Supabase)
 
 - **`api/bundles/route.ts`** — `POST`. Crée un bundle. Body `{ data: BundleSnapshot }` → insert Supabase → `{ uuid }` (201).
-- **`api/bundles/[uuid]/route.ts`** — `GET` (récupère `uuid,email,data,created_at,updated_at`, 404 si absent) et `PATCH` (met à jour `data`).
+- **`api/bundles/[uuid]/route.ts`** — `GET` (récupère `uuid,email,data,created_at,updated_at`, 404 si absent) et `PATCH` (met à jour `data` et renvoie `{ ok, updatedAt }`).
 - **`api/bundles/[uuid]/save/route.ts`** — `POST`. Body `{ email }` (validé par regex). Enregistre l'email, appelle `sendBundleLinkEmail`, retourne `{ ok, link, sent }`.
 
 ## Groupes

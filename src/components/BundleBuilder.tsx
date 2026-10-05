@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type {
   Location,
@@ -24,6 +24,7 @@ import {
   fetchTrainInfo,
 } from "@/src/services/travel";
 import { createBundle, updateBundle, fetchBundle } from "@/src/services/bundles";
+import { loadGroupSession } from "@/src/services/groups";
 import { Header } from "@/src/components/layout/Header";
 import { SideNav } from "@/src/components/layout/SideNav";
 import { MobileTabBar } from "@/src/components/layout/MobileTabBar";
@@ -49,6 +50,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
   const [roundTrip, setRoundTrip] = useState(true);
+  const lastKnownUpdate = useRef("");
+  const skipNextPersistence = useRef(false);
 
   const dateLabel = useMemo(() => {
     const fmt = (iso: string) =>
@@ -161,6 +164,23 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     [departure, venue, checkin, checkout, roundTrip, outboundOptions, selectedOutboundId, returnOptions, selectedReturnId, selectedHotel]
   );
 
+  const applySnapshot = useCallback((snapshot: BundleSnapshot) => {
+    skipNextPersistence.current = true;
+    setDeparture(snapshot.departure ?? null);
+    setVenue(snapshot.venue ?? null);
+    setCheckin(snapshot.checkin ?? "");
+    setCheckout(snapshot.checkout ?? "");
+    setRoundTrip(snapshot.roundTrip ?? true);
+    if (snapshot.departure) setDepSearch(snapshot.departure.name);
+    const outbound = snapshot.outboundOption ?? null;
+    const inbound = snapshot.returnOption ?? null;
+    setOutboundOptions(outbound ? [outbound] : []);
+    setReturnOptions(inbound ? [inbound] : []);
+    setSelectedOutboundId(outbound?.id ?? null);
+    setSelectedReturnId(inbound?.id ?? null);
+    setSelectedHotel(snapshot.selectedHotel ?? null);
+  }, []);
+
   // hydrate from a saved bundle
   useEffect(() => {
     if (!uuid || hydrated) return;
@@ -173,19 +193,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
           return;
         }
         const d = record.data || ({} as BundleSnapshot);
-        setDeparture(d.departure ?? null);
-        setVenue(d.venue ?? null);
-        setCheckin(d.checkin ?? "");
-        setCheckout(d.checkout ?? "");
-        setRoundTrip(d.roundTrip ?? true);
-        if (d.departure) setDepSearch(d.departure.name);
-        const outOpt = d.outboundOption ?? null;
-        const retOpt = d.returnOption ?? null;
-        setOutboundOptions(outOpt ? [outOpt] : []);
-        setReturnOptions(retOpt ? [retOpt] : []);
-        setSelectedOutboundId(outOpt?.id ?? null);
-        setSelectedReturnId(retOpt?.id ?? null);
-        setSelectedHotel(d.selectedHotel ?? null);
+        lastKnownUpdate.current = record.updated_at;
+        applySnapshot(d);
         setHydrated(true);
       })
       .catch(() => {
@@ -194,14 +203,35 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     return () => {
       cancelled = true;
     };
-  }, [uuid, hydrated, router]);
+  }, [uuid, hydrated, router, applySnapshot]);
+
+  // A lightweight poll keeps every connected group member on the latest saved snapshot.
+  useEffect(() => {
+    if (!uuid || !hydrated || !loadGroupSession(uuid)) return;
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const record = await fetchBundle(uuid);
+        if (!cancelled && record && record.updated_at > lastKnownUpdate.current) {
+          lastKnownUpdate.current = record.updated_at;
+          applySnapshot(record.data);
+        }
+      } catch {}
+    };
+    const interval = window.setInterval(sync, 2500);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [uuid, hydrated, applySnapshot]);
 
   // persist snapshot (debounced) once hydrated
   useEffect(() => {
     if (!uuid || !hydrated) return;
+    if (skipNextPersistence.current) {
+      skipNextPersistence.current = false;
+      return;
+    }
     const snapshot = buildSnapshot();
     const t = setTimeout(() => {
-      updateBundle(uuid, snapshot).catch(() => {});
+      updateBundle(uuid, snapshot).then((updatedAt) => { lastKnownUpdate.current = updatedAt; }).catch(() => {});
     }, 600);
     return () => clearTimeout(t);
   }, [uuid, hydrated, buildSnapshot]);
