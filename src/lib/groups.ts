@@ -14,7 +14,7 @@ export async function getGroupView(groupId: string, role: GroupRole): Promise<Tr
   const supabase = getSupabaseAdmin();
   const [{ data: group }, { data: members }, invitationResult] = await Promise.all([
     supabase.from("groups").select("id, bundle_uuid, name").eq("id", groupId).maybeSingle(),
-    supabase.from("group_members").select("id, name, email, role, joined_at").eq("group_id", groupId).order("joined_at"),
+    supabase.from("group_members").select("id, name, email, role, joined_at, share_cents").eq("group_id", groupId).order("joined_at"),
     role === "organizer"
       ? supabase.from("group_invitations").select("email").eq("group_id", groupId).is("accepted_at", null).not("email", "is", null)
       : Promise.resolve({ data: [] as { email: string | null }[] }),
@@ -24,6 +24,7 @@ export async function getGroupView(groupId: string, role: GroupRole): Promise<Tr
     id: group.id, bundleUuid: group.bundle_uuid, name: group.name, currentMemberRole: role,
     members: (members || []).map((member) => ({
       id: member.id, name: member.name, email: member.email, role: member.role as GroupRole, joinedAt: member.joined_at,
+      shareCents: member.share_cents,
     })),
     pendingInvitations: (invitationResult.data || []).flatMap((invite) => invite.email ? [invite.email] : []),
   };

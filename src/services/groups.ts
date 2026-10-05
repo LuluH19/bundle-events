@@ -49,3 +49,12 @@ export async function joinGroup(input: { token: string; name: string; email?: st
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
   }));
 }
+
+export async function splitGroupTotal(session: GroupSession, totalCents: number): Promise<TravelGroup> {
+  const result = await jsonOrThrow<{ group: TravelGroup }>(await fetch(`/api/groups/${session.groupId}/split`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ totalCents }),
+  }));
+  return result.group;
+}
