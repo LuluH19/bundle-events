@@ -24,9 +24,10 @@ npm run dev               # http://localhost:3000
 
 ## Maintenance des dépendances
 
-- Versions corrigées : Next.js `16.3.5` (avec `eslint-config-next` aligné) et Vitest `4.1.11`. Le lockfile inclut les correctifs des dépendances transitives signalées par `npm audit`.
+- Versions corrigées : Next.js `16.4.3` (avec `eslint-config-next` aligné) et Vitest `4.1.12` (Vite `8.3.5`). Le lockfile inclut les correctifs des dépendances transitives signalées par `npm audit`.
 - Utiliser `npm ci` pour reproduire les versions du lockfile, puis `npm audit` pour vérifier les vulnérabilités connues.
-- Si npm 10 échoue avec `Cannot read properties of null (reading 'edgesOut')`, lancer `npx --yes npm@11 audit fix`, puis vérifier le build, les tests et le lint.
+- Si npm 10 échoue avec `Cannot read properties of null (reading 'edgesOut')`, lancer `npx --yes npm@11 audit fix` (ou `npx --yes npm@11 install`), puis vérifier le build, les tests et le lint.
+- Toujours régénérer le lockfile avec npm 11 : npm 10 supprime les champs `libc` des paquets natifs (sharp, tailwind, next-swc).
 
 ## Déploiement (Vercel)
 
