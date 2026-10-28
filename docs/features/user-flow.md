@@ -11,7 +11,7 @@ Les écrans sont dans `src/components/views/`. Navigation et gating : voir [../a
 - `onCompose` crée le bundle et route vers `/{id}/hotels`.
 
 ## 02 — Hôtels (`HotelsView.tsx`)
-Détaillé dans [hotels.md](./hotels.md). En bref : liste + carte, filtres rayon/tri, « Vérifier la disponibilité » (Booking.com), et la **modale de détail** dont le CTA « Choisir ce logement et voir les transports » persiste l'hôtel puis navigue vers l'aller.
+Détaillé dans [hotels.md](./hotels.md). En bref : liste + carte, filtres rayon/tri, clic carte qui fait défiler la liste jusqu'à l'hôtel, « Vérifier la disponibilité » (Booking.com), et la **modale de détail** dont le CTA « Choisir ce logement et voir les transports » persiste l'hôtel puis navigue vers l'aller.
 
 ## 03 / 04 — Aller & Retour (`RoutesView.tsx`)
 - Cartes d'options de transport par direction (`computeOptions`), libellés/icônes via `MODE_META` / `MODE_ICON`.
