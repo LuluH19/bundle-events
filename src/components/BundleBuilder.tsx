@@ -12,6 +12,7 @@ import type {
   Step,
   Venue,
   BundleSnapshot,
+  GroupMemberPayment,
 } from "@/src/types";
 import { STEPS } from "@/src/types/step";
 import { venues } from "@/src/utils/constants/venues";
@@ -49,6 +50,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
   const [roundTrip, setRoundTrip] = useState(true);
+  const [payments, setPayments] = useState<GroupMemberPayment[]>([]);
 
   const dateLabel = useMemo(() => {
     const fmt = (iso: string) =>
@@ -157,8 +159,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       outboundOption: outboundOptions.find((o) => o.id === selectedOutboundId) || null,
       returnOption: returnOptions.find((o) => o.id === selectedReturnId) || null,
       selectedHotel,
+      payments,
     }),
-    [departure, venue, checkin, checkout, roundTrip, outboundOptions, selectedOutboundId, returnOptions, selectedReturnId, selectedHotel]
+    [departure, venue, checkin, checkout, roundTrip, outboundOptions, selectedOutboundId, returnOptions, selectedReturnId, selectedHotel, payments]
   );
 
   // hydrate from a saved bundle
@@ -186,6 +189,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         setSelectedOutboundId(outOpt?.id ?? null);
         setSelectedReturnId(retOpt?.id ?? null);
         setSelectedHotel(d.selectedHotel ?? null);
+        setPayments(d.payments ?? []);
         setHydrated(true);
       })
       .catch(() => {
@@ -581,6 +585,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
                 checkin={checkin}
                 checkout={checkout}
                 onEdit={go}
+                payments={payments}
+                onPaymentsChange={setPayments}
+                bundleId={uuid}
               />
             </div>
           </div>

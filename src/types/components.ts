@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Location, LatLng, RouteOption, TrainJourney, FlightInfo, RouteResult, Step, HotelMapItem } from "./index";
+import type { Location, LatLng, RouteOption, TrainJourney, FlightInfo, RouteResult, Step, HotelMapItem, GroupMemberPayment } from "./index";
 
 export type IconProps = { size?: number; className?: string };
 
@@ -77,6 +77,9 @@ export interface BundleViewProps {
   checkin: string;
   checkout: string;
   onEdit: (s: Step) => void;
+  payments: GroupMemberPayment[];
+  onPaymentsChange: (payments: GroupMemberPayment[]) => void;
+  bundleId?: string;
 }
 
 export interface TravelMapProps {
