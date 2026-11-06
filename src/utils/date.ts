@@ -14,6 +14,11 @@ export function isPastDatetimeLocal(value: string, now: Date = new Date()): bool
   return value < toDatetimeLocalValue(now);
 }
 
+export function isDatetimeLocalAfter(value: string, than: string): boolean {
+  if (!value || !than) return false;
+  return value > than;
+}
+
 export function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + days);

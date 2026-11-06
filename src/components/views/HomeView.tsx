@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { HomeViewProps } from "@/src/types";
-import { isPastDatetimeLocal, toDatetimeLocalValue } from "@/src/utils/date";
+import { isDatetimeLocalAfter, isPastDatetimeLocal, toDatetimeLocalValue } from "@/src/utils/date";
 import {
   IconPin,
   IconLeaf,
@@ -14,6 +14,7 @@ import {
 } from "@/src/components/ui";
 
 const PAST_DATETIME_ERROR = "Choisis une date et une heure à partir de maintenant.";
+const RETURN_AFTER_ERROR = "Choisis une date et une heure de retour après l'aller.";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso.length <= 10 ? `${iso}T00:00` : iso);
@@ -55,7 +56,8 @@ export function HomeView(props: HomeViewProps) {
     checkin &&
     checkout &&
     !isPastDatetimeLocal(checkin) &&
-    !isPastDatetimeLocal(checkout)
+    !isPastDatetimeLocal(checkout) &&
+    isDatetimeLocalAfter(checkout, checkin)
   );
   const now = useMemo(() => toDatetimeLocalValue(), []);
   const [checkinError, setCheckinError] = useState("");
@@ -300,6 +302,10 @@ export function HomeView(props: HomeViewProps) {
                   }
                   setCheckinError("");
                   setCheckin(value);
+                  if (checkout && !isDatetimeLocalAfter(checkout, value)) {
+                    setCheckout("");
+                    setCheckoutError(RETURN_AFTER_ERROR);
+                  }
                 }}
                 onClick={(e) => e.currentTarget.showPicker?.()}
                 aria-label="Date et heure aller"
@@ -343,6 +349,10 @@ export function HomeView(props: HomeViewProps) {
                   const value = e.target.value;
                   if (isPastDatetimeLocal(value)) {
                     setCheckoutError(PAST_DATETIME_ERROR);
+                    return;
+                  }
+                  if (checkin && !isDatetimeLocalAfter(value, checkin)) {
+                    setCheckoutError(RETURN_AFTER_ERROR);
                     return;
                   }
                   setCheckoutError("");
