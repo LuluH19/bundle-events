@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/src/lib/supabase/server";
 import { sendBundleLinkEmail } from "@/src/lib/email";
+import { flushPostHogLogs, logBundleLinkEmailRequested } from "@/src/lib/posthog-logs";
 
 type Ctx = { params: Promise<{ uuid: string }> };
 
@@ -46,6 +47,9 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   }
 
   const { link, sent } = await sendBundleLinkEmail(email, uuid);
+
+  logBundleLinkEmailRequested(sent);
+  await flushPostHogLogs();
 
   return Response.json({ ok: true, link, sent });
 }
