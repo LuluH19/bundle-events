@@ -4,14 +4,14 @@ export function isoPlusDays(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 export function dateOnly(iso: string): string {
   return iso.slice(0, 10);
+}
+
+export function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = dateOnly(iso).split("-").map(Number);
+  const date = new Date(Date.UTC(y, (m ?? 1) - 1, (d ?? 1) + days));
+  return date.toISOString().slice(0, 10);
 }
 
 export function toSncfDateTime(iso: string): string {
@@ -24,9 +24,13 @@ export function toSncfDateTime(iso: string): string {
 }
 
 export function getDaysDiff(checkin: string, checkout: string): number {
-  const d1 = new Date(checkin);
-  const d2 = new Date(checkout);
-  return Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000));
+  if (!checkin) return 1;
+  const start = dateOnly(checkin);
+  const end = checkout ? dateOnly(checkout) : addDaysIso(start, 1);
+  const from = Date.UTC(Number(start.slice(0, 4)), Number(start.slice(5, 7)) - 1, Number(start.slice(8, 10)));
+  const to = Date.UTC(Number(end.slice(0, 4)), Number(end.slice(5, 7)) - 1, Number(end.slice(8, 10)));
+  const diff = Math.round((to - from) / 86400000);
+  return Number.isFinite(diff) ? Math.max(1, diff) : 1;
 }
 
 export function formatSncfDate(sncfDate: string): string {

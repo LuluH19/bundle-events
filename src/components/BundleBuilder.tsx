@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import type {
   Location,
   RouteOption,
@@ -62,6 +63,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     if (!checkin) return fmt(checkout);
     return `${fmt(checkin)} — ${fmt(checkout)}`;
   }, [checkin, checkout]);
+
+  const stayCheckout = useMemo(
+    () => (checkout ? checkout : checkin ? addDaysIso(checkin, 1) : ""),
+    [checkin, checkout]
+  );
 
   // departure search
   const [depSearch, setDepSearch] = useState("");
@@ -222,6 +228,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   };
 
   const handlePickDeparture = (r: { displayName: string; address: string; coords: LatLng }) => {
+    posthog.capture("departure_selected", { source: "search" });
     setDeparture({ id: `dep-${Date.now()}`, name: r.displayName.split(",")[0], coords: r.coords, type: "departure", address: r.address });
     setDepSearch(r.displayName);
     setDepResults([]);
@@ -247,6 +254,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const handlePickVenue = (id: string) => {
     const v = venueResults.find((x) => x.id === id);
     if (v) {
+      posthog.capture("venue_selected", { source: "search" });
       setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
       setVenueSearch("");
       setVenueResults([]);
@@ -275,6 +283,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     const currentId = step === "routes-outbound" ? selectedOutboundId : selectedReturnId;
     if (currentId === id) return;
 
+    const selectedOption = (step === "routes-outbound" ? outboundOptions : returnOptions).find((option) => option.id === id);
+    posthog.capture("travel_option_selected", {
+      direction: step === "routes-outbound" ? "outbound" : "return",
+      transport_mode: selectedOption?.mode,
+    });
     if (step === "routes-outbound") setSelectedOutboundId(id);
     else setSelectedReturnId(id);
     setTrainJourneys([]);
@@ -362,9 +375,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   // live hotel search around the venue
   useEffect(() => {
-    if (!venue || !checkin) return;
+    if (!venue || !checkin || !stayCheckout) return;
     const checkinDate = dateOnly(checkin);
-    const stayCheckout = checkout ? dateOnly(checkout) : addDaysIso(checkinDate, 1);
+    const checkoutDate = dateOnly(stayCheckout);
     let cancelled = false;
     const FETCH_RADIUS_KM = 50;
     const params = new URLSearchParams({
@@ -372,7 +385,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       lng: String(venue.coords.lng),
       radius: String(FETCH_RADIUS_KM),
       checkin: checkinDate,
-      checkout: stayCheckout,
+      checkout: checkoutDate,
     });
     const t = setTimeout(() => {
       setHotelFetching(true);
@@ -395,7 +408,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [venue, checkin, checkout]);
+  }, [venue, checkin, stayCheckout]);
 
   const pathFor = useCallback(
     (s: Step) => {
@@ -420,6 +433,10 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const handleChooseHotel = useCallback(
     async (hotel: HotelMapItem) => {
+      posthog.capture("hotel_selected", {
+        has_price: Boolean(hotel.pricePerNight),
+        has_rating: Boolean(hotel.stars || hotel.rating),
+      });
       setSelectedHotel(hotel);
       if (uuid) {
         try {
@@ -444,11 +461,12 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     setComposing(true);
     try {
       const id = await createBundle(buildSnapshot());
+      posthog.capture("bundle_composed", { round_trip: roundTrip });
       router.push(`/${id}/hotels`);
     } catch {
       setComposing(false);
     }
-  }, [departure, venue, uuid, buildSnapshot, router, go]);
+  }, [departure, venue, uuid, buildSnapshot, router, go, roundTrip]);
 
   const journeyRoute = selectedOption?.route ?? null;
 
@@ -544,7 +562,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
                 departure={departure}
                 hotelLocation={hotelLocation}
                 checkin={checkin}
-                checkout={checkout}
+                checkout={stayCheckout}
                 mobileMapOpen={mobileMapOpen}
                 setMobileMapOpen={setMobileMapOpen}
                 onChooseHotel={handleChooseHotel}
@@ -566,7 +584,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
                 roundTrip={roundTrip}
                 selectedHotel={selectedHotel}
                 checkin={checkin}
-                checkout={checkout}
+                checkout={stayCheckout}
                 onEdit={go}
               />
             </div>
