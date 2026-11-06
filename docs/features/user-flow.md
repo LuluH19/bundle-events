@@ -6,7 +6,7 @@ Les écrans sont dans `src/components/views/`. Navigation et gating : voir [../a
 
 ## 01 — Home (`HomeView.tsx`)
 - Autocomplétion du **départ** via Mapbox (`services/geocoding.ts`).
-- Sélection de l'**évènement** parmi un dataset statique (`services/events.ts` → `LocalEventAdapter` → `utils/constants/venues.ts`).
+- Sélection de l'**évènement** via l'API Open Data Île-de-France `evenements-publics-cibul` (`services/events.ts` → `OpenDataEventAdapter`, config dans `config/events.ts`; seuls les évènements à venir avec coordonnées sont retournés ; complété par Mapbox Search Box et OpenStreetMap Nominatim).
 - Dates check-in / check-out, toggle **aller-retour**.
 - `onCompose` crée le bundle et route vers `/{id}/hotels`.
 

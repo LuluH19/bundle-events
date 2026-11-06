@@ -14,7 +14,6 @@ import type {
   BundleSnapshot,
 } from "@/src/types";
 import { STEPS } from "@/src/types/step";
-import { venues } from "@/src/utils/constants/venues";
 import { addDaysIso, dateOnly } from "@/src/utils/date";
 import { searchLocation } from "@/src/services/geocoding";
 import { searchEvents } from "@/src/services/events";
@@ -246,7 +245,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   };
 
   const handlePickVenue = (id: string) => {
-    const v = venues.find((x) => x.id === id);
+    const v = venueResults.find((x) => x.id === id);
     if (v) {
       setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
       setVenueSearch("");
@@ -306,9 +305,13 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     }
     let cancelled = false;
     const t = setTimeout(async () => {
-      const r = await searchEvents(venueSearch);
-      if (!cancelled) setVenueResults(r);
-    }, 150);
+      try {
+        const r = await searchEvents(venueSearch);
+        if (!cancelled) setVenueResults(r);
+      } catch {
+        if (!cancelled) setVenueResults([]);
+      }
+    }, 400);
     return () => {
       cancelled = true;
       clearTimeout(t);
@@ -447,21 +450,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     }
   }, [departure, venue, uuid, buildSnapshot, router, go]);
 
-  const pickEvent = (venueId: string) => {
-    const v = venues.find((x) => x.id === venueId);
-    if (!v) return;
-    setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
-    setSelectedHotel(null);
-    resetRoutes();
-    setHotelResults([]);
-    setHotelError("");
-    setHotelFetching(true);
-    if (departure) {
-      setOptionsLoading(true);
-    }
-    document.getElementById("search-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
   const journeyRoute = selectedOption?.route ?? null;
 
   const showTabBar = step !== "home";
@@ -506,7 +494,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
               setCheckin={setCheckin}
               setCheckout={setCheckout}
               onCompose={handleCompose}
-              pickEvent={pickEvent}
             />
           </div>
         )}

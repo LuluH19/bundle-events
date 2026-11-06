@@ -52,7 +52,7 @@ export interface HomeViewProps {
   onClearVenue: () => void;
   venueSearch: string;
   setVenueSearch: (v: string) => void;
-  venueResults: { id: string; name: string; city: string }[];
+  venueResults: { id: string; name: string; city: string; dateLabel?: string }[];
   venueFocus: boolean;
   setVenueFocus: (v: boolean) => void;
   roundTrip: boolean;
@@ -63,7 +63,6 @@ export interface HomeViewProps {
   setCheckin: (v: string) => void;
   setCheckout: (v: string) => void;
   onCompose: () => void;
-  pickEvent: (id: string) => void;
 }
 
 export interface BundleViewProps {

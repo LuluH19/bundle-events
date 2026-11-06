@@ -331,6 +331,7 @@ export function BundleView(props: BundleViewProps) {
             {selectedHotel?.photo ? (
               <Image
                 src={selectedHotel.photo}
+                unoptimized
                 alt={selectedHotel.name}
                 fill
                 sizes="(max-width: 768px) 100vw, 40vw"

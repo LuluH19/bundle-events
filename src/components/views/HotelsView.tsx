@@ -195,6 +195,7 @@ export function HotelsView(props: HotelsViewProps) {
                     {h.photo ? (
                       <Image
                         src={h.photo}
+                        unoptimized
                         alt={h.name}
                         fill
                         sizes="(max-width: 768px) 100vw, 112px"
@@ -327,6 +328,7 @@ export function HotelsView(props: HotelsViewProps) {
               {modalHotel.photo ? (
                 <Image
                   src={modalHotel.photo}
+                  unoptimized
                   alt={modalHotel.name}
                   fill
                   sizes="(max-width: 768px) 100vw, 400px"

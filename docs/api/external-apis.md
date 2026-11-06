@@ -22,3 +22,15 @@
 
 Les configs (baseUrl, timeouts, TTL, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
 `liteapi, mapbox, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase`.
+
+## Open Data Île-de-France — événements (Cibul)
+- `GET https://opendata.iledefrance.fr/api/explore/v2.1/catalog/datasets/evenements-publics-cibul/records`
+- Utilisé par `OpenDataEventAdapter` (recherche plein texte sur `title_fr`, événements à venir uniquement). Aucune clé requise.
+
+## Mapbox Search Box (POI) — lieux
+- `GET https://api.mapbox.com/search/searchbox/v1/forward?q={query}&types=poi&country=fr`
+- Utilisé par `MapboxVenueAdapter` pour trouver stades, parcs, salles (ex. Stade de France) en France entière. Requiert `NEXT_PUBLIC_MAPBOX_TOKEN`.
+
+## OpenStreetMap Nominatim — lieux
+- `GET https://nominatim.openstreetmap.org/search?q={query}&format=jsonv2&countrycodes=fr`
+- Utilisé par `OsmVenueAdapter` (parcs, stades, salles : ex. Puy du Fou). Aucune clé ; politique d'usage : ~1 requête/s max, pas d'usage intensif.

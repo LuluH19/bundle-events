@@ -7,4 +7,5 @@ export interface Venue {
   coords: LatLng;
   city: string;
   capacity?: number;
+  dateLabel?: string;
 }
