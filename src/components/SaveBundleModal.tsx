@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import posthog from "posthog-js";
 import { saveBundleEmail } from "@/src/services/bundles";
 import { Button, IconCheck, IconClose, IconCopy, IconShare } from "@/src/components/ui";
 
@@ -36,6 +37,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
+      posthog.capture("bundle_link_copied");
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -46,6 +48,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
   const share = async () => {
     try {
       await navigator.share({ title: "Mon bundle BundleEvent", url: link });
+      posthog.capture("bundle_shared");
     } catch {
       /* empty */
     }
@@ -58,6 +61,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
     try {
       const res = await saveBundleEmail(bundleId, email.trim());
       setSent(res.sent);
+      posthog.capture("bundle_email_saved", { email_sent: res.sent });
       setStatus("sent");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
