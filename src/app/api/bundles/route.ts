@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/src/lib/supabase/server";
+import { flushPostHogLogs, logBundleCreated } from "@/src/lib/posthog-logs";
 import type { BundleSnapshot } from "@/src/types";
 
 export async function POST(request: NextRequest) {
@@ -25,6 +26,9 @@ export async function POST(request: NextRequest) {
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
+
+  logBundleCreated();
+  await flushPostHogLogs();
 
   return Response.json({ uuid: row.uuid }, { status: 201 });
 }

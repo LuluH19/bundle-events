@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import posthog from "posthog-js";
 import { Location, RouteOption, Step, TransportMode, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
@@ -125,6 +126,13 @@ export function BundleView(props: BundleViewProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 title={`Réserver via ${link.provider}`}
+                onClick={() =>
+                  posthog.capture("transport_booking_opened", {
+                    booking_type: "round_trip",
+                    provider: link.provider,
+                    transport_mode: link.mode,
+                  })
+                }
                 className="group flex items-center gap-4 rounded-2xl bg-ember p-6 text-white shadow-[0_18px_48px_-22px_rgba(249,108,26,0.65)] transition-all hover:bg-ember-600 active:scale-[0.99]"
               >
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-sm">
@@ -249,6 +257,14 @@ export function BundleView(props: BundleViewProps) {
                               target="_blank"
                               rel="noopener noreferrer"
                               title={`${isTicketed(link.mode) ? "Réserver" : "Itinéraire"} via ${link.provider}`}
+                              onClick={() =>
+                                posthog.capture("transport_booking_opened", {
+                                  booking_type: link.roundTrip ? "round_trip" : "one_way",
+                                  direction: t.direction,
+                                  provider: link.provider,
+                                  transport_mode: link.mode,
+                                })
+                              }
                               className="flex items-center gap-2 rounded-xl bg-ember px-5 py-3 text-[14px] font-bold text-white transition-all hover:bg-ember-600 active:scale-95"
                             >
                               <LinkIcon size={15} /> {labelFor(link)}
@@ -428,6 +444,7 @@ export function BundleView(props: BundleViewProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         title={`Réserver via ${booking.provider}`}
+                        onClick={() => posthog.capture("hotel_booking_opened", { provider: booking.provider })}
                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-ember px-7 py-3.5 text-[14px] font-bold text-white transition-all hover:bg-ember-600 active:scale-95"
                       >
                         Réserver l&apos;hôtel <IconArrow size={15} />
