@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import Image from "next/image";
 import { HomeViewProps } from "@/src/types";
-import { isoPlusDays } from "@/src/utils/date";
+import { toDatetimeLocalValue } from "@/src/utils/date";
 import {
   IconPin,
   IconLeaf,
@@ -48,7 +48,7 @@ export function HomeView(props: HomeViewProps) {
   } = props;
   
   const ready = !!(departure && venue && checkin && checkout);
-  const today = useMemo(() => isoPlusDays(0), []);
+  const now = useMemo(() => toDatetimeLocalValue(), []);
 
   return (
     <div>
@@ -276,7 +276,7 @@ export function HomeView(props: HomeViewProps) {
               <input
                 type="datetime-local"
                 value={checkin}
-                min={today}
+                min={now}
                 max={checkout || undefined}
                 onChange={(e) => setCheckin(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
@@ -309,7 +309,7 @@ export function HomeView(props: HomeViewProps) {
               <input
                 type="datetime-local"
                 value={checkout}
-                min={checkin || today}
+                min={checkin || now}
                 onChange={(e) => setCheckout(e.target.value)}
                 onClick={(e) => e.currentTarget.showPicker?.()}
                 aria-label="Date et heure retour"
