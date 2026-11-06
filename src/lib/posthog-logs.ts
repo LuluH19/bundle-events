@@ -19,8 +19,8 @@ export function initializePostHogLogs() {
         ? "POSTHOG_HOST"
         : "POSTHOG_PROJECT_TOKEN";
 
-      throw new Error(
-        `${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingVariable} is configured`,
+      console.warn(
+        `${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This warning stops appearing once ${missingVariable} is configured`,
       );
     }
 
