@@ -65,6 +65,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     return `${fmt(checkin)} — ${fmt(checkout)}`;
   }, [checkin, checkout]);
 
+  const stayCheckout = useMemo(
+    () => (checkout ? checkout : checkin ? addDaysIso(checkin, 1) : ""),
+    [checkin, checkout]
+  );
+
   // departure search
   const [depSearch, setDepSearch] = useState("");
   const [depResults, setDepResults] = useState<{ displayName: string; address: string; coords: LatLng }[]>([]);
@@ -367,9 +372,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   // live hotel search around the venue
   useEffect(() => {
-    if (!venue || !checkin) return;
+    if (!venue || !checkin || !stayCheckout) return;
     const checkinDate = dateOnly(checkin);
-    const stayCheckout = checkout ? dateOnly(checkout) : addDaysIso(checkinDate, 1);
+    const checkoutDate = dateOnly(stayCheckout);
     let cancelled = false;
     const FETCH_RADIUS_KM = 50;
     const params = new URLSearchParams({
@@ -377,7 +382,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       lng: String(venue.coords.lng),
       radius: String(FETCH_RADIUS_KM),
       checkin: checkinDate,
-      checkout: stayCheckout,
+      checkout: checkoutDate,
     });
     const t = setTimeout(() => {
       setHotelFetching(true);
@@ -400,7 +405,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [venue, checkin, checkout]);
+  }, [venue, checkin, stayCheckout]);
 
   const pathFor = useCallback(
     (s: Step) => {
@@ -571,7 +576,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
                 departure={departure}
                 hotelLocation={hotelLocation}
                 checkin={checkin}
-                checkout={checkout}
+                checkout={stayCheckout}
                 mobileMapOpen={mobileMapOpen}
                 setMobileMapOpen={setMobileMapOpen}
                 onChooseHotel={handleChooseHotel}
@@ -593,7 +598,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
                 roundTrip={roundTrip}
                 selectedHotel={selectedHotel}
                 checkin={checkin}
-                checkout={checkout}
+                checkout={stayCheckout}
                 onEdit={go}
               />
             </div>
