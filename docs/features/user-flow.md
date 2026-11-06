@@ -7,7 +7,7 @@ Les écrans sont dans `src/components/views/`. Navigation et gating : voir [../a
 ## 01 — Home (`HomeView.tsx`)
 - Autocomplétion du **départ** via Mapbox (`services/geocoding.ts`).
 - Sélection de l'**évènement** parmi un dataset statique (`services/events.ts` → `LocalEventAdapter` → `utils/constants/venues.ts`).
-- Dates aller / retour (`datetime-local`), toggle **aller-retour** / **aller simple**.
+- Dates aller / retour (`datetime-local`), toggle **aller-retour** / **aller simple**. En aller simple, seule la date aller est exigée ; le check-out hôtel est **J+1**.
 - Validation : aller et retour ≥ maintenant (date **et** heure locales) ; en aller-retour, le retour est **strictement après** l'aller (même jour plus tard OK). Une valeur invalide est refusée et un message s'affiche sous le champ. Le CTA reste désactivé tant que les dates ne sont pas valides. Helpers : `toDatetimeLocalValue`, `isPastDatetimeLocal`, `isDatetimeLocalAfter` (`src/utils/date.ts`).
 - `onCompose` crée le bundle et route vers `/{id}/hotels`.
 

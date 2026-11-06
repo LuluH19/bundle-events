@@ -54,10 +54,12 @@ export function HomeView(props: HomeViewProps) {
     departure &&
     venue &&
     checkin &&
-    checkout &&
     !isPastDatetimeLocal(checkin) &&
-    !isPastDatetimeLocal(checkout) &&
-    isDatetimeLocalAfter(checkout, checkin)
+    (!roundTrip || (
+      checkout &&
+      !isPastDatetimeLocal(checkout) &&
+      isDatetimeLocalAfter(checkout, checkin)
+    ))
   );
   const now = useMemo(() => toDatetimeLocalValue(), []);
   const [checkinError, setCheckinError] = useState("");

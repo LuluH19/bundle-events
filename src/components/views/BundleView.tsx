@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import posthog from "posthog-js";
 import { Location, RouteOption, Step, TransportMode, BundleViewProps } from "@/src/types";
 import { formatDuration, formatDistance } from "@/src/utils/format";
+import { getDaysDiff } from "@/src/utils/date";
 import { MODE_META } from "@/src/utils/constants/transport";
 import { getBookingLinks, getHotelBookingLink, BookingLink } from "@/src/utils/booking";
 import {
@@ -78,7 +79,7 @@ export function BundleView(props: BundleViewProps) {
       : [];
   const roundTripModes = new Set(roundTripLinks.map(l => l.mode));
 
-  const nights = Math.max(1, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000));
+  const nights = getDaysDiff(checkin, checkout);
   const fmtDateTime = (iso: string) =>
     iso
       ? new Date(iso.length <= 10 ? `${iso}T00:00` : iso).toLocaleString("fr-FR", {
