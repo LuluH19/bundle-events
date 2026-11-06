@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { HomeViewProps } from "@/src/types";
-import { toDatetimeLocalValue } from "@/src/utils/date";
+import { isPastDatetimeLocal, toDatetimeLocalValue } from "@/src/utils/date";
 import {
   IconPin,
   IconLeaf,
@@ -12,6 +12,8 @@ import {
   IconSparkle,
   IconTicket,
 } from "@/src/components/ui";
+
+const PAST_DATETIME_ERROR = "Choisis une date et une heure à partir de maintenant.";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso.length <= 10 ? `${iso}T00:00` : iso);
@@ -47,8 +49,17 @@ export function HomeView(props: HomeViewProps) {
     onCompose,
   } = props;
   
-  const ready = !!(departure && venue && checkin && checkout);
+  const ready = !!(
+    departure &&
+    venue &&
+    checkin &&
+    checkout &&
+    !isPastDatetimeLocal(checkin) &&
+    !isPastDatetimeLocal(checkout)
+  );
   const now = useMemo(() => toDatetimeLocalValue(), []);
+  const [checkinError, setCheckinError] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
 
   return (
     <div>
@@ -227,7 +238,10 @@ export function HomeView(props: HomeViewProps) {
                   aria-checked={active}
                   onClick={() => {
                     setRoundTrip(opt.value);
-                    if (!opt.value) setCheckout("");
+                    if (!opt.value) {
+                      setCheckout("");
+                      setCheckoutError("");
+                    }
                   }}
                   className={`group relative flex h-full flex-1 items-center justify-center overflow-hidden px-5 text-[13px] font-bold ring-inset transition-all duration-300 ${
                     i > 0 ? "rounded-r-lg border-l border-line" : "rounded-l-lg"
@@ -256,7 +270,7 @@ export function HomeView(props: HomeViewProps) {
           <div className="flex flex-col gap-3 md:flex-row">
           <div className="w-full flex-1 text-left">
             <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Aller</label>
-            <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
+            <div className={`relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5 ${checkinError ? "ring-1 ring-ember" : ""}`}>
               <Image
                 src="/calendrier.svg"
                 alt=""
@@ -278,18 +292,33 @@ export function HomeView(props: HomeViewProps) {
                 value={checkin}
                 min={now}
                 max={checkout || undefined}
-                onChange={(e) => setCheckin(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isPastDatetimeLocal(value)) {
+                    setCheckinError(PAST_DATETIME_ERROR);
+                    return;
+                  }
+                  setCheckinError("");
+                  setCheckin(value);
+                }}
                 onClick={(e) => e.currentTarget.showPicker?.()}
                 aria-label="Date et heure aller"
+                aria-invalid={!!checkinError}
+                aria-describedby={checkinError ? "checkin-error" : undefined}
                 className="absolute inset-0 cursor-pointer opacity-0"
               />
             </div>
+            {checkinError ? (
+              <p id="checkin-error" role="alert" className="mt-1.5 px-3 text-[13px] text-ember-ink">
+                {checkinError}
+              </p>
+            ) : null}
           </div>
 
           {roundTrip && (
           <div className="w-full flex-1 text-left">
             <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Retour</label>
-            <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
+            <div className={`relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5 ${checkoutError ? "ring-1 ring-ember" : ""}`}>
               <Image
                 src="/calendrier.svg"
                 alt=""
@@ -310,12 +339,27 @@ export function HomeView(props: HomeViewProps) {
                 type="datetime-local"
                 value={checkout}
                 min={checkin || now}
-                onChange={(e) => setCheckout(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isPastDatetimeLocal(value)) {
+                    setCheckoutError(PAST_DATETIME_ERROR);
+                    return;
+                  }
+                  setCheckoutError("");
+                  setCheckout(value);
+                }}
                 onClick={(e) => e.currentTarget.showPicker?.()}
                 aria-label="Date et heure retour"
+                aria-invalid={!!checkoutError}
+                aria-describedby={checkoutError ? "checkout-error" : undefined}
                 className="absolute inset-0 cursor-pointer opacity-0"
               />
             </div>
+            {checkoutError ? (
+              <p id="checkout-error" role="alert" className="mt-1.5 px-3 text-[13px] text-ember-ink">
+                {checkoutError}
+              </p>
+            ) : null}
           </div>
           )}
           </div>

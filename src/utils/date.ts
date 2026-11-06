@@ -9,6 +9,11 @@ export function toDatetimeLocalValue(date: Date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+export function isPastDatetimeLocal(value: string, now: Date = new Date()): boolean {
+  if (!value) return false;
+  return value < toDatetimeLocalValue(now);
+}
+
 export function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + days);
