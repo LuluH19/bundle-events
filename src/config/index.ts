@@ -6,3 +6,5 @@ export * from "./travelpayouts";
 export * from "./osrm";
 export * from "./openrailwayrouting";
 export * from "./supabase";
+export * from "./events";
+export * from "./nominatim";

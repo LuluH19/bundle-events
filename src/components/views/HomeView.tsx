@@ -46,8 +46,8 @@ export function HomeView(props: HomeViewProps) {
     setCheckout,
     onCompose,
   } = props;
-  
-  const ready = !!(departure && venue && checkin && (!roundTrip || checkout));
+
+  const ready = !!(departure && venue && checkin && checkout);
   const today = useMemo(() => isoPlusDays(0), []);
 
   return (
@@ -75,30 +75,9 @@ export function HomeView(props: HomeViewProps) {
           id="search-card"
           className="relative mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-xl bg-white/85 p-4 shadow-[0_24px_48px_-12px_rgba(0,11,58,0.45)] backdrop-blur-2xl md:mt-12 md:p-6">
           <div className="flex flex-col gap-3 md:flex-row">
-          <div className="relative w-full flex-1 text-left">
-            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
-            {departure ? (
-              <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
-                <Image
-                  src="/cible.svg"
-                  alt=""
-                  width={20}
-                  height={20}
-                  quality={75}
-                  loading="lazy"
-                  preload={false}
-                  decoding="async"
-                  placeholder="empty"
-                  unoptimized
-                  className="shrink-0"
-                />
-                <span className="flex-1 truncate text-[16px] font-medium text-ink">{departure.name}</span>
-                <button onClick={onClearDeparture} className="text-slate-400 hover:text-ember">
-                  <IconClose size={16} />
-                </button>
-              </div>
-            ) : (
-              <>
+            <div className="relative w-full flex-1 text-left">
+              <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">De</label>
+              {departure ? (
                 <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
                   <Image
                     src="/cible.svg"
@@ -113,61 +92,58 @@ export function HomeView(props: HomeViewProps) {
                     unoptimized
                     className="shrink-0"
                   />
-                  <input
-                    value={depSearch}
-                    onChange={(e) => setDepSearch(e.target.value)}
-                    onFocus={() => setDepFocus(true)}
-                    onBlur={() => setTimeout(() => setDepFocus(false), 150)}
-                    placeholder="Lieu du départ"
-                    className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
-                  />
+                  <span className="flex-1 truncate text-[16px] font-medium text-ink">{departure.name}</span>
+                  <button onClick={onClearDeparture} className="text-slate-400 hover:text-ember">
+                    <IconClose size={16} />
+                  </button>
                 </div>
-                {depFocus && depResults.length > 0 && (
-                  <ul className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
-                    {depResults.map((r, i) => (
-                      <li key={i}>
-                        <button
-                          onMouseDown={() => onPickDeparture(r)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
-                        >
-                          <IconPin size={14} className="shrink-0 text-ember" />
-                          <span className="truncate">{r.displayName}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
+                    <Image
+                      src="/cible.svg"
+                      alt=""
+                      width={20}
+                      height={20}
+                      quality={75}
+                      loading="lazy"
+                      preload={false}
+                      decoding="async"
+                      placeholder="empty"
+                      unoptimized
+                      className="shrink-0"
+                    />
+                    <input
+                      value={depSearch}
+                      onChange={(e) => setDepSearch(e.target.value)}
+                      onFocus={() => setDepFocus(true)}
+                      onBlur={() => setTimeout(() => setDepFocus(false), 150)}
+                      placeholder="Lieu du départ"
+                      className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                  {depFocus && depResults.length > 0 && (
+                    <ul className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
+                      {depResults.map((r, i) => (
+                        <li key={i}>
+                          <button
+                            onMouseDown={() => onPickDeparture(r)}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
+                          >
+                            <IconPin size={14} className="shrink-0 text-ember" />
+                            <span className="truncate">{r.displayName}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
 
-          <div className="relative w-full flex-1 text-left">
-            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
-            {venue ? (
-              <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
-                <Image
-                  src="/carte.svg"
-                  alt=""
-                  width={20}
-                  height={20}
-                  quality={75}
-                  loading="lazy"
-                  preload={false}
-                  decoding="async"
-                  placeholder="empty"
-                  unoptimized
-                  className="shrink-0"
-                />
-                <span className="flex-1 truncate text-[16px] font-medium text-ink">{venue.name}</span>
-                <button
-                  onClick={onClearVenue}
-                  className="text-slate-400 hover:text-ember"
-                >
-                  <IconClose size={16} />
-                </button>
-              </div>
-            ) : (
-              <>
+            <div className="relative w-full flex-1 text-left">
+              <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Vers</label>
+              {venue ? (
                 <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
                   <Image
                     src="/carte.svg"
@@ -182,35 +158,59 @@ export function HomeView(props: HomeViewProps) {
                     unoptimized
                     className="shrink-0"
                   />
-                  <input
-                    value={venueSearch}
-                    onChange={(e) => setVenueSearch(e.target.value)}
-                    onFocus={() => setVenueFocus(true)}
-                    onBlur={() => setTimeout(() => setVenueFocus(false), 150)}
-                    placeholder="Lieu de l'évènement"
-                    className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
-                  />
+                  <span className="flex-1 truncate text-[16px] font-medium text-ink">{venue.name}</span>
+                  <button
+                    onClick={onClearVenue}
+                    className="text-slate-400 hover:text-ember"
+                  >
+                    <IconClose size={16} />
+                  </button>
                 </div>
-                {venueFocus && venueResults.length > 0 && (
-                  <ul className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
-                    {venueResults.map((v) => (
-                      <li key={v.id}>
-                        <button
-                          onMouseDown={() => onPickVenue(v.id)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
-                        >
-                          <IconPin size={14} className="shrink-0 text-ember" />
-                          <span className="truncate">
-                            {v.name} — {v.city}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
+                    <Image
+                      src="/carte.svg"
+                      alt=""
+                      width={20}
+                      height={20}
+                      quality={75}
+                      loading="lazy"
+                      preload={false}
+                      decoding="async"
+                      placeholder="empty"
+                      unoptimized
+                      className="shrink-0"
+                    />
+                    <input
+                      value={venueSearch}
+                      onChange={(e) => setVenueSearch(e.target.value)}
+                      onFocus={() => setVenueFocus(true)}
+                      onBlur={() => setTimeout(() => setVenueFocus(false), 150)}
+                      placeholder="Lieu de l'évènement"
+                      className="w-full bg-transparent text-[16px] font-medium text-ink outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                  {venueFocus && venueResults.length > 0 && (
+                    <ul className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
+                      {venueResults.map((v) => (
+                        <li key={v.id}>
+                          <button
+                            onMouseDown={() => onPickVenue(v.id)}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[14px] hover:bg-mist"
+                          >
+                            <IconPin size={14} className="shrink-0 text-ember" />
+                            <span className="truncate">
+                              {v.name} — {v.city}{v.dateLabel ? ` (${v.dateLabel})` : ""}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           <div role="radiogroup" className="flex h-14 w-full overflow-hidden rounded-lg ring-1 ring-inset ring-line">
@@ -229,21 +229,18 @@ export function HomeView(props: HomeViewProps) {
                     setRoundTrip(opt.value);
                     if (!opt.value) setCheckout("");
                   }}
-                  className={`group relative flex h-full flex-1 items-center justify-center overflow-hidden px-5 text-[13px] font-bold ring-inset transition-all duration-300 ${
-                    i > 0 ? "rounded-r-lg border-l border-line" : "rounded-l-lg"
-                  } ${
-                    active
+                  className={`group relative flex h-full flex-1 items-center justify-center overflow-hidden px-5 text-[13px] font-bold ring-inset transition-all duration-300 ${i > 0 ? "rounded-r-lg border-l border-line" : "rounded-l-lg"
+                    } ${active
                       ? "bg-navy-700 text-white ring-0 ring-white/50 hover:bg-navy-800 hover:ring-2"
                       : "bg-white text-slate-600 ring-0 ring-navy-700/40 hover:bg-mist hover:text-ink hover:ring-2"
-                  }`}
+                    }`}
                 >
                   <span
                     aria-hidden
-                    className={`pointer-events-none absolute inset-0 -translate-x-[120%] skew-x-[-20deg] transition-transform duration-[1100ms] ease-out group-hover:translate-x-[120%] ${
-                      active
-                        ? "bg-linear-to-r from-transparent via-white/25 to-transparent"
-                        : "bg-linear-to-r from-transparent via-navy-700/10 to-transparent"
-                    }`}
+                    className={`pointer-events-none absolute inset-0 -translate-x-[120%] skew-x-[-20deg] transition-transform duration-[1100ms] ease-out group-hover:translate-x-[120%] ${active
+                      ? "bg-linear-to-r from-transparent via-white/25 to-transparent"
+                      : "bg-linear-to-r from-transparent via-navy-700/10 to-transparent"
+                      }`}
                   />
                   <span className="relative transition-transform duration-300 ease-out group-hover:scale-110">
                     {opt.label}
@@ -254,70 +251,70 @@ export function HomeView(props: HomeViewProps) {
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row">
-          <div className="w-full flex-1 text-left">
-            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Aller</label>
-            <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
-              <Image
-                src="/calendrier.svg"
-                alt=""
-                width={20}
-                height={20}
-                quality={75}
-                loading="lazy"
-                preload={false}
-                decoding="async"
-                placeholder="empty"
-                unoptimized
-                className="shrink-0"
-              />
-              <span className={`flex-1 truncate text-[16px] font-medium ${checkin ? "text-ink" : "text-slate-400"}`}>
-                {checkin ? formatDateTime(checkin) : "sam. 11 juil. • 23:00"}
-              </span>
-              <input
-                type="datetime-local"
-                value={checkin}
-                min={today}
-                max={checkout || undefined}
-                onChange={(e) => setCheckin(e.target.value)}
-                onClick={(e) => e.currentTarget.showPicker?.()}
-                aria-label="Date et heure aller"
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
+            <div className="w-full flex-1 text-left">
+              <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Aller</label>
+              <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
+                <Image
+                  src="/calendrier.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                  quality={75}
+                  loading="lazy"
+                  preload={false}
+                  decoding="async"
+                  placeholder="empty"
+                  unoptimized
+                  className="shrink-0"
+                />
+                <span className={`flex-1 truncate text-[16px] font-medium ${checkin ? "text-ink" : "text-slate-400"}`}>
+                  {checkin ? formatDateTime(checkin) : "sam. 11 juil. • 23:00"}
+                </span>
+                <input
+                  type="datetime-local"
+                  value={checkin}
+                  min={today}
+                  max={checkout || undefined}
+                  onChange={(e) => setCheckin(e.target.value)}
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  aria-label="Date et heure aller"
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+              </div>
             </div>
-          </div>
 
-          {roundTrip && (
-          <div className="w-full flex-1 text-left">
-            <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Retour</label>
-            <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
-              <Image
-                src="/calendrier.svg"
-                alt=""
-                width={20}
-                height={20}
-                quality={75}
-                loading="lazy"
-                preload={false}
-                decoding="async"
-                placeholder="empty"
-                unoptimized
-                className="shrink-0"
-              />
-              <span className={`flex-1 truncate text-[16px] font-medium ${checkout ? "text-ink" : "text-slate-400"}`}>
-                {checkout ? formatDateTime(checkout) : "sam. 11 juil. • 23:00"}
-              </span>
-              <input
-                type="datetime-local"
-                value={checkout}
-                min={checkin || today}
-                onChange={(e) => setCheckout(e.target.value)}
-                onClick={(e) => e.currentTarget.showPicker?.()}
-                aria-label="Date et heure retour"
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-            </div>
-          </div>
-          )}
+            {roundTrip && (
+              <div className="w-full flex-1 text-left">
+                <label className="mb-1.5 block px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Retour</label>
+                <div className="relative flex items-center gap-2.5 rounded-lg bg-white/35 px-3 py-2.5">
+                  <Image
+                    src="/calendrier.svg"
+                    alt=""
+                    width={20}
+                    height={20}
+                    quality={75}
+                    loading="lazy"
+                    preload={false}
+                    decoding="async"
+                    placeholder="empty"
+                    unoptimized
+                    className="shrink-0"
+                  />
+                  <span className={`flex-1 truncate text-[16px] font-medium ${checkout ? "text-ink" : "text-slate-400"}`}>
+                    {checkout ? formatDateTime(checkout) : "sam. 11 juil. • 23:00"}
+                  </span>
+                  <input
+                    type="datetime-local"
+                    value={checkout}
+                    min={checkin || today}
+                    onChange={(e) => setCheckout(e.target.value)}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
+                    aria-label="Date et heure retour"
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <button
