@@ -18,6 +18,8 @@ export interface RouteResult {
   totalDistanceKm: number;
   totalDurationMinutes: number;
   isMultimodal: boolean;
+  transports: number;
+  transportsByMode: Partial<Record<TransportMode, number>>;
 }
 
 export interface RouteOption {
