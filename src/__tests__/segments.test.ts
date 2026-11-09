@@ -5,7 +5,7 @@ import {
   mergeSegments,
   countTransports,
   countTransfers,
-} from "./segments";
+} from "@/src/utils/algorithms/segments";
 
 function seg(
   from: string,
