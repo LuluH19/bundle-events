@@ -9,8 +9,9 @@ src/
 ├── adapters/   # mapping payload API externe → types internes
 ├── app/        # routing Next.js (pages + api/ route handlers)
 ├── components/ # présentation (UI)
-│   ├── views/  # écrans de chaque étape
-│   └── layout/ # Header, SideNav, MobileTabBar
+│   ├── views/  # écrans : HomeView, TripView, BookView
+│   ├── trip/   # briques des écrans voyage/réserver (panneaux, étapes, carte)
+│   └── layout/ # Header
 ├── config/     # configurations d'APIs + variables d'env
 ├── lib/        # clients tiers (supabase, email)
 ├── services/   # couche de récupération de données (appelée par le client)
