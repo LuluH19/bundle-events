@@ -50,4 +50,4 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 
 ## Datasets (`src/utils/constants/`)
 
-- `airports.ts` (10 aéroports FR), `bus-stations.ts` (18 gares routières), `venues.ts` (16 salles/stades), `transport.ts` (`MODE_META`).
+- `airports.ts` (10 aéroports FR), `bus-stations.ts` (18 gares routières), `transport.ts` (`MODE_META`).
