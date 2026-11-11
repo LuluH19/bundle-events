@@ -26,7 +26,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
     setOrigin(window.location.origin);
     setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
   }, []);
-  const link = origin ? `${origin}/${bundleId}/bundle` : "";
+  const link = origin ? `${origin}/${bundleId}/reserver` : "";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -47,7 +47,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
 
   const share = async () => {
     try {
-      await navigator.share({ title: "Mon bundle BundleEvent", url: link });
+      await navigator.share({ title: "Mon voyage Bundle Events", url: link });
       posthog.capture("bundle_shared");
     } catch {
       /* empty */
@@ -88,9 +88,9 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
         </button>
 
         <div className="space-y-2">
-          <h2 className="font-display text-[26px] font-extrabold leading-tight text-ink">Sauvegarder mon bundle</h2>
+          <h2 className="font-display text-[26px] font-extrabold leading-tight text-ink">Partager ton voyage</h2>
           <p className="text-[14px] text-slate-500">
-            Gardez ce lien pour retrouver votre bundle à tout moment, sur n&apos;importe quel appareil.
+            Envoie ce lien à ta bande ou garde-le pour retrouver ton voyage sur n&apos;importe quel appareil.
           </p>
         </div>
 
@@ -133,7 +133,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(link)}`}
-              alt="QR code du bundle"
+              alt="QR code du voyage"
               width={180}
               height={180}
               className="rounded-xl ring-1 ring-line"
@@ -142,7 +142,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
         )}
 
         <div className="my-6 flex items-center gap-3 text-[12px] font-semibold uppercase tracking-widest text-slate-300">
-          <span className="h-px flex-1 bg-line" /> ou par email <span className="h-px flex-1 bg-line" />
+          <span className="h-px flex-1 bg-line" /> ou par e-mail <span className="h-px flex-1 bg-line" />
         </div>
 
         {status === "sent" ? (
@@ -151,23 +151,23 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
             <p className="text-[13px] text-ember-ink">
               {sent ? (
                 <>
-                  Email envoyé à <strong>{email}</strong>. Pensez à vérifier vos spams.
+                  E-mail envoyé à <strong>{email}</strong>. Pense à vérifier tes spams.
                 </>
               ) : (
-                <>Votre email est enregistré. En attendant, utilisez le lien ci-dessus pour retrouver votre bundle.</>
+                <>Ton e-mail est enregistré. En attendant, utilise le lien ci-dessus pour retrouver ton voyage.</>
               )}
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <label className="flex flex-col gap-2">
-              <span className="eyebrow text-slate-400">Adresse email</span>
+              <span className="eyebrow text-slate-500">Adresse e-mail</span>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="vous@exemple.com"
+                placeholder="toi@exemple.com"
                 className="rounded-xl border border-line bg-white px-4 py-3.5 text-[15px] text-ink outline-none transition-colors focus:border-ember"
               />
             </label>
@@ -175,7 +175,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
             {status === "error" && <p className="text-[13px] font-medium text-red-500">{error}</p>}
 
             <Button type="submit" kind="primary" disabled={status === "sending"} className="w-full">
-              {status === "sending" ? "Envoi en cours…" : "Recevoir le lien par email"}
+              {status === "sending" ? "Envoi en cours…" : "Recevoir le lien par e-mail"}
             </Button>
           </form>
         )}
