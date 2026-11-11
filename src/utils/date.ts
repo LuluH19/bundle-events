@@ -4,6 +4,21 @@ export function isoPlusDays(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+export function toDatetimeLocalValue(date: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function isPastDatetimeLocal(value: string, now: Date = new Date()): boolean {
+  if (!value) return false;
+  return value < toDatetimeLocalValue(now);
+}
+
+export function isDatetimeLocalAfter(value: string, than: string): boolean {
+  if (!value || !than) return false;
+  return value > than;
+}
+
 export function dateOnly(iso: string): string {
   return iso.slice(0, 10);
 }
