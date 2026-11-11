@@ -1,6 +1,7 @@
 export function formatDuration(min: number) {
-  const h = Math.floor(min / 60);
-  const m = Math.round(min % 60);
+  const total = Math.round(min);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   if (h === 0) return `${m} min`;
   return `${h}h${m.toString().padStart(2, "0")}`;
 }
