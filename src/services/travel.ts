@@ -88,7 +88,8 @@ export async function fetchFlightInfo(
 export async function fetchTrainInfo(
   from: LatLng,
   to: LatLng,
-  departISO?: string
+  dateTimeISO?: string,
+  represents: "departure" | "arrival" = "departure"
 ): Promise<TrainJourney[]> {
   try {
     const [d, a] = await Promise.all([
@@ -104,7 +105,10 @@ export async function fetchTrainInfo(
     if (dep.id === arr.id && as.length > 1) arr = as[1];
     if (dep.id === arr.id) return [];
     const params = new URLSearchParams({ from: dep.sncfId, to: arr.sncfId });
-    if (departISO) params.set("datetime", departISO);
+    if (dateTimeISO) {
+      params.set("datetime", dateTimeISO);
+      params.set("represents", represents);
+    }
     const res = await fetch(`/api/trains/search?${params}`);
     if (!res.ok) return [];
     return (await res.json()).journeys || [];
