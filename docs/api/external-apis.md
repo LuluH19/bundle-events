@@ -6,7 +6,7 @@
 |---|---|---|
 | **Mapbox** | Geocoding (autocomplete départ) + rendu cartes | `services/geocoding.ts`, `TravelMap` |
 | **LiteAPI** | Recherche d'hôtels + prix | `adapters/hotels/liteapi.adapter.ts` |
-| **Overpass** | Hôtels OSM (alternatif, non câblé) | `adapters/hotels/overpass.adapter.ts` |
+| **Overpass** | Hôtels OSM (repli si LiteAPI indisponible) | `adapters/hotels/overpass.adapter.ts` |
 | **OSRM** | Géométrie route/marche | `algorithms/routing.ts`, `/api/trains/route-geometry` |
 | **OpenRailRouting** | Géométrie rail | `algorithms/routing.ts`, `/api/trains/route-geometry` |
 | **SNCF** | Gares, trajets trains, sections/arrêts | `/api/stations`, `/api/trains/*` |
@@ -20,8 +20,8 @@
 | **Brevo** | Emailing | `lib/email.ts` |
 | **api.qrserver.com** | QR code du lien | `SaveBundleModal.tsx` |
 
-Les configs (baseUrl, timeouts, TTL, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
-`liteapi, mapbox, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase`.
+Les configs (baseUrl, timeouts, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
+`liteapi, mapbox, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, api-cache`. Les durées de cache et quotas sont dans `config/api-cache.ts` ([cache des APIs](../architecture/api-cache.md)).
 
 ## Open Data Île-de-France — événements (Cibul)
 - `GET https://opendata.iledefrance.fr/api/explore/v2.1/catalog/datasets/evenements-publics-cibul/records`

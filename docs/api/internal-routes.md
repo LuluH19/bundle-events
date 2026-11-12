@@ -12,11 +12,13 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 
 ## Recherche
 
-- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → `LiteApiHotelAdapter`, tri `pricePerNight` asc. → **LiteAPI**.
-- **`api/flights/search/route.ts`** — `GET`. Query `origin,destination` (IATA), `departure_at?`. → **Travelpayouts** `aviasales/v3/prices_for_dates` (EUR, tri prix, limit 5). → `{ flights }`.
-- **`api/stations/route.ts`** — `GET`. Query `lat,lng,radius(=50)?`. Cache 24h de tous les `stop_areas` **SNCF** (paginé, Basic auth). Avec lat/lng : ≤20 gares les plus proches ; sinon toutes. → `{ stations, total }`.
-- **`api/trains/search/route.ts`** — `GET`. Query `from,to` (IDs SNCF), `datetime?`, `represents?` (`departure` par défaut, ou `arrival` pour « arriver avant »). → **SNCF** `/journeys` (count 5, temps réel) → `TrainDetail[]` + coords + tarif. → `{ journeys }`.
-- **`api/trains/route-geometry/route.ts`** — `GET`, `dynamic="force-dynamic"`. Query `from,to`. Polyligne stylée : trajet SNCF → arrêts (`vehicle_journeys`) → géométrie via **OpenRailRouting** (train) ou **OSRM** (marche). Cache 30 min. → `{ coordinates, sections, stops }`.
+Toutes ces routes passent par le [cache partagé](../architecture/api-cache.md) (en-tête `X-Cache`).
+
+- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → **LiteAPI** (tri `pricePerNight` asc., cache 1 h), puis repli : hôtels déjà vus autour de la salle (sans prix), puis **Overpass** (OSM, 5 km), puis `[]`. En-tête `X-Data-Source`.
+- **`api/flights/search/route.ts`** — `GET`. Query `origin,destination` (IATA), `departure_at?`. → **Travelpayouts** `aviasales/v3/prices_for_dates` (EUR, tri prix, limit 5), cache 3 h. → `{ flights }`, ou `503 { flights: [], degraded: true }` si indisponible sans copie.
+- **`api/stations/route.ts`** — `GET`. Query `lat,lng,radius(=50)?`. Cache 7 j de tous les `stop_areas` **SNCF** (paginé, Basic auth ; une page en échec fait échouer la liste, `503` sans copie). Avec lat/lng : ≤20 gares les plus proches ; sinon toutes. → `{ stations, total }`.
+- **`api/trains/search/route.ts`** — `GET`. Query `from,to` (IDs SNCF), `datetime?`, `represents?` (`departure` par défaut, ou `arrival` pour « arriver avant »). → **SNCF** `/journeys` (count 5, temps réel) → `TrainDetail[]` + coords + tarif, cache 10 min (6 h sans `datetime`). → `{ journeys }`, ou `503 { journeys: [], degraded: true }`.
+- **`api/trains/route-geometry/route.ts`** — `GET`, `dynamic="force-dynamic"`. Query `from,to`. Polyligne stylée : trajet SNCF → arrêts (`vehicle_journeys`) → géométrie via **OpenRailRouting** (train) ou **OSRM** (marche). Cache 7 j par paire de gares (Supabase). → `{ coordinates, sections, stops }`.
 
 ## Deep-links de réservation (redirections 302)
 

@@ -34,6 +34,7 @@ Exports de `routing.ts` : `computeDirectRoute`, `computeBusRoute`, `computeTrain
 `isShortHaulFlightBanned` :
 1. Les deux points en **France métropolitaine** (`isInMetropolitanFrance` : lat 41.2–51.2, lng −5.4–9.8).
 2. `railJourneyDurationMin` calcule le meilleur temps de train réel : gares proches → paires SNCF → `railMainLegForPair` (`/api/trains/search`) isolant **le tronçon principal longue distance** (exclut RER/Transilien/Métro/Tram/Bus/Navette/Car via `LOCAL_RAIL_MODES`, tronçon ≥ `MIN_MAIN_LEG_MIN` = 25 min).
+   Le résultat est mémorisé par paire de villes (~1 km) pour la session (`railDurationCache`, échecs non mémorisés), et chaque appel `/api/trains/search` sans `datetime` est en cache serveur 6 h : les jusqu'à 9 appels SNCF ne sont payés qu'une fois par paire ([cache des APIs](../architecture/api-cache.md)).
 3. Si un tronçon rail existe et dure `< 150 min` (2h30) → avion **interdit**, remplacé par un trajet train.
 
 La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
