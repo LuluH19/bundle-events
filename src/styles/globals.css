@@ -114,3 +114,139 @@ body {
 .animate-fade-up {
   animation: fade-up 0.35s ease both;
 }
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(32px);
+    opacity: 0.6;
+  }
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(32px);
+    opacity: 0.6;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease both;
+}
+.animate-sheet-up {
+  animation: sheet-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (min-width: 768px) {
+  .md\:animate-slide-in {
+    animation: slide-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .md\:animate-fade-up {
+    animation: fade-up 0.25s ease both;
+  }
+}
+
+@keyframes logo-trail-tail {
+  from {
+    stroke-dashoffset: 42;
+    stroke-width: 3;
+  }
+  to {
+    stroke-dashoffset: -100;
+    stroke-width: 6;
+  }
+}
+@keyframes logo-trail-mid {
+  from {
+    stroke-dashoffset: 24;
+    stroke-width: 5;
+  }
+  to {
+    stroke-dashoffset: -118;
+    stroke-width: 10;
+  }
+}
+@keyframes logo-trail-head {
+  from {
+    stroke-dashoffset: 10;
+    stroke-width: 7;
+  }
+  to {
+    stroke-dashoffset: -132;
+    stroke-width: 14;
+  }
+}
+@keyframes logo-star {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+@keyframes logo-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes loading-bar {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+.logo-trail-tail {
+  stroke-dasharray: 42 300;
+  stroke-dashoffset: 42;
+  animation: logo-trail-tail 2.2s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+.logo-trail-mid {
+  stroke-dasharray: 24 300;
+  stroke-dashoffset: 24;
+  animation: logo-trail-mid 2.2s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+.logo-trail-head {
+  stroke-dasharray: 10 300;
+  stroke-dashoffset: 10;
+  animation: logo-trail-head 2.2s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+.logo-loader-star {
+  transform-origin: 178px 113px;
+  animation: logo-star 1.6s ease-in-out infinite;
+}
+.logo-loader-dot {
+  animation: logo-dot 0.8s ease-in-out infinite;
+}
+.loading-bar > span {
+  animation: loading-bar 1.2s ease-in-out infinite;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-train);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-sheet-up,
+  .md\:animate-slide-in,
+  .md\:animate-fade-up,
+  .logo-loader-trail path,
+  .logo-loader-star,
+  .logo-loader-dot,
+  .loading-bar > span {
+    animation: none;
+  }
+  .logo-loader-trail {
+    display: none;
+  }
+}

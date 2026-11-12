@@ -99,8 +99,8 @@ export function IconBus({ size = 16, className }: IconProps) {
 export function IconWalk({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
-      <circle cx="13" cy="4.5" r="1.6" />
-      <path d="M13 8l-3 3 1 4-2 4M13 8l3 2 3 1M10 11l-2 1" />
+      <circle cx="13" cy="4" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M7 21l3-4M16 21l-2-4-3-3 1-6M6 12l2-3 4-1 3 3 3 1" />
     </svg>
   );
 }
@@ -156,6 +156,13 @@ export function IconMap({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+export function IconExpand({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+    </svg>
+  );
+}
 export function IconBed({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
@@ -186,6 +193,37 @@ export function IconTicket({ size = 24, className }: IconProps) {
     <svg {...base(size, className)}>
       <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1.5a2 2 0 1 0 0 5V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.5a2 2 0 1 0 0-5V8Z" />
       <path d="M14 6.5v11" strokeDasharray="2 2.5" />
+    </svg>
+  );
+}
+
+export function IconExternal({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+    </svg>
+  );
+}
+export function IconChevron({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+export function IconCalendar({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+export function IconInfo({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v6M12 7.5v.5" />
     </svg>
   );
 }

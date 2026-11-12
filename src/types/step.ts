@@ -1,15 +1,13 @@
-export type Step = "home" | "hotels" | "routes-outbound" | "routes-return" | "bundle";
+export type Step = "home" | "trip" | "book";
 
 export interface StepItem {
   id: Step;
-  n: string;
   label: string;
+  segment: string;
 }
 
 export const STEPS: StepItem[] = [
-  { id: "home", n: "01", label: "Trajet" },
-  { id: "hotels", n: "02", label: "Hôtels" },
-  { id: "routes-outbound", n: "03", label: "Aller" },
-  { id: "routes-return", n: "04", label: "Retour" },
-  { id: "bundle", n: "05", label: "Bundle" },
+  { id: "home", label: "Recherche", segment: "" },
+  { id: "trip", label: "Ton voyage", segment: "voyage" },
+  { id: "book", label: "Réserver", segment: "reserver" },
 ];

@@ -21,6 +21,7 @@
 
 - `src/__tests__/geodesic.test.ts` + `e2e/geodesic.test.ts` — math géodésique.
 - `src/utils/date.test.ts` — bornes datetime-local (passé / retour après aller).
+- `src/__tests__/date.test.ts`, `recommend.test.ts`, `trip.test.ts`, `format.test.ts` — recherche par date, choix auto, résumé du voyage, formatage des durées.
 - `src/services/travel.integration.test.ts` — intégration service transport.
 - `e2e/home-flow.spec.ts` — parcours home (Playwright).
 - Runners : Vitest (`vitest.config.ts`), Playwright (`playwright.config.ts`).

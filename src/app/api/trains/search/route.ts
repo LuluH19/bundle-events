@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const fromId = request.nextUrl.searchParams.get("from");
   const toId = request.nextUrl.searchParams.get("to");
   const datetime = request.nextUrl.searchParams.get("datetime");
+  const represents = request.nextUrl.searchParams.get("represents") === "arrival" ? "arrival" : "departure";
 
   if (!fromId || !toId) {
     return Response.json({ error: "from and to SNCF stop_area IDs required" }, { status: 400 });
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
   const sncfDateTime = datetime ? toSncfDateTime(datetime) : "";
   if (sncfDateTime) {
     params.set("datetime", sncfDateTime);
-    params.set("datetime_represents", "departure");
+    params.set("datetime_represents", represents);
   }
 
   const url = `${sncfConfig.baseUrl}/coverage/sncf/journeys?${params}`;

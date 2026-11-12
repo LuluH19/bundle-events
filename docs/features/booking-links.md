@@ -21,7 +21,7 @@ Si `returnDateISO` est fourni, un mode ticketé devient un lien A/R (`roundTrip:
 - **Train** : `/api/booking/train?...&returnDate=YYYY-MM-DD` → Trainline `journeySearchType=return` + `inwardDate={retour}T08:00:00` + `inwardDateType=departAfter` (**vérifié**).
 - **Bus** : `/api/booking/bus?...&returnDate=YYYY-MM-DD` → FlixBus `returnDate` en `DD.MM.YYYY`.
 
-Dans `BundleView`, un mode présent **dans les deux directions** est regroupé une seule fois en A/R dans l'en-tête (map `RT_HEADER`), retiré des cartes aller/retour.
+Dans `BookView`, un mode présent **dans les deux directions** est réservé une seule fois en A/R depuis la carte **Aller** (« Réserver sur Trainline (aller-retour) ») ; la carte Retour indique alors « Inclus dans la réservation aller-retour ».
 
 ## Pourquoi des proxys serveur pour train/bus
 

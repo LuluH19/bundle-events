@@ -1,25 +1,33 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import BundleBuilder from "@/src/components/BundleBuilder";
-import type { Step } from "@/src/types";
+import { STEPS, type Step } from "@/src/types";
 
-const STEP_SEGMENTS: Step[] = ["hotels", "routes-outbound", "routes-return", "bundle"];
+const LEGACY_SEGMENTS: Record<string, string> = {
+  hotels: "voyage",
+  "routes-outbound": "voyage",
+  "routes-return": "voyage",
+  bundle: "reserver",
+};
 
 export default async function BundlePage({
   params,
 }: {
   params: Promise<{ uuid: string; step?: string[] }>;
 }) {
-  
   const { uuid, step } = await params;
 
-  let current: Step;
   if (!step || step.length === 0) {
-    current = "home";
-  } else if (step.length === 1 && STEP_SEGMENTS.includes(step[0] as Step)) {
-    current = step[0] as Step;
-  } else {
-    notFound();
+    return <BundleBuilder uuid={uuid} step="home" />;
   }
 
+  if (step.length !== 1) notFound();
+
+  const legacy = LEGACY_SEGMENTS[step[0]];
+  if (legacy) redirect(`/${uuid}/${legacy}`);
+
+  const match = STEPS.find((s) => s.segment && s.segment === step[0]);
+  if (!match) notFound();
+
+  const current: Step = match.id;
   return <BundleBuilder uuid={uuid} step={current} />;
 }
