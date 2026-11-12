@@ -27,10 +27,10 @@ jobs:
   pull-request:
     if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
     name: Notify PR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PR }}
         with:
@@ -94,10 +94,10 @@ jobs:
   release:
     if: github.event_name == 'release'
     name: Notify release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_RELEASE }}
         with:
