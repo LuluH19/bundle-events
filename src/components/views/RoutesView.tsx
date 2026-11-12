@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { RoutesViewProps } from "@/src/types";
+import { RoutesViewProps, TransportMode } from "@/src/types";
 import { MODE_META } from "@/src/utils/constants/transport";
 import { formatDuration, formatDistance } from "@/src/utils/format";
 import { Button, Chip, Eyebrow, MODE_ICON, IconArrow, IconMap, IconClose } from "@/src/components/ui";
@@ -94,31 +94,23 @@ export function RoutesView(props: RoutesViewProps) {
                       <span className="flex items-center gap-2">
                         <span className="truncate text-[15px] font-semibold">
                           {(() => {
-                            const counts: Record<string, number> = { plane: 0, train: 0, bus: 0, car: 0 };
-                            o.route.segments.forEach(seg => {
-                              if (counts[seg.mode] !== undefined) counts[seg.mode]++;
-                            });
-                            
-                            const parts: string[] = [];
-                            const order = ["plane", "train", "bus", "car"];
-                            
-                            order.forEach(m => {
-                              const c = counts[m];
-                              if (c > 0) {
-                                let name = MODE_META[m as keyof typeof MODE_META].label;
-                                if (c === 1) {
-                                  parts.push(name);
-                                } else {
-                                  if (name === "Train") name = "Trains";
-                                  if (name === "Avion") name = "Avions";
-                                  if (name === "Voiture") name = "Voitures";
-                                  parts.push(`${c} ${name}`);
-                                }
-                              }
-                            });
-                            return parts.length > 0 ? parts.join(" + ") : meta.label;
+                            const total = o.route.transports;
+                            const modes = (Object.keys(o.route.transportsByMode) as TransportMode[]).filter(
+                              (m) => (o.route.transportsByMode[m] || 0) > 0
+                            );
+                            if (total === 0 || modes.length === 0) return meta.label;
+                            if (modes.length > 1) return `${total} transport${total > 1 ? "s" : ""}`;
+                            const label = MODE_META[modes[0]].label;
+                            if (total === 1) return label;
+                            const plural = label === "Voiture personnelle" ? "Voitures" : `${label}s`;
+                            return `${total} ${plural}`;
                           })()}
                         </span>
+                        {o.route.transports > 1 && (
+                          <span className={`shrink-0 font-mono text-[11px] ${selected ? "text-white/60" : "text-slate-400"}`}>
+                            · {o.route.transports - 1} correspondance{o.route.transports - 1 > 1 ? "s" : ""}
+                          </span>
+                        )}
                       </span>
                       <span className={`mt-0.5 block truncate font-mono text-[11px] tracking-wide ${selected ? "text-white/60" : "text-slate-400"}`}>
                         {formatDuration(o.durationMin).toUpperCase()} · {formatDistance(o.distanceKm)} · CO₂ {meta.co2.toUpperCase()}

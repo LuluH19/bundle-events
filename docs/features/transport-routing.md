@@ -48,6 +48,17 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 
 `utils/constants/transport.ts` (`MODE_META`) expose une **bande CO₂ qualitative** (Bas/Moyen/Élevé) par mode — pas de grammes précis. Pour des chiffres exacts, il faudrait des facteurs d'émission (ex. ADEME) × `distanceKm` (déjà calculée par segment).
 
+## Fusion des étapes & comptage des transports
+
+`buildResult` passe les segments dans `mergeSegments` (`src/utils/algorithms/segments.ts`) avant d'agréger :
+1. Supprime les segments « bruit » : début et fin sur la **même gare** (nom normalisé par `normalizeStationName` — accents, `(Ville)`/`[Ville]`, « Gare de » ignorés — **ou** distance < 150 m) et longueur < 300 m.
+2. Fusionne les segments consécutifs de **même ligne** (même mode + libellé + couleur) ou de marche consécutifs (coordonnées concaténées, distances/durées sommées).
+3. Répète jusqu'à stabilité ; ne renvoie jamais un trajet vide.
+
+`countTransports` compte les véhicules réels (`train`, `bus`, `plane` ; la marche jamais ; la voiture seulement si c'est tout le trajet) → `RouteResult.transports` / `transportsByMode`. Correspondances = `transports − 1`.
+
+Affichage (`RoutesView`) : un seul mode → « 3 Trains » ; modes mélangés → « N transports » ; + « N correspondance(s) » si > 1 transport. L'API `/api/trains/route-geometry` ignore aussi les transferts à pied dans une même gare.
+
 ## Datasets (`src/utils/constants/`)
 
 - `airports.ts` (10 aéroports FR), `bus-stations.ts` (18 gares routières), `transport.ts` (`MODE_META`).
