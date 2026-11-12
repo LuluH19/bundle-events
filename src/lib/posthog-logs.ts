@@ -62,6 +62,23 @@ export function logBundleLinkEmailRequested(sent: boolean) {
   });
 }
 
+export type ApiDegradedReason = "error" | "quota" | "circuit_open";
+
+/** A provider could not be called; `servedStale` tells whether a cached fallback was returned. */
+export function logApiDegraded(provider: string, reason: ApiDegradedReason, servedStale: boolean) {
+  logs.getLogger(loggerName).emit({
+    severityNumber: SeverityNumber.WARN,
+    severityText: "WARN",
+    body: "External API degraded",
+    attributes: {
+      "api.provider": provider,
+      "api.degraded_reason": reason,
+      "api.served_stale": servedStale,
+      "app.component": "api_cache",
+    },
+  });
+}
+
 export async function flushPostHogLogs() {
   await loggerProvider?.forceFlush();
 }

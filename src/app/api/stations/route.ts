@@ -1,14 +1,11 @@
 import { NextRequest } from "next/server";
 import { StationData } from "@/src/types";
-import { sncfConfig } from "@/src/config";
+import { apiCacheConfig, sncfConfig } from "@/src/config";
+import { cached } from "@/src/lib/api-cache";
 
-// Cache all stations in memory (fetched once from SNCF API)
-let cachedStations: StationData[] | null = null;
-let cacheTime = 0;
-
+// The full stop_areas list barely changes: shared cache (memory + Supabase), 7 days fresh.
 async function fetchAllStations(): Promise<StationData[]> {
   const apiKey = sncfConfig.apiKey;
-  if (!apiKey) throw new Error("SNCF_API_KEY not configured");
 
   const allStations: StationData[] = [];
   let startPage = 0;
@@ -26,7 +23,8 @@ async function fetchAllStations(): Promise<StationData[]> {
       { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
     );
 
-    if (!res.ok) break;
+    // Never cache a partial list: a failed page fails the whole fetch (stale copy served instead).
+    if (!res.ok) throw new Error(`SNCF stop_areas error: ${res.status}`);
 
     const data = await res.json();
     const stopAreas = data.stop_areas || [];
@@ -59,18 +57,25 @@ async function fetchAllStations(): Promise<StationData[]> {
 // GET /api/stations — returns all stations (cached)
 // GET /api/stations?lat=X&lng=Y&radius=50 — returns stations near a point
 export async function GET(request: NextRequest) {
-  // Fetch & cache if needed
-  if (!cachedStations || Date.now() - cacheTime > sncfConfig.stationCacheTtl) {
-    try {
-      cachedStations = await fetchAllStations();
-      cacheTime = Date.now();
-    } catch (e) {
-      return Response.json(
-        { error: (e as Error).message },
-        { status: 500 }
-      );
-    }
+  if (!sncfConfig.apiKey) {
+    return Response.json({ error: "SNCF_API_KEY not configured" }, { status: 500 });
   }
+
+  let cachedStations: StationData[];
+  let cacheStatus: string;
+  try {
+    const result = await cached({
+      provider: "sncf",
+      key: "stations:all",
+      ...apiCacheConfig.policies.stations,
+      fetcher: fetchAllStations,
+    });
+    cachedStations = result.data;
+    cacheStatus = result.status;
+  } catch {
+    return Response.json({ error: "Stations unavailable", stations: [], total: 0 }, { status: 503 });
+  }
+  const headers = { "X-Cache": cacheStatus };
 
   const lat = request.nextUrl.searchParams.get("lat");
   const lng = request.nextUrl.searchParams.get("lng");
@@ -97,12 +102,15 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 20);
 
-    return Response.json({ stations: nearby, total: cachedStations.length });
+    return Response.json({ stations: nearby, total: cachedStations.length }, { headers });
   }
 
   // Return count + summary
-  return Response.json({
-    total: cachedStations.length,
-    stations: cachedStations,
-  });
+  return Response.json(
+    {
+      total: cachedStations.length,
+      stations: cachedStations,
+    },
+    { headers }
+  );
 }

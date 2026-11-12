@@ -107,7 +107,7 @@ async function trainSegments(
 ): Promise<RouteSegment[]> {
   if (from.sncfId && to.sncfId) {
     try {
-      const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}&t=${Date.now()}`);
+      const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}`);
       if (res.ok) {
         const data = await res.json();
         if (data.sections && data.sections.length > 0) {
@@ -301,7 +301,26 @@ async function railMainLegForPair(fromSncfId: string, toSncfId: string): Promise
   }
 }
 
-async function railJourneyDurationMin(
+// Up to 9 SNCF journeys per check: computed once per city pair (~1 km) per session.
+// Failures (null) are not kept, so a later attempt can still succeed.
+const railDurationCache = new Map<string, Promise<number | null>>();
+
+function railJourneyDurationMin(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng }
+): Promise<number | null> {
+  const key = [from.coords, to.coords].map((c) => `${c.lat.toFixed(2)},${c.lng.toFixed(2)}`).join("|");
+  const known = railDurationCache.get(key);
+  if (known) return known;
+  const run = computeRailJourneyDurationMin(from, to).then((d) => {
+    if (d == null) railDurationCache.delete(key);
+    return d;
+  });
+  railDurationCache.set(key, run);
+  return run;
+}
+
+async function computeRailJourneyDurationMin(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng }
 ): Promise<number | null> {
