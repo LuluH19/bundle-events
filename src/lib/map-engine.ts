@@ -1,4 +1,4 @@
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import { mapboxConfig, mapConfig } from "@/src/config";
 
 export type MapLib = typeof maplibregl;
@@ -21,7 +21,7 @@ async function styleReachable(url: string): Promise<boolean> {
 }
 
 async function maplibreEngine(): Promise<MapEngine> {
-  const lib = (await import("maplibre-gl")).default;
+  const lib = await import("maplibre-gl");
   return { name: "maplibre", lib, style: mapConfig.openFreeMapStyleUrl };
 }
 
