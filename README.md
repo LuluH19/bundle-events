@@ -43,7 +43,7 @@ Chaque bundle possède une URL unique (`/{uuid}/...`), peut être sauvegardé, p
 
 Points notables :
 
-- **Itinéraires sur carte** : tracés routiers et ferroviaires réels (Mapbox Directions, OSRM, OpenRailRouting) affichés via MapLibre GL et OpenFreeMap.
+- **Itinéraires sur carte** : tracés routiers et ferroviaires réels (Mapbox Directions, OSRM, OpenRailRouting) affichés via Mapbox GL (MapLibre GL et OpenFreeMap en secours).
 - **Bundle persistant** : l'état est sauvegardé dans Supabase et réhydraté à partir de l'URL.
 - **Responsive** : rail de navigation sur desktop, barre d'onglets et carte plein écran sur mobile.
 
@@ -53,7 +53,7 @@ Points notables :
 |---|---|
 | Framework | [Next.js 16](https://nextjs.org/) (App Router), React 19, TypeScript |
 | Styles | Tailwind CSS v4 |
-| Cartographie | MapLibre GL + OpenFreeMap (Mapbox GL en secours) |
+| Cartographie | Mapbox GL (MapLibre GL + OpenFreeMap en secours) |
 | Données | Supabase (PostgreSQL) |
 | Emailing | Brevo |
 | Analytics et logs | PostHog, Vercel Analytics, OpenTelemetry |
@@ -150,7 +150,7 @@ Plus de détails : [docs/architecture/overview.md](./docs/architecture/overview.
 |---|---|
 | Mapbox | Recherche de lieux, itinéraires, geocoding et carte de secours |
 | API Adresse (Géoplateforme) | Autocomplétion des adresses |
-| MapLibre / OpenFreeMap | Rendu des cartes |
+| MapLibre / OpenFreeMap | Rendu des cartes en secours |
 | LiteAPI | Hôtels et prix |
 | SNCF | Gares et trajets ferroviaires |
 | Travelpayouts | Prix des vols |

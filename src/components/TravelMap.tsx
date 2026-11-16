@@ -186,7 +186,7 @@ export default function TravelMap({
     const draw = () => {
       const map = mapRef.current;
       const lib = engine?.lib;
-      if (!map || !lib || !map.isStyleLoaded()) return;
+      if (!map || !lib || !readyRef.current) return;
 
       /* Hotels (create the source + layers once, then just update constants) */
       if (!hotelLayersReady.current) {

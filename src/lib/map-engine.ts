@@ -31,9 +31,13 @@ async function mapboxEngine(): Promise<MapEngine> {
   return { name: "mapbox", lib: mapbox as unknown as MapLib, style: mapboxConfig.styleUrl };
 }
 
+function mapboxStyleApiUrl(): string {
+  const path = mapboxConfig.styleUrl.replace("mapbox://styles/", "");
+  return `https://api.mapbox.com/styles/v1/${path}?access_token=${encodeURIComponent(mapboxConfig.token)}`;
+}
+
 async function resolveEngine(): Promise<MapEngine> {
-  if (await styleReachable(mapConfig.openFreeMapStyleUrl)) return maplibreEngine();
-  if (mapboxConfig.token) return mapboxEngine();
+  if (mapboxConfig.token && (await styleReachable(mapboxStyleApiUrl()))) return mapboxEngine();
   return maplibreEngine();
 }
 

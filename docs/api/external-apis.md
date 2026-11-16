@@ -5,8 +5,8 @@
 | Service | Usage | Où |
 |---|---|---|
 | **API Adresse (Géoplateforme)** | Autocomplétion de l'adresse de départ (1er choix) | `adapters/geocoding/geoplateforme.adapter.ts`, `services/geocoding.ts` |
-| **Mapbox** | Geocoding (2e choix), recherche de lieux (POI), itinéraires route/marche (1er choix), carte de secours | `services/geocoding.ts`, `MapboxVenueAdapter`, `services/road-routing.ts`, `lib/map-engine.ts` |
-| **MapLibre + OpenFreeMap** | Rendu de la carte (1er choix, sans clé) | `lib/map-engine.ts`, `TravelMap` |
+| **Mapbox** | Geocoding (2e choix), recherche de lieux (POI), itinéraires route/marche (1er choix), carte (1er choix, style `outdoors-v12`) | `services/geocoding.ts`, `MapboxVenueAdapter`, `services/road-routing.ts`, `lib/map-engine.ts` |
+| **MapLibre + OpenFreeMap** | Rendu de la carte (secours, sans clé) | `lib/map-engine.ts`, `TravelMap` |
 | **Ticketmaster Discovery** | Événements (1er choix) | `adapters/events/ticketmaster.adapter.ts` |
 | **OpenAgenda** (open data national) | Événements (2e choix) | `OpenAgendaEventAdapter` |
 | **Open Data Île-de-France** | Événements (3e choix) | `OpenDataEventAdapter` |
@@ -41,7 +41,7 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 | Adresse de départ | API Adresse → Mapbox → Nominatim | `services/geocoding.ts` |
 | Adresse inverse | API Adresse → Mapbox → coordonnées brutes | `services/geocoding.ts` |
 | Itinéraire route/marche | Mapbox Directions → OSRM | `services/road-routing.ts` |
-| Carte | MapLibre + OpenFreeMap → Mapbox GL (si le style OpenFreeMap ne répond pas et qu'un token existe) | `lib/map-engine.ts` |
+| Carte | Mapbox GL (style `outdoors-v12` : relief, forêts, bâtiments) → MapLibre + OpenFreeMap (sans token, ou si l'API de style Mapbox ne répond pas) | `lib/map-engine.ts` |
 | Cars | Horaires GTFS → estimation (gares routières `bus-stations.ts`, 55 km/h) | `algorithms/routing.ts` |
 
 **Lien avec le cache en base** : un cache des appels (7 jours) en base est en cours de conception séparément. Il sert à ne pas rappeler une API pour une même requête et à économiser les quotas. Les chaînes de secours couvrent un autre cas : une API en panne, sans clé, sans résultat ou au quota épuisé pour une requête **pas encore en cache**. Les deux se combinent : le cache peut envelopper chaque fournisseur (clé par fournisseur) ou la chaîne entière (clé par besoin).
@@ -78,7 +78,7 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 - Utilise `NEXT_PUBLIC_MAPBOX_TOKEN`. Au-delà de 25 points (sections SNCF longues), Mapbox refuse et OSRM prend le relais.
 
 ## OpenFreeMap — fond de carte
-- Style `https://tiles.openfreemap.org/styles/liberty`, rendu avec MapLibre GL. Gratuit, sans clé. L'attribution OpenFreeMap / OpenStreetMap est affichée (bouton ⓘ replié).
+- Style `https://tiles.openfreemap.org/styles/liberty`, rendu avec MapLibre GL (v6, imports nommés). Gratuit, sans clé. Utilisé seulement en secours : moins détaillé que Mapbox `outdoors` (peu de différence visible entre forêts et villes aux zooms régionaux). L'attribution OpenFreeMap / OpenStreetMap est affichée (bouton ⓘ replié).
 
 ## GTFS cars — FlixBus et BlaBlaCar Bus
 - Flux publiés sur transport.data.gouv.fr (obligation LOM). URLs dans `config/bus-gtfs.json`.
