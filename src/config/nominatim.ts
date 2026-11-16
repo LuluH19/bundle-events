@@ -1,6 +1,22 @@
 export const nominatimConfig = {
   baseUrl: "https://nominatim.openstreetmap.org",
   countryCodes: "fr",
-  // Categories (OSM `class`) considered as event venues; drops shops, boards, etc.
-  venueCategories: ["tourism", "leisure", "amenity", "building", "historic"],
+  userAgent: "bundle-events",
+  venueTypes: [
+    "stadium",
+    "arena",
+    "theatre",
+    "arts_centre",
+    "concert_hall",
+    "music_venue",
+    "events_venue",
+    "exhibition_centre",
+    "conference_centre",
+    "amphitheatre",
+    "theme_park",
+    "nightclub",
+    "track",
+    "sports_centre",
+    "park",
+  ],
 } as const;
