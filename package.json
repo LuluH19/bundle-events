@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "gtfs:sync": "node scripts/sync-bus-gtfs.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.10.0",

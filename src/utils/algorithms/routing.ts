@@ -1,4 +1,4 @@
-import type { LatLng, RouteResult, RouteSegment, TransportMode, DynamicStation } from "@/src/types";
+import type { BusConnection, LatLng, RouteResult, RouteSegment, TransportMode, DynamicStation } from "@/src/types";
 import { airports } from "@/src/utils/constants/airports";
 import { busStations } from "@/src/utils/constants/bus-stations";
 import {
@@ -205,11 +205,64 @@ export async function computeDirectRoute(
   return buildResult([await fetchRoadSegment(from, to, mode)]);
 }
 
+async function fetchBusConnection(from: LatLng, to: LatLng): Promise<BusConnection | null> {
+  const params = new URLSearchParams({
+    fromLat: String(from.lat),
+    fromLng: String(from.lng),
+    toLat: String(to.lat),
+    toLng: String(to.lng),
+  });
+  try {
+    const res = await fetch(`/api/buses/search?${params}`);
+    if (!res.ok) return null;
+    const data: { connection?: BusConnection | null } = await res.json();
+    return data.connection ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function timetableBusRoute(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng },
+  accessModes: TransportMode[]
+): Promise<RouteResult | null> {
+  const connection = await fetchBusConnection(from.coords, to.coords);
+  if (!connection) return null;
+  const straight: RouteSegment = {
+    from: connection.from,
+    to: connection.to,
+    mode: "bus",
+    coordinates: [
+      [connection.from.coords.lat, connection.from.coords.lng],
+      [connection.to.coords.lat, connection.to.coords.lng],
+    ],
+    distanceKm: haversineDistance(connection.from.coords, connection.to.coords),
+    durationMinutes: connection.durationMinutes,
+  };
+  const [toStop, line, fromStop] = await Promise.all([
+    accessSegment(from, connection.from, accessModes),
+    fetchRoadSegment(connection.from, connection.to, "bus").catch(() => straight),
+    accessSegment(connection.to, to, accessModes),
+  ]);
+  return buildResult([
+    toStop,
+    { ...line, mode: "bus", durationMinutes: connection.durationMinutes, label: connection.operator },
+    fromStop,
+  ]);
+}
+
 export async function computeBusRoute(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
   allowedAccessModes: TransportMode[]
 ): Promise<RouteResult> {
+  const accessModes = allowedAccessModes.filter((m) => m !== "bus");
+  if (haversineDistance(from.coords, to.coords) >= 15) {
+    const timetable = await timetableBusRoute(from, to, accessModes.length > 0 ? accessModes : ["walking"]);
+    if (timetable) return timetable;
+  }
+
   const depCandidates = findNearestSorted(from.coords, busStations, 3);
   const arrCandidates = findNearestSorted(to.coords, busStations, 3);
   let dep = depCandidates[0], arr = arrCandidates[0];
