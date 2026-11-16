@@ -35,7 +35,7 @@ Chaque bundle possède une URL unique (`/{uuid}/...`), peut être sauvegardé, p
 
 | Étape | Description |
 |---|---|
-| **1. Départ et évènement** | Autocomplétion de l'adresse de départ (Mapbox) et recherche d'évènements ou de lieux agrégée depuis plusieurs sources (Open Data Île-de-France, Mapbox POI, OpenStreetMap). Choix des dates, aller simple ou aller-retour, avec validation des dates. |
+| **1. Départ et évènement** | Autocomplétion de l'adresse de départ (API Adresse) et recherche d'évènements ou de lieux agrégée depuis plusieurs sources (Ticketmaster, OpenAgenda, Open Data Île-de-France, Mapbox POI, OpenStreetMap). Choix des dates, aller simple ou aller-retour, avec validation des dates. |
 | **2. Hébergement** | Liste et carte des hôtels autour du lieu (LiteAPI), filtres par rayon et tri, fiche détaillée, vérification de disponibilité. |
 | **3. Trajet aller** | Comparaison des modes de transport (train, avion, bus, voiture, marche) : durée, distance, prix indicatif et impact CO2. Détail en direct des trains SNCF et des vols. |
 | **4. Trajet retour** | Même comparaison pour le retour (masquée en aller simple). |
@@ -43,7 +43,7 @@ Chaque bundle possède une URL unique (`/{uuid}/...`), peut être sauvegardé, p
 
 Points notables :
 
-- **Itinéraires sur carte** : tracés routiers et ferroviaires réels (OSRM, OpenRailRouting) affichés via Mapbox GL.
+- **Itinéraires sur carte** : tracés routiers et ferroviaires réels (Mapbox Directions, OSRM, OpenRailRouting) affichés via MapLibre GL et OpenFreeMap.
 - **Bundle persistant** : l'état est sauvegardé dans Supabase et réhydraté à partir de l'URL.
 - **Responsive** : rail de navigation sur desktop, barre d'onglets et carte plein écran sur mobile.
 
@@ -53,7 +53,7 @@ Points notables :
 |---|---|
 | Framework | [Next.js 16](https://nextjs.org/) (App Router), React 19, TypeScript |
 | Styles | Tailwind CSS v4 |
-| Cartographie | Mapbox GL JS |
+| Cartographie | MapLibre GL + OpenFreeMap (Mapbox GL en secours) |
 | Données | Supabase (PostgreSQL) |
 | Emailing | Brevo |
 | Analytics et logs | PostHog, Vercel Analytics, OpenTelemetry |
@@ -84,7 +84,8 @@ L'application est disponible sur [http://localhost:3000](http://localhost:3000).
 
 | Variable | Rôle |
 |---|---|
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | Geocoding, recherche de lieux et rendu des cartes |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Recherche de lieux, itinéraires, geocoding et carte de secours |
+| `TICKETMASTER_API_KEY` | Évènements Ticketmaster (facultatif, OpenAgenda sinon) |
 | `LITEAPI_KEY` | Recherche d'hôtels et prix |
 | `SNCF_API_KEY` | Gares, trajets et horaires de trains |
 | `TRAVEL_PAYOUTS_API_KEY` | Prix des vols (Aviasales) |
@@ -147,12 +148,15 @@ Plus de détails : [docs/architecture/overview.md](./docs/architecture/overview.
 
 | Service | Usage |
 |---|---|
-| Mapbox | Geocoding, recherche de lieux, cartes |
+| Mapbox | Recherche de lieux, itinéraires, geocoding et carte de secours |
+| API Adresse (Géoplateforme) | Autocomplétion des adresses |
+| MapLibre / OpenFreeMap | Rendu des cartes |
 | LiteAPI | Hôtels et prix |
 | SNCF | Gares et trajets ferroviaires |
 | Travelpayouts | Prix des vols |
-| OSRM / OpenRailRouting | Géométrie des itinéraires routiers et ferroviaires |
-| Open Data Île-de-France / Nominatim | Évènements et lieux |
+| OSRM / OpenRailRouting | Itinéraires routiers (secours) et géométrie ferroviaire |
+| GTFS FlixBus / BlaBlaCar Bus | Horaires des cars (`npm run gtfs:sync`) |
+| Ticketmaster / OpenAgenda / Open Data Île-de-France / Nominatim | Évènements et lieux |
 | Supabase | Persistance des bundles |
 | Brevo | Envoi des emails |
 
