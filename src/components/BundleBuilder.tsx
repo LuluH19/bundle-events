@@ -597,8 +597,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             venueResults={venueResults}
             onPickVenue={handlePickVenue}
             onClearVenue={handleClearVenue}
-            roundTrip={roundTrip}
-            setRoundTrip={handleRoundTrip}
             dateLabel={dateLabel}
             onOpenDates={() => openPanel("dates")}
             canCompose={canCompose}
@@ -643,6 +641,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         panel={panel}
         onClose={() => setPanel(null)}
         roundTrip={roundTrip}
+        onRoundTrip={step === "home" ? handleRoundTrip : undefined}
         dates={{ checkin, checkout, arriveBy, leaveAfter }}
         onDates={handleDates}
         outboundOptions={outboundOptions}

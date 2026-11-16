@@ -8,13 +8,14 @@ Les écrans sont dans `src/components/views/`. Navigation : voir [../architectur
 
 ## 1 — Recherche (`HomeView.tsx`, `/` ou `/{uuid}`)
 - Barre de recherche : **départ** (autocomplétion API Adresse → Mapbox → Nominatim, `services/geocoding.ts`), **événement** (`services/events.ts` → `/api/events/search`), **dates** (bouton qui ouvre `DateRangePicker`), puis **« Voir mon voyage »**. Navigation clavier dans les suggestions (flèches, Entrée, Échap).
-- Bascule **Aller-retour / Aller simple** sous la barre.
+- Bascule **Aller-retour / Aller simple** en haut du calendrier ouvert depuis l'accueil (`onRoundTripChange`) ; il n'y a plus de bascule sous la barre de recherche.
 - Trois cartes d'arguments (une recherche, voyage modifiable, lien à partager), sans titre ni mention de zone.
 - « Des idées de sortie » : affiche par défaut (puce « Toutes ») jusqu'à 8 concerts, festivals, spectacles ou matchs à venir, répartis entre les 7 villes proposées (`searchEventIdeas` → `/api/events/search?cities=`). Une puce de ville filtre sur cette ville (résultats situés dans la ville uniquement, `isInCity`) ; recliquer dessus revient à « Toutes ». Les résultats sont gardés en mémoire par puce : pas de nouvel appel quand on revient sur une puce déjà vue. Un clic sur une carte choisit l'événement.
 - `onCompose` crée le bundle (`createBundle`) puis route vers `/{id}/voyage`. Avec un uuid existant, on retourne simplement à `voyage`. Pendant ce temps, l'écran de chargement (`LoadingScreen`, logo animé `LogoLoader`) couvre la page.
 - Les trajets et hôtels calculés sur l'accueil sont transmis à la page voyage via `utils/trip-cache.ts` : pas de rechargement Supabase ni de nouveau calcul. Si les trajets ne sont pas encore prêts, la page voyage affiche l'écran de chargement jusqu'à leur arrivée.
 
 ### Calendrier (`src/components/DateRangePicker.tsx`)
+- Deux cases **Aller** / **Retour** en haut : la case encadrée indique la date attendue (comme un formulaire de congés). On clique l'aller, puis au survol la plage jusqu'au jour pointé s'affiche (bande claire, jour de retour cerclé, date affichée dans la case Retour) ; le clic fixe le retour. Pas de texte d'aide sous les cases. Cliquer la case Aller ou Retour permet de rechoisir l'une des deux dates.
 - Un seul calendrier en plage aller → retour, navigation entre mois, jours passés barrés et non cliquables, aujourd'hui entouré. Légende : seulement « Date de l'événement » quand l'événement a des dates.
 - Le retour peut être **le même jour** que l'aller : aller-retour dans la journée. **Temporaire** : un hôtel (1 nuit) reste proposé ; la suppression de l'hôtel (ticket #137) est commentée dans `BundleBuilder.tsx` (`withHotel`), `DateRangePicker.tsx` et `TripView.tsx` (`TODO #137`).
 - Heures **facultatives** : « Aller · arriver avant » et « Retour · partir après », saisie au clavier ou créneaux.

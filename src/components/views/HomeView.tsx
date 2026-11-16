@@ -202,8 +202,6 @@ export function HomeView(props: HomeViewProps) {
     venueResults,
     onPickVenue,
     onClearVenue,
-    roundTrip,
-    setRoundTrip,
     dateLabel,
     onOpenDates,
     canCompose,
@@ -291,25 +289,6 @@ export function HomeView(props: HomeViewProps) {
             </button>
           </form>
 
-          <div className="mt-3 flex gap-1.5" role="radiogroup" aria-label="Type de trajet">
-            {[
-              { value: true, label: "Aller-retour" },
-              { value: false, label: "Aller simple" },
-            ].map((opt) => (
-              <button
-                key={opt.label}
-                type="button"
-                role="radio"
-                aria-checked={roundTrip === opt.value}
-                onClick={() => setRoundTrip(opt.value)}
-                className={`rounded-full px-4 py-2 text-[14px] font-semibold ring-1 ring-inset ${
-                  roundTrip === opt.value ? "bg-white text-ink ring-white" : "text-white ring-white/35 hover:bg-white/10"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
         </div>
       </section>
 
