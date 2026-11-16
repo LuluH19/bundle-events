@@ -27,14 +27,16 @@ export interface EventSearchResult {
 }
 
 export async function searchEventsAndVenues(query: string): Promise<EventSearchResult> {
-  const [events, ...venues] = await Promise.allSettled([
+  const [cityEvents, events, ...venues] = await Promise.allSettled([
+    eventsInCity(query.trim(), eventsConfig.defaultLimit),
     firstNonEmpty(eventChain.map(({ name, adapter }) => ({ name, run: () => adapter.searchEvents({ query }) }))),
     ...venueProviders.map((p) => p.searchEvents({ query })),
   ]);
+  const inCity = cityEvents.status === "fulfilled" ? cityEvents.value : [];
   const eventResult = events.status === "fulfilled" ? events.value : { source: null, value: [] };
   const places = venues.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   return {
-    venues: withTitle(rankVenues(dedupeVenues([...eventResult.value, ...places]), query)),
+    venues: withTitle(dedupeVenues([...inCity, ...rankVenues(dedupeVenues([...eventResult.value, ...places]), query)])),
     eventSource: eventResult.source,
   };
 }
