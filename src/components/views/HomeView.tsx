@@ -3,8 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import type { HomeViewProps, Venue } from "@/src/types";
-import { searchEvents } from "@/src/services/events";
-import { IconCalendar, IconCheck, IconClose, IconInfo, IconPin, IconSearch, IconTicket } from "@/src/components/ui";
+import { searchEventIdeas } from "@/src/services/events";
+import { IconCalendar, IconClose, IconPin, IconSearch, IconShare, IconSliders, IconTicket } from "@/src/components/ui";
 
 interface Suggestion {
   key: string;
@@ -13,6 +13,7 @@ interface Suggestion {
 }
 
 interface SearchFieldProps {
+  divided?: boolean;
   id: string;
   label: string;
   icon: ReactNode;
@@ -25,7 +26,7 @@ interface SearchFieldProps {
   onClear: () => void;
 }
 
-function SearchField({ id, label, icon, placeholder, selected, query, onQuery, suggestions, onPick, onClear }: SearchFieldProps) {
+function SearchField({ id, label, icon, placeholder, selected, query, onQuery, suggestions, onPick, onClear, divided }: SearchFieldProps) {
   const [focus, setFocus] = useState(false);
   const [active, setActive] = useState(0);
   const open = focus && !selected && suggestions.length > 0;
@@ -48,7 +49,7 @@ function SearchField({ id, label, icon, placeholder, selected, query, onQuery, s
 
   return (
     <div className="relative min-w-0">
-      <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-page">
+      <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-page ${divided ? "md:border-l md:border-line" : ""}`}>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-page text-ink">{icon}</span>
         <div className="min-w-0 flex-1">
           <label htmlFor={id} className="block text-[12px] font-semibold text-slate-500">
@@ -106,81 +107,85 @@ function SearchField({ id, label, icon, placeholder, selected, query, onQuery, s
 }
 
 const CITIES = ["Paris", "Lyon", "Marseille", "Bordeaux", "Lille", "Toulouse", "Nantes"];
+const ALL_CITIES = "Toutes";
 
 function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
   const [city, setCity] = useState<string | null>(null);
-  const [results, setResults] = useState<Venue[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [ideas, setIdeas] = useState<Record<string, Venue[]>>({});
+  const key = city ?? ALL_CITIES;
+  const results = ideas[key];
+  const loading = results === undefined;
 
   useEffect(() => {
-    if (!city) return;
+    if (ideas[key] !== undefined) return;
     let cancelled = false;
-    searchEvents(city)
-      .then((r) => !cancelled && setResults(r.slice(0, 8)))
-      .catch(() => !cancelled && setResults([]))
-      .finally(() => !cancelled && setLoading(false));
+    searchEventIdeas(city ? [city] : CITIES)
+      .catch(() => [] as Venue[])
+      .then((r) => {
+        if (!cancelled) setIdeas((prev) => ({ ...prev, [key]: r }));
+      });
     return () => {
       cancelled = true;
     };
-  }, [city]);
+  }, [city, key, ideas]);
+
+  const chips = [ALL_CITIES, ...CITIES];
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-8">
       <h2 className="font-display text-[26px] font-extrabold text-ink md:text-[32px]">Des idées de sortie</h2>
-      <p className="mt-1 text-[15px] text-slate-500">Choisis une ville pour voir des salles et des événements où on peut t&apos;emmener.</p>
       <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
-        {CITIES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => {
-              setCity(c);
-              setLoading(true);
-            }}
-            aria-pressed={city === c}
-            className={`shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold ring-1 ring-inset ${
-              city === c ? "bg-nuit text-white ring-nuit" : "bg-white text-ink ring-line hover:bg-mist"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
+        {chips.map((c) => {
+          const active = c === key;
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCity(c === ALL_CITIES || c === city ? null : c)}
+              aria-pressed={active}
+              className={`shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold ring-1 ring-inset ${
+                active ? "bg-nuit text-white ring-nuit" : "bg-white text-ink ring-line hover:bg-mist"
+              }`}
+            >
+              {c}
+            </button>
+          );
+        })}
       </div>
-      {city && (
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {loading &&
-            [0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-mist" />)}
-          {!loading && results.length === 0 && (
-            <p className="text-[14px] text-slate-500">Rien trouvé à {city} pour l&apos;instant. Tape directement le nom de la salle plus haut.</p>
-          )}
-          {!loading &&
-            results.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => onPick(v)}
-                className="grid gap-1 rounded-2xl bg-white p-4 text-left ring-1 ring-line transition-shadow hover:ring-ink/40"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-billet-soft text-billet">
-                  <IconTicket size={18} />
-                </span>
-                <b className="mt-1 text-[15px] leading-snug text-ink">{v.name}</b>
-                <span className="text-[13px] text-slate-500">
-                  {v.city}
-                  {v.dateLabel ? ` · ${v.dateLabel}` : ""}
-                </span>
-              </button>
-            ))}
-        </div>
-      )}
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {loading && [0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-mist" />)}
+        {!loading && results.length === 0 && (
+          <p className="text-[14px] text-slate-500">
+            {city ? `Rien trouvé à ${city} pour l'instant.` : "Rien trouvé pour l'instant."} Tape directement le nom de la salle plus haut.
+          </p>
+        )}
+        {!loading &&
+          results.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => onPick(v)}
+              className="flex h-full flex-col items-start gap-1 rounded-2xl bg-white p-4 text-left ring-1 ring-line transition-shadow hover:ring-ink/40"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-billet-soft text-billet">
+                <IconTicket size={18} />
+              </span>
+              <b className="mt-1 text-[15px] leading-snug text-ink">{v.name}</b>
+              <span className="mt-auto pt-2 text-[13px] text-slate-500">
+                {v.city}
+                {v.dateLabel ? ` · ${v.dateLabel}` : ""}
+              </span>
+            </button>
+          ))}
+      </div>
     </section>
   );
 }
 
 const REASONS = [
-  { title: "Une recherche au lieu de cinq sites", text: "Trajet porte à porte, hôtel et retour réunis, sans jongler entre les onglets." },
-  { title: "Un voyage complet, tout est modifiable", text: "On te propose le plus rapide, le moins cher ou le plus vert. Tu changes ce que tu veux." },
-  { title: "Un lien pour toute ta bande", text: "Partage ton voyage en un lien ou un QR code. Chacun voit le même plan." },
+  { icon: IconSearch, title: "Une recherche au lieu de cinq sites", text: "Trajet porte à porte, hôtel et retour réunis, sans jongler entre les onglets." },
+  { icon: IconSliders, title: "Un voyage complet, tout est modifiable", text: "On te propose le plus rapide, le moins cher ou le plus vert. Tu changes ce que tu veux." },
+  { icon: IconShare, title: "Un lien pour toute ta bande", text: "Partage ton voyage en un lien ou un QR code. Chacun voit le même plan." },
 ];
 
 export function HomeView(props: HomeViewProps) {
@@ -208,12 +213,12 @@ export function HomeView(props: HomeViewProps) {
 
   return (
     <div>
-      <section className="relative z-10 bg-nuit px-4 pb-14 pt-12 md:px-8 md:pb-20 md:pt-20">
+      <section className="relative z-10 bg-nuit pb-14 pt-12 md:pb-20 md:pt-20">
         <div className="absolute inset-0 overflow-hidden">
-          <Image src="/images/concert-crowd.jpg" alt="" fill priority sizes="100vw" className="object-cover" />
+          <Image src="/images/concert-crowd-hd.jpg" alt="" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,21,58,0.78),rgba(22,21,58,0.9))]" />
         </div>
-        <div className="relative mx-auto max-w-6xl">
+        <div className="relative mx-auto max-w-6xl px-4 md:px-8">
           <span className="eyebrow text-white/70">Concerts · matchs · festivals</span>
           <h1 className="mt-3 max-w-[16ch] font-display text-[40px] font-extrabold leading-[1] tracking-[-0.02em] text-white md:text-[64px]">
             Tu as ton billet ? On s&apos;occupe du reste.
@@ -242,27 +247,26 @@ export function HomeView(props: HomeViewProps) {
               }}
               onClear={onClearDeparture}
             />
-            <div className="md:border-l md:border-line">
-              <SearchField
-                id="venue"
-                label="Pour quel événement ?"
-                icon={<IconTicket size={18} />}
-                placeholder="Salle, stade, festival…"
-                selected={venue?.name ?? null}
-                query={venueSearch}
-                onQuery={setVenueSearch}
-                suggestions={venueResults.map((v) => ({
-                  key: v.id,
-                  title: v.name,
-                  subtitle: [v.city, v.dateLabel].filter(Boolean).join(" · "),
-                }))}
-                onPick={(k) => {
-                  const v = venueResults.find((x) => x.id === k);
-                  if (v) onPickVenue(v);
-                }}
-                onClear={onClearVenue}
-              />
-            </div>
+            <SearchField
+              divided
+              id="venue"
+              label="Pour quel événement ?"
+              icon={<IconTicket size={18} />}
+              placeholder="Salle, stade, festival…"
+              selected={venue?.name ?? null}
+              query={venueSearch}
+              onQuery={setVenueSearch}
+              suggestions={venueResults.map((v) => ({
+                key: v.id,
+                title: v.name,
+                subtitle: [v.city, v.dateLabel].filter(Boolean).join(" · "),
+              }))}
+              onPick={(k) => {
+                const v = venueResults.find((x) => x.id === k);
+                if (v) onPickVenue(v);
+              }}
+              onClear={onClearVenue}
+            />
             <button
               type="button"
               onClick={onOpenDates}
@@ -310,30 +314,24 @@ export function HomeView(props: HomeViewProps) {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pt-12 md:px-8">
-        <h2 className="font-display text-[26px] font-extrabold text-ink md:text-[32px]">Pourquoi pas Google Maps + Booking ?</h2>
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-3">
           {REASONS.map((r) => (
             <div key={r.title} className="grid gap-1.5 rounded-2xl bg-white p-5 ring-1 ring-line">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ok-soft text-ok">
-                <IconCheck size={16} />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ember-soft text-ember">
+                <r.icon size={20} />
               </span>
               <b className="text-[16px] text-ink">{r.title}</b>
               <p className="text-[14px] text-slate-500">{r.text}</p>
             </div>
           ))}
         </div>
-        <p className="mt-4 flex items-start gap-2 rounded-xl border border-dashed border-line bg-white p-3 text-[14px] text-slate-500">
-          <IconInfo size={16} className="mt-0.5 shrink-0" />
-          Disponible en France métropolitaine : trains SNCF, cars, avions et transports locaux. Tu réserves ensuite chaque élément chez son vendeur, les infos déjà remplies.
-        </p>
       </section>
 
       <CityIdeas onPick={onPickVenue} />
 
-      <footer className="border-t border-line px-4 py-8 md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[13px] text-slate-500 sm:flex-row">
+      <footer className="border-t border-line py-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-[13px] text-slate-500 sm:flex-row md:px-8">
           <span>© 2026 Bundle Events</span>
-          <span>Photo : Nainoa Shizuru sur Unsplash</span>
         </div>
       </footer>
     </div>
