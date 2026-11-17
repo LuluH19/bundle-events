@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AccountMenu } from "./AccountMenu";
 
 export function Header() {
   return (
@@ -7,6 +8,7 @@ export function Header() {
       <Link href="/" aria-label="Accueil Bundle Events" className="shrink-0">
         <Image src="/favicon/favicon.svg" alt="Bundle Events" width={73} height={56} priority unoptimized style={{ width: "auto", height: 56 }} />
       </Link>
+      <AccountMenu />
     </header>
   );
 }

@@ -15,6 +15,10 @@ Tout est piloté par l'URL ; un seul composant client (`BundleBuilder`) est rend
   - autre → `notFound()`
   - `params` est `await`é (params asynchrones Next 16).
 
+- `src/app/auth/callback/route.ts` et `src/app/auth/signout/route.ts` → connexion / déconnexion (segment statique `auth`, prioritaire sur `[uuid]`).
+- `src/proxy.ts` (convention Next 16, ex-`middleware`) → rafraîchit le cookie de session Supabase quand un cookie `sb-*` est présent. Aucune redirection : le compte est facultatif.
+- Ancre `/#mes-bundles` → section « Mes bundles » de l'accueil (visible une fois connecté).
+
 ## Étapes (`src/types/step.ts`, `STEPS`)
 
 | id | label | segment |

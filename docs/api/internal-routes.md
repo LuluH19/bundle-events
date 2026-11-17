@@ -6,9 +6,17 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 
 ## Bundles (Supabase)
 
-- **`api/bundles/route.ts`** — `POST`. Crée un bundle. Body `{ data: BundleSnapshot }` → insert Supabase → `{ uuid }` (201).
+- **`api/bundles/route.ts`** — `POST`. Crée un bundle. Body `{ data: BundleSnapshot }` → insert Supabase (avec `user_id` si l'utilisateur est connecté) → `{ uuid }` (201).
 - **`api/bundles/[uuid]/route.ts`** — `GET` (récupère `uuid,email,data,created_at,updated_at`, 404 si absent) et `PATCH` (met à jour `data`).
 - **`api/bundles/[uuid]/save/route.ts`** — `POST`. Body `{ email }` (validé par regex). Enregistre l'email, appelle `sendBundleLinkEmail`, retourne `{ ok, link, sent }`.
+
+## Compte
+
+- **`api/me/bundles/route.ts`** — `GET`. 401 si non connecté. Sinon renvoie `{ bundles: BundleSummary[] }` (`uuid,data,created_at,updated_at`) : bundles dont `user_id` = utilisateur **ou** `email` = email du compte, triés par `updated_at` desc (max 100).
+- **`auth/callback/route.ts`** (hors `/api`) — `GET ?code=`. Échange le code du lien magique contre une session (cookie), redirige vers `/#mes-bundles` (ou `/?auth=error`).
+- **`auth/signout/route.ts`** (hors `/api`) — `POST`. Déconnecte puis redirige (303) vers `/`.
+
+Détails : [../features/account.md](../features/account.md).
 
 ## Recherche
 
