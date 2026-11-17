@@ -3,6 +3,7 @@ import { airports } from "@/src/utils/constants/airports";
 import { findNearest } from "@/src/utils/travel";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { dateOnly } from "@/src/utils/date";
+import { busConfig } from "@/src/config/bus";
 
 /**
  * A "réserver ce trajet" deep-link resolved from the data available on the
@@ -75,8 +76,11 @@ function segmentLink(mode: TransportMode, seg: RouteSegment, date: string, retur
     case "train":
       return { href: `/api/booking/train?${proxyParams(seg, date, returnDate)}`, provider: "Trainline", external: false, mode, roundTrip: !!returnDate };
 
-    case "bus":
+    case "bus": {
+      const site = seg.label ? busConfig.operatorSites[seg.label] : undefined;
+      if (site) return { href: site, provider: seg.label!, external: true, mode, roundTrip: !!returnDate };
       return { href: `/api/booking/bus?${proxyParams(seg, date, returnDate)}`, provider: "FlixBus", external: false, mode, roundTrip: !!returnDate };
+    }
 
     case "car":
     case "walking": {

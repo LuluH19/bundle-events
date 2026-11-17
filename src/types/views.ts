@@ -63,8 +63,6 @@ export interface HomeViewProps {
   venueResults: Venue[];
   onPickVenue: (v: Venue) => void;
   onClearVenue: () => void;
-  roundTrip: boolean;
-  setRoundTrip: (v: boolean) => void;
   dateLabel: string;
   onOpenDates: () => void;
   canCompose: boolean;

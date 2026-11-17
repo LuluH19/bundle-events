@@ -5,6 +5,7 @@ interface NominatimResult {
   osm_type: string;
   osm_id: number;
   category: string;
+  type: string;
   name?: string;
   display_name: string;
   lat: string;
@@ -24,15 +25,17 @@ export class OsmVenueAdapter implements EventProvider {
       countrycodes: nominatimConfig.countryCodes,
       addressdetails: "1",
       "accept-language": "fr",
-      limit: String(limit),
+      limit: String(limit * 2),
     });
 
-    const res = await fetch(`${nominatimConfig.baseUrl}/search?${params}`);
+    const res = await fetch(`${nominatimConfig.baseUrl}/search?${params}`, {
+      headers: { "User-Agent": nominatimConfig.userAgent },
+    });
     if (!res.ok) throw new Error(`Nominatim error: ${res.status}`);
 
     const data: NominatimResult[] = await res.json();
     return data
-      .filter((r) => r.name && (nominatimConfig.venueCategories as readonly string[]).includes(r.category))
+      .filter((r) => r.name && (nominatimConfig.venueTypes as readonly string[]).includes(r.type))
       .map((r) => {
         const a = r.address ?? {};
         return {

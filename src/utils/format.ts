@@ -13,3 +13,7 @@ export function formatDistance(km: number) {
 export function timeOf(s: string) {
   return new Date(s).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
+
+export function capitalizeFirst(text: string): string {
+  return text.trim().replace(/^([^\p{L}\p{N}]*)(\p{L})/u, (_, lead: string, letter: string) => lead + letter.toUpperCase());
+}

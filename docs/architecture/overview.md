@@ -19,7 +19,7 @@ src/
 ├── types/      # définitions TypeScript (barrel dans index.ts)
 └── utils/      # logique
     ├── algorithms/ # math/logique pure (routing, geodesic)
-    └── constants/  # datasets statiques (airports, venues, bus-stations)
+    └── constants/  # datasets statiques (airports, venues, bus-stations, bus-network)
 ```
 
 > ⚠️ `AGENTS.md` mentionne `src/hooks/` : **ce dossier n'existe pas**. Aucun hook personnalisé — toute la logique à état vit dans `src/components/BundleBuilder.tsx` avec les hooks React natifs.

@@ -15,6 +15,7 @@ interface DateRangePickerProps {
   open: boolean;
   onClose: () => void;
   roundTrip: boolean;
+  onRoundTripChange?: (roundTrip: boolean) => void;
   value: DateSelection;
   onApply: (value: DateSelection) => void;
   eventDates?: string[];
@@ -46,14 +47,16 @@ export function DateRangePicker(props: DateRangePickerProps) {
   return <DateRangePickerPanel {...props} />;
 }
 
-function DateRangePickerPanel({ onClose, roundTrip, value, onApply, eventDates = [] }: DateRangePickerProps) {
+function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTripChange, value, onApply, eventDates = [] }: DateRangePickerProps) {
   const now = useMemo(() => new Date(), []);
   const today = localIsoDate(now);
   const nowTime = localHourMinute(now);
 
   const [from, setFrom] = useState(dateOnly(value.checkin));
   const [to, setTo] = useState(dateOnly(value.checkout));
-  const [pickingReturn, setPickingReturn] = useState(false);
+  const [roundTrip, setRoundTrip] = useState(initialRoundTrip);
+  const [pickingReturn, setPickingReturn] = useState(initialRoundTrip && !!value.checkin && !value.checkout);
+  const [hovered, setHovered] = useState("");
   const [arriveBy, setArriveBy] = useState(value.arriveBy);
   const [leaveAfter, setLeaveAfter] = useState(value.leaveAfter);
   const [month, setMonth] = useState(monthKey(from || today));
@@ -91,6 +94,7 @@ function DateRangePickerPanel({ onClose, roundTrip, value, onApply, eventDates =
 
   const apply = () => {
     if (!canApply) return;
+    if (roundTrip !== initialRoundTrip) onRoundTripChange?.(roundTrip);
     onApply({
       checkin: from,
       checkout: roundTrip ? to : "",
@@ -100,11 +104,15 @@ function DateRangePickerPanel({ onClose, roundTrip, value, onApply, eventDates =
     onClose();
   };
 
-  const hint = !roundTrip
-    ? "Touche le jour de l'aller."
-    : pickingReturn && from
-      ? `Aller : ${formatDay(from)}. Touche le jour du retour (le même jour possible).`
-      : "Touche le jour de l'aller, puis celui du retour.";
+  const switchRoundTrip = (v: boolean) => {
+    setRoundTrip(v);
+    setTo("");
+    setLeaveAfter("");
+    setPickingReturn(v && !!from);
+  };
+
+  const previewEnd = roundTrip && pickingReturn && from && hovered && hovered >= from ? hovered : "";
+  const rangeEnd = to || previewEnd;
 
   const arriveHelp = !arriveBy
     ? fromToday
@@ -142,9 +150,54 @@ function DateRangePickerPanel({ onClose, roundTrip, value, onApply, eventDates =
         </button>
       }
     >
-      <p className="min-h-[2.6em] text-[14px] text-slate-500">{hint}</p>
+      {onRoundTripChange && (
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-page p-1" role="radiogroup" aria-label="Type de trajet">
+          {[
+            { value: true, label: "Aller-retour" },
+            { value: false, label: "Aller simple" },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              role="radio"
+              aria-checked={roundTrip === opt.value}
+              onClick={() => switchRoundTrip(opt.value)}
+              className={`rounded-lg py-2 text-[14px] font-semibold transition-colors ${
+                roundTrip === opt.value ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-slate-500 hover:text-ink"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="mt-2 rounded-2xl bg-white p-3 ring-1 ring-line">
+      <div className={`grid gap-2 ${roundTrip ? "grid-cols-2" : "grid-cols-1"}`}>
+        <button
+          type="button"
+          onClick={() => setPickingReturn(false)}
+          className={`rounded-xl bg-white px-3 py-2 text-left ring-inset ${roundTrip && !pickingReturn ? "ring-2 ring-billet" : "ring-1 ring-line"}`}
+        >
+          <span className="block text-[12px] font-semibold text-slate-500">Aller</span>
+          <span className={`block text-[15px] font-bold ${from ? "text-ink" : "text-slate-400"}`}>{from ? formatDay(from) : "Choisir"}</span>
+        </button>
+        {roundTrip && (
+          <button
+            type="button"
+            onClick={() => from && setPickingReturn(true)}
+            disabled={!from}
+            className={`rounded-xl bg-white px-3 py-2 text-left ring-inset ${pickingReturn && from ? "ring-2 ring-billet" : "ring-1 ring-line"}`}
+          >
+            <span className="block text-[12px] font-semibold text-slate-500">Retour</span>
+            <span className={`block text-[15px] font-bold ${rangeEnd ? "text-ink" : "text-slate-400"}`}>
+              {rangeEnd ? formatDay(rangeEnd) : "Choisir"}
+            </span>
+          </button>
+        )}
+      </div>
+
+
+      <div className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-line">
         <div className="mb-2 flex items-center justify-between">
           <button
             type="button"
@@ -165,7 +218,7 @@ function DateRangePickerPanel({ onClose, roundTrip, value, onApply, eventDates =
             ›
           </button>
         </div>
-        <div className="grid grid-cols-7 gap-0.5 text-center">
+        <div className="grid grid-cols-7 gap-y-0.5 text-center" onMouseLeave={() => setHovered("")}>
           {DOW.map((d, i) => (
             <span key={i} className="font-mono text-[11px] font-bold leading-8 text-slate-500">
               {d}
@@ -174,32 +227,50 @@ function DateRangePickerPanel({ onClose, roundTrip, value, onApply, eventDates =
           {cells.map((iso, i) => {
             if (!iso) return <span key={`e${i}`} />;
             const past = iso < today;
-            const selected = iso === from || (!!to && iso === to);
-            const inRange = !!from && !!to && iso > from && iso < to;
+            const isStart = iso === from;
+            const isEnd = !!rangeEnd && iso === rangeEnd;
+            const isReturn = !!to && iso === to;
+            const selected = isStart || isReturn;
+            const preview = !to && isEnd && !isStart;
+            const inRange = !!from && !!rangeEnd && iso > from && iso < rangeEnd;
+            const band = !!from && !!rangeEnd && from !== rangeEnd && (inRange || isStart || isEnd);
             const isToday = iso === today;
             const hasEvent = eventDates.includes(iso);
             const label = new Date(`${iso}T00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
             return (
-              <button
-                key={iso}
-                type="button"
-                disabled={past}
-                onClick={() => pick(iso)}
-                aria-pressed={selected}
-                aria-label={`${label}${isToday ? ", aujourd'hui" : ""}${past ? ", passé" : ""}`}
-                className={`relative aspect-square w-full min-w-0 rounded-full text-[14px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:text-line disabled:line-through ${
-                  selected
-                    ? "bg-billet text-white"
-                    : inRange
-                      ? "rounded-none bg-billet-soft text-ink"
-                      : "text-ink hover:bg-mist"
-                } ${isToday && !selected ? "ring-[1.5px] ring-inset ring-ink" : ""}`}
-              >
-                {Number(iso.slice(8))}
-                {hasEvent && (
-                  <span className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${selected ? "bg-white" : "bg-billet"}`} />
+              <div key={iso} className="relative">
+                {band && (
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 ${isStart ? "left-1/2 right-0" : isEnd ? "left-0 right-1/2" : "inset-x-0"} ${
+                      to ? "bg-billet-soft" : "bg-billet-soft/60"
+                    }`}
+                  />
                 )}
-              </button>
+                <button
+                  type="button"
+                  disabled={past}
+                  onClick={() => pick(iso)}
+                  onMouseEnter={() => setHovered(iso)}
+                  onFocus={() => setHovered(iso)}
+                  aria-pressed={selected}
+                  aria-label={`${label}${isToday ? ", aujourd'hui" : ""}${past ? ", passé" : ""}${isStart ? ", aller" : ""}${isReturn ? ", retour" : ""}`}
+                  className={`relative aspect-square w-full min-w-0 rounded-full text-[14px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:text-line disabled:line-through ${
+                    selected
+                      ? "bg-billet text-white"
+                      : preview
+                        ? "bg-white text-billet ring-2 ring-inset ring-billet"
+                        : inRange
+                          ? "text-ink"
+                          : "text-ink hover:bg-mist"
+                  } ${isToday && !selected && !preview ? "ring-[1.5px] ring-inset ring-ink" : ""}`}
+                >
+                  {Number(iso.slice(8))}
+                  {hasEvent && (
+                    <span className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${selected ? "bg-white" : "bg-billet"}`} />
+                  )}
+                </button>
+              </div>
             );
           })}
         </div>

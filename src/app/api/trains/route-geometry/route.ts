@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { StopCoord, RouteSection } from "@/src/types";
-import { sncfConfig, osrmConfig, openRailwayRoutingConfig } from "@/src/config";
+import { sncfConfig, openRailwayRoutingConfig } from "@/src/config";
+import { fetchRoadRoute } from "@/src/services/road-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -157,22 +158,11 @@ export async function GET(request: NextRequest) {
         }
         
         if (sectionCoords.length === 0 && mode !== "train") {
-          const waypointStr = sectionStops.map(s => `${s.lng},${s.lat}`).join(";");
-          const profile = mode === "walking" ? "foot" : "driving";
           try {
-            const osrmRes = await fetch(
-              `${osrmConfig.baseUrl}/${profile}/${waypointStr}?overview=full&geometries=geojson`
-            );
-            if (osrmRes.ok) {
-              const osrmData = await osrmRes.json();
-              if (osrmData.code === "Ok" && osrmData.routes?.length) {
-                sectionCoords = osrmData.routes[0].geometry.coordinates.map(
-                  ([lng, lat]: [number, number]) => [lat, lng]
-                );
-              }
-            }
+            const road = await fetchRoadRoute(sectionStops, mode === "walking" ? "walking" : "car");
+            sectionCoords = road.coordinates;
           } catch (err) {
-            console.error("OSRM fetch error", err);
+            console.error("Road routing error", err);
           }
         }
       }

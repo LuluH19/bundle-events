@@ -35,7 +35,7 @@ import { TripPanels, type Panel } from "@/src/components/trip/TripPanels";
 import { SaveBundleModal } from "@/src/components/SaveBundleModal";
 import { LoadingScreen } from "@/src/components/LoadingScreen";
 import { loadingCopy } from "@/src/utils/loading";
-import { readTripCache, writeTripCache } from "@/src/utils/trip-cache";
+import { readTripCache, writeTripCache, type TripCache } from "@/src/utils/trip-cache";
 import type { DateSelection } from "@/src/components/DateRangePicker";
 
 interface BundleBuilderProps {
@@ -490,11 +490,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     [uuid]
   );
 
-  const rememberTrip = useCallback(
-    (id: string, snapshot: BundleSnapshot) => {
-      writeTripCache({
-        uuid: id,
-        snapshot,
+  const liveTripRef = useRef<{ buildSnapshot: () => BundleSnapshot; cache: Omit<TripCache, "uuid" | "snapshot"> } | null>(null);
+  useEffect(() => {
+    liveTripRef.current = {
+      buildSnapshot,
+      cache: {
         outboundOptions,
         returnOptions,
         optionsKey: optionsKeyRef.current,
@@ -506,22 +506,28 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         returnFlights,
         outTimesKey: outTimesKeyRef.current,
         retTimesKey: retTimesKeyRef.current,
-      });
-    },
-    [outboundOptions, returnOptions, hotelResults, outboundTrains, returnTrains, outboundFlights, returnFlights]
-  );
+      },
+    };
+  });
+
+  const rememberTrip = useCallback((id: string): BundleSnapshot | null => {
+    const live = liveTripRef.current;
+    if (!live) return null;
+    const snapshot = live.buildSnapshot();
+    writeTripCache({ uuid: id, snapshot, ...live.cache });
+    return snapshot;
+  }, []);
 
   const go = useCallback(
     (s: Step) => {
       if (s !== "home" && !uuid) return;
       if (uuid && hydrated) {
-        const snapshot = buildSnapshot();
-        rememberTrip(uuid, snapshot);
-        updateBundle(uuid, snapshot).catch(() => {});
+        const snapshot = rememberTrip(uuid);
+        if (snapshot) updateBundle(uuid, snapshot).catch(() => {});
       }
       router.push(pathFor(s));
     },
-    [uuid, hydrated, buildSnapshot, rememberTrip, router, pathFor]
+    [uuid, hydrated, rememberTrip, router, pathFor]
   );
 
   const canCompose = !!(departure && venue && checkin && (!roundTrip || checkout));
@@ -537,7 +543,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       const snapshot = buildSnapshot();
       const id = await createBundle(snapshot);
       posthog.capture("bundle_composed", { round_trip: roundTrip });
-      rememberTrip(id, snapshot);
+      rememberTrip(id);
       router.push(pathFor("trip", id));
     } catch {
       setComposing(false);
@@ -597,8 +603,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             venueResults={venueResults}
             onPickVenue={handlePickVenue}
             onClearVenue={handleClearVenue}
-            roundTrip={roundTrip}
-            setRoundTrip={handleRoundTrip}
             dateLabel={dateLabel}
             onOpenDates={() => openPanel("dates")}
             canCompose={canCompose}
@@ -643,6 +647,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         panel={panel}
         onClose={() => setPanel(null)}
         roundTrip={roundTrip}
+        onRoundTrip={step === "home" ? handleRoundTrip : undefined}
         dates={{ checkin, checkout, arriveBy, leaveAfter }}
         onDates={handleDates}
         outboundOptions={outboundOptions}

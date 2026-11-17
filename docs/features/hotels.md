@@ -5,11 +5,11 @@
 ## Providers (`src/adapters/hotels/`)
 
 - **`liteapi.adapter.ts`** (`LiteApiHotelAdapter`) — **provider en production**. POST vers **LiteAPI** `/v3.0/hotels/rates` (lat/lng, rayon m, 2 adultes, EUR, FR, dates, limit 100). Mappe `rates` + `data.hotels[]` → `HotelMapItem[]` (`source:"liteapi"`), `pricePerNight` via `getDaysDiff`. Photos depuis `static.cupid.travel` (autorisé dans `next.config.ts`).
-- **`overpass.adapter.ts`** (`OverpassHotelAdapter`) — provider OSM alternatif (3 miroirs, `tourism=hotel/hostel/guest_house`), cache 5 min qui **ne met jamais en cache un résultat vide**. **Existe mais n'est pas branché** sur `/api/hotels/search`.
+- **`overpass.adapter.ts`** (`OverpassHotelAdapter`) — provider OSM alternatif (3 miroirs, `tourism=hotel/hostel/guest_house`), cache 5 min qui **ne met jamais en cache un résultat vide**. Sert de **secours** sur `/api/hotels/search` quand LiteAPI échoue ou ne renvoie rien (hôtels sans prix : « Prix indisponible »).
 
 ## API & utils
 
-- `/api/hotels/search` → LiteAPI, tri `pricePerNight` croissant.
+- `/api/hotels/search` → LiteAPI puis Overpass (`utils/fallback.ts`), tri `pricePerNight` croissant, hôtels sans prix à la fin.
 - `src/utils/hotel.ts` : `getHotelDistance(hotel, venue)` (haversine, `null` si inconnu) ; `deduplicateHotels` (fusion coord + nom flou, non câblé).
 
 ## Choix automatique (`src/utils/algorithms/recommend.ts`)

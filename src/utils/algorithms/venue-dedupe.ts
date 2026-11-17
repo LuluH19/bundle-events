@@ -13,6 +13,12 @@ export function normalizeName(s: string): string {
     .trim();
 }
 
+export function isInCity(venue: Venue, city: string): boolean {
+  const c = normalizeName(city);
+  const vc = normalizeName(venue.city);
+  return vc === c || vc.startsWith(`${c} `);
+}
+
 const isPlace = (v: Venue) => v.id.startsWith("poi-") || v.id.startsWith("osm-");
 
 function isSamePlace(a: Venue, b: Venue): boolean {

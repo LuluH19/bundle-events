@@ -94,7 +94,8 @@ body {
 }
 
 /* Mapbox popups restyled to the brand */
-.mapboxgl-popup-content {
+.mapboxgl-popup-content,
+.maplibregl-popup-content {
   font-family: var(--font-sans);
   border-radius: 12px;
   padding: 10px 14px;

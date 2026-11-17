@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { LiteApiHotelAdapter } from "@/src/adapters/hotels";
+import { LiteApiHotelAdapter, OverpassHotelAdapter } from "@/src/adapters/hotels";
+import { firstNonEmpty } from "@/src/utils/fallback";
 
 export async function GET(request: NextRequest) {
   const lat = request.nextUrl.searchParams.get("lat");
@@ -15,10 +16,13 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "checkin and checkout required" }, { status: 400 });
   }
 
-  const liteapiAdapter = new LiteApiHotelAdapter();
-  const hotels = await liteapiAdapter.searchHotels({ lat, lng, radiusKm, checkin, checkout });
+  const criteria = { lat, lng, radiusKm, checkin, checkout };
+  const { source, value: hotels } = await firstNonEmpty([
+    { name: "liteapi", run: () => new LiteApiHotelAdapter().searchHotels(criteria) },
+    { name: "overpass", run: () => new OverpassHotelAdapter().searchHotels(criteria) },
+  ]);
 
-  hotels.sort((a, b) => (a.pricePerNight || 0) - (b.pricePerNight || 0));
+  hotels.sort((a, b) => (a.pricePerNight ?? Infinity) - (b.pricePerNight ?? Infinity));
 
-  return Response.json(hotels);
+  return Response.json(hotels, { headers: { "X-Data-Source": source ?? "none" } });
 }

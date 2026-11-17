@@ -292,7 +292,7 @@ function EventCard({ trip, onEditDates, wide }: { trip: TripSummary; onEditDates
   if (trip.roundTrip) parts.push(`Retour ${trip.total.ret} €`);
   return (
     <article className={`relative flex min-h-64 flex-col overflow-hidden rounded-2xl bg-nuit p-5 text-white ${wide ? "md:col-span-2" : ""}`}>
-      <Image src="/images/concert-crowd.jpg" alt="" fill sizes="(min-width: 1024px) 640px, 100vw" className="object-cover" priority />
+      <Image src="/images/concert-crowd-hd.jpg" alt="" fill sizes="(min-width: 1024px) 640px, 100vw" className="object-cover" priority />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,21,58,0.75)_0%,rgba(22,21,58,0.2)_45%,rgba(22,21,58,0.92)_88%)]" />
       <div className="relative grid gap-1.5">
         <span className="eyebrow text-white/70">L&apos;événement</span>
