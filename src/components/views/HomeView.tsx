@@ -5,6 +5,8 @@ import Image from "next/image";
 import type { HomeViewProps, Venue } from "@/src/types";
 import { searchEvents } from "@/src/services/events";
 import { IconCalendar, IconCheck, IconClose, IconInfo, IconPin, IconSearch, IconTicket } from "@/src/components/ui";
+import { MyBundles } from "@/src/components/MyBundles";
+import { useCurrentUser } from "@/src/hooks/useCurrentUser";
 
 interface Suggestion {
   key: string;
@@ -205,6 +207,7 @@ export function HomeView(props: HomeViewProps) {
     composing,
     onCompose,
   } = props;
+  const user = useCurrentUser();
 
   return (
     <div>
@@ -308,6 +311,8 @@ export function HomeView(props: HomeViewProps) {
           </div>
         </div>
       </section>
+
+      {user && <MyBundles />}
 
       <section className="mx-auto max-w-6xl px-4 pt-12 md:px-8">
         <h2 className="font-display text-[26px] font-extrabold text-ink md:text-[32px]">Pourquoi pas Google Maps + Booking ?</h2>
