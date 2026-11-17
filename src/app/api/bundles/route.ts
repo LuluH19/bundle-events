@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/src/lib/supabase/server";
+import { getCurrentUser } from "@/src/lib/supabase/session";
 import { flushPostHogLogs, logBundleCreated } from "@/src/lib/posthog-logs";
 import type { BundleSnapshot } from "@/src/types";
 
@@ -16,10 +17,11 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "data is required" }, { status: 400 });
   }
 
+  const user = await getCurrentUser();
   const supabase = getSupabaseAdmin();
   const { data: row, error } = await supabase
     .from("bundles")
-    .insert({ data })
+    .insert({ data, user_id: user?.id ?? null })
     .select("uuid")
     .single();
 

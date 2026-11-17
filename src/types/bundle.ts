@@ -31,6 +31,9 @@ export interface BundleRecord {
   updated_at: string;
 }
 
+/** A bundle as listed in the signed-in user's account. */
+export type BundleSummary = Omit<BundleRecord, "email">;
+
 export function emptySnapshot(): BundleSnapshot {
   return {
     departure: null,
