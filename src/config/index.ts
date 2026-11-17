@@ -8,3 +8,6 @@ export * from "./openrailwayrouting";
 export * from "./supabase";
 export * from "./events";
 export * from "./nominatim";
+export * from "./geoplateforme";
+export * from "./map";
+export * from "./bus";

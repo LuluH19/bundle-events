@@ -2,6 +2,7 @@ import { Venue } from "./venue";
 
 export interface EventSearchCriteria {
   query: string;
+  city?: string;
   limit?: number;
 }
 

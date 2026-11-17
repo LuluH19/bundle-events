@@ -12,11 +12,13 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 
 ## Recherche
 
-- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → `LiteApiHotelAdapter`, tri `pricePerNight` asc. → **LiteAPI**.
+- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → `LiteApiHotelAdapter`, puis `OverpassHotelAdapter` si LiteAPI échoue ou ne renvoie rien. Tri `pricePerNight` asc (hôtels sans prix à la fin). En-tête `X-Data-Source: liteapi | overpass | none`.
+- **`api/events/search/route.ts`** — `GET`. Query `q` (recherche libre ; si `q` est une ville, ses concerts, festivals, spectacles et matchs à venir passent en tête, avant les résultats plein texte) ou `cities=Paris,Lyon,…` (idées de sortie : événements à venir filtrés sur `eventsConfig.ideaKeywords`, situés dans ces villes, alternés ville par ville, `eventsConfig.ideasLimit` au plus, sans lieux Mapbox/OSM). Dans les deux cas, la première lettre de chaque titre est mise en majuscule (`capitalizeFirst`, `utils/format.ts`), les sources renvoyant parfois des titres en minuscules. Événements (Ticketmaster → OpenAgenda → Open Data IDF) + lieux (Mapbox POI, Nominatim), dédoublonnés et classés. → `{ venues, eventSource }`. Garde la clé Ticketmaster côté serveur.
+- **`api/buses/search/route.ts`** — `GET`. Query `fromLat,fromLng,toLat,toLng,date?`. Meilleure liaison directe en car entre les arrêts proches (≤ 50 km) d'après `bus-network.json` ; `date` filtre les jours de circulation. → `{ connection: { operator, from, to, durationMinutes, departures[] } | null, validTo }`.
 - **`api/flights/search/route.ts`** — `GET`. Query `origin,destination` (IATA), `departure_at?`. → **Travelpayouts** `aviasales/v3/prices_for_dates` (EUR, tri prix, limit 5). → `{ flights }`.
 - **`api/stations/route.ts`** — `GET`. Query `lat,lng,radius(=50)?`. Cache 24h de tous les `stop_areas` **SNCF** (paginé, Basic auth). Avec lat/lng : ≤20 gares les plus proches ; sinon toutes. → `{ stations, total }`.
 - **`api/trains/search/route.ts`** — `GET`. Query `from,to` (IDs SNCF), `datetime?`, `represents?` (`departure` par défaut, ou `arrival` pour « arriver avant »). → **SNCF** `/journeys` (count 5, temps réel) → `TrainDetail[]` + coords + tarif. → `{ journeys }`.
-- **`api/trains/route-geometry/route.ts`** — `GET`, `dynamic="force-dynamic"`. Query `from,to`. Polyligne stylée : trajet SNCF → arrêts (`vehicle_journeys`) → géométrie via **OpenRailRouting** (train) ou **OSRM** (marche). Cache 30 min. → `{ coordinates, sections, stops }`.
+- **`api/trains/route-geometry/route.ts`** — `GET`, `dynamic="force-dynamic"`. Query `from,to`. Polyligne stylée : trajet SNCF → arrêts (`vehicle_journeys`) → géométrie via **OpenRailRouting** (train) ou `fetchRoadRoute` (Mapbox Directions → OSRM) pour la marche et la route. Cache 30 min. → `{ coordinates, sections, stops }`.
 
 ## Deep-links de réservation (redirections 302)
 

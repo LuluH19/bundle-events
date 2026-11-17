@@ -1,0 +1,10 @@
+{
+  "feeds": [
+    { "operator": "FlixBus", "url": "https://gtfs.gis.flix.tech/gtfs_generic_eu.zip" },
+    { "operator": "BlaBlaCar Bus", "url": "https://www.data.gouv.fr/api/1/datasets/r/fd54f81f-4389-4e73-be75-491133d011c3" }
+  ],
+  "timezone": "Europe/Paris",
+  "bbox": { "minLat": 41.2, "maxLat": 51.2, "minLng": -5.5, "maxLng": 9.8 },
+  "windowDays": 90,
+  "output": "src/utils/constants/bus-network.json"
+}

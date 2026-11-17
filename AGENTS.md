@@ -18,12 +18,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## APIs
 - Mapbox
+- MapLibre + OpenFreeMap
+- API Adresse (Géoplateforme)
 - Liteapi
 - OSRM
 - Overpass
 - SNCF
 - Travel payouts
 - Open railway routing
+- Ticketmaster
+- OpenAgenda
+- GTFS FlixBus / BlaBlaCar Bus
 
 
 ## File Structure

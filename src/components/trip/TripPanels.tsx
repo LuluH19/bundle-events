@@ -12,6 +12,7 @@ interface TripPanelsProps {
   panel: Panel;
   onClose: () => void;
   roundTrip: boolean;
+  onRoundTrip?: (v: boolean) => void;
   dates: DateSelection;
   onDates: (d: DateSelection) => void;
   outboundOptions: RouteOption[];
@@ -35,7 +36,7 @@ interface TripPanelsProps {
 export function TripPanels(p: TripPanelsProps) {
   return (
     <>
-      <DateRangePicker open={p.panel === "dates"} onClose={p.onClose} roundTrip={p.roundTrip} value={p.dates} onApply={p.onDates} />
+      <DateRangePicker open={p.panel === "dates"} onClose={p.onClose} roundTrip={p.roundTrip} onRoundTripChange={p.onRoundTrip} value={p.dates} onApply={p.onDates} />
       <Sheet open={p.panel === "outbound"} title="Changer l'aller" onClose={p.onClose}>
         <OptionList
           options={p.outboundOptions}
