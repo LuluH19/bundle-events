@@ -15,11 +15,13 @@
 | `POSTHOG_HOST` | `next.config.ts`, `instrumentation-client.ts`, `lib/posthog-logs.ts` | Hôte d'ingestion du projet PostHog : `https://eu.i.posthog.com` ou `https://us.i.posthog.com` selon la région |
 | `BREVO_API_KEY` | `lib/email.ts` | Envoi email via Brevo |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME` | `lib/email.ts` | Expéditeur (`Nom <email>` ou email brut) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env` uniquement | Présente mais non référencée dans le code |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `config/supabase.ts` | Clé publique pour **Supabase Auth** (connexion par lien magique). Sans elle, le bouton de compte reste en « Se connecter » et la connexion est indisponible |
 | `BREVO_SMTP_KEY` | `.env` uniquement | Non utilisée dans le code |
 
 `.env.example` liste : `SNCF_API_KEY, TRAVEL_PAYOUTS_API_KEY, NEXT_PUBLIC_MAPBOX_TOKEN, LITEAPI_KEY, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL, POSTHOG_PROJECT_TOKEN, POSTHOG_HOST`.
 
 **PostHog** : renseigner les deux variables dans `.env.local` et dans Vercel, puis reconstruire/redéployer (`next.config.ts` les intègre au bundle navigateur lors du build via `env`, elles restent donc publiques malgré l'absence du préfixe `NEXT_PUBLIC_`). Sans token ou sans hôte, PostHog ne s'initialise pas. Pour tester, visiter le site puis naviguer entre les étapes et vérifier les événements `$pageview` dans PostHog. Utiliser un projet distinct pour les tests locaux si nécessaire.
+
+**Supabase Auth** : dans le dashboard (Authentication), activer le fournisseur **Email** et ajouter `${NEXT_PUBLIC_SITE_URL}/auth/callback` (et `http://localhost:3000/auth/callback` en local) aux **Redirect URLs**.
 
 **Sécurité** : `SUPABASE_SERVICE_ROLE_KEY` ne doit jamais avoir de préfixe `NEXT_PUBLIC_` (fuite dans le bundle client). Tout accès DB passe par des Route Handlers serveur.

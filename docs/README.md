@@ -11,7 +11,7 @@ docs/
 ├── getting-started/    Installation, environnement
 ├── architecture/       Couches, routing/URL, état & persistance
 ├── api/                Routes internes + APIs externes
-├── database/           Supabase (table bundles)
+├── database/           Supabase (table bundles, migrations)
 ├── design/             Design system
 ├── features/           Parcours, hôtels, transport, réservation, email
 └── contributing/       Conventions, tests, commits
@@ -44,6 +44,7 @@ docs/
 - [Algorithme de transport](./features/transport-routing.md)
 - [Liens de réservation](./features/booking-links.md)
 - [Sauvegarde & email](./features/save-and-email.md)
+- [Compte utilisateur & historique](./features/account.md)
 
 ### Contribution
 - [Conventions](./contributing/conventions.md)
