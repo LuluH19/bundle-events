@@ -53,5 +53,7 @@ export function tripTotal(params: {
   const outbound = params.outbound?.price ?? 0;
   const ret = params.roundTrip ? params.ret?.price ?? 0 : 0;
   const hotel = params.withHotel && params.hotel?.pricePerNight ? params.hotel.pricePerNight * params.nights : 0;
-  return { outbound, hotel, ret, total: outbound + hotel + ret };
+  const legs = [params.outbound, params.roundTrip ? params.ret : null].filter((o): o is RouteOption => !!o);
+  const allLive = legs.length > 0 && legs.every((o) => o.quote?.source === "live");
+  return { outbound, hotel, ret, total: outbound + hotel + ret, allLive };
 }
