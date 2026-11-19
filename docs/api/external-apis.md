@@ -16,9 +16,11 @@
 | **OpenRailRouting** | Géométrie rail | `algorithms/routing.ts`, `/api/trains/route-geometry` |
 | **SNCF** | Gares, trajets trains, sections/arrêts | `/api/stations`, `/api/trains/*` |
 | **GTFS FlixBus / BlaBlaCar Bus** (transport.data.gouv.fr) | Arrêts et horaires des cars longue distance | `scripts/sync-bus-gtfs.mjs`, `/api/buses/search` |
-| **Travelpayouts** (Aviasales) | Prix des vols | `/api/flights/search` |
-| **Trainline** | Deep-link réservation train | `/api/booking/train` |
-| **FlixBus** | Deep-link réservation car | `/api/booking/bus` |
+| **Travelpayouts** (Aviasales) | Prix des vols | `/api/flights/search`, `services/prices.ts` |
+| **Trainline** | Deep-link + prix train (1er choix) | `/api/booking/train`, `/api/prices/train`, `adapters/prices/trainline.adapter.ts` |
+| **SNCF open data** (ressources.data.sncf.com) | Tarifs min/max TGV / OUIGO / Intercités (repli train) | `adapters/prices/sncf-tariffs.adapter.ts` |
+| **FlixBus** | Deep-link + prix car | `/api/booking/bus`, `/api/prices/bus`, `adapters/prices/flixbus.adapter.ts` |
+| **prix-carburants** (data.economie.gouv.fr) | Prix moyen carburant (voiture) | `/api/prices/fuel`, `adapters/prices/fuel.adapter.ts` |
 | **BlaBlaCar Bus** | Lien vers le site de réservation | `utils/booking.ts` (`busConfig.operatorSites`) |
 | **Kayak / Google Flights** | Deep-link vols | `utils/booking.ts` |
 | **Booking.com** | Deep-link hôtel | `utils/booking.ts` |
@@ -28,7 +30,7 @@
 | **api.qrserver.com** | QR code du lien | `SaveBundleModal.tsx` |
 
 Les configs (baseUrl, timeouts, TTL, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
-`liteapi, mapbox, map, geoplateforme, events, bus, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, nominatim`. Les flux GTFS sont dans `config/bus-gtfs.json` (lu aussi par le script de synchronisation).
+`liteapi, mapbox, map, geoplateforme, events, bus, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, nominatim, prices`. Les flux GTFS sont dans `config/bus-gtfs.json` (lu aussi par le script de synchronisation).
 
 ## Chaînes de secours
 
@@ -43,6 +45,7 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 | Itinéraire route/marche | Mapbox Directions → OSRM | `services/road-routing.ts` |
 | Carte | Mapbox GL (style `outdoors-v12` : relief, forêts, bâtiments) → MapLibre + OpenFreeMap (sans token, ou si l'API de style Mapbox ne répond pas) | `lib/map-engine.ts` |
 | Cars | Horaires GTFS → estimation (gares routières `bus-stations.ts`, 55 km/h) | `algorithms/routing.ts` |
+| Prix train | Trainline journey-search → tarifs SNCF open data | `/api/prices/train` |
 
 **Lien avec le cache en base** : un cache des appels (7 jours) en base est en cours de conception séparément. Il sert à ne pas rappeler une API pour une même requête et à économiser les quotas. Les chaînes de secours couvrent un autre cas : une API en panne, sans clé, sans résultat ou au quota épuisé pour une requête **pas encore en cache**. Les deux se combinent : le cache peut envelopper chaque fournisseur (clé par fournisseur) ou la chaîne entière (clé par besoin).
 

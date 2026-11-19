@@ -60,4 +60,12 @@ describe("trip helpers", () => {
     expect(tripTotal({ outbound: opt([], 79), ret: opt([], 74), hotel, nights: 1, roundTrip: true, withHotel: false }).total).toBe(153);
     expect(tripTotal({ outbound: opt([], 79), ret: opt([], 74), hotel, nights: 1, roundTrip: false, withHotel: true }).total).toBe(168);
   });
+
+  it("marks allLive only when every leg has a live quote", () => {
+    const live = opt([], 40);
+    live.quote = { amount: 40, source: "live", provider: "Trainline" };
+    const bare = opt([], 40);
+    expect(tripTotal({ outbound: live, ret: live, hotel: null, nights: 1, roundTrip: true, withHotel: false }).allLive).toBe(true);
+    expect(tripTotal({ outbound: bare, ret: live, hotel: null, nights: 1, roundTrip: true, withHotel: false }).allLive).toBe(false);
+  });
 });

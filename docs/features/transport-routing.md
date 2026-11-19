@@ -44,6 +44,20 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 
 `src/utils/algorithms/geodesic.ts` : `haversineDistance` (km, R=6371), `interpolateGreatCircle`, `estimateFlightDuration` (800 km/h + 60 min).
 
+## Prix des transports
+
+`computeOptions` pose d'abord un `price` via `priceEstimate(mode, km)` (classement rapide). Dès que les dates sont connues, `BundleBuilder` appelle `quoteOptions` (`services/prices.ts`) :
+
+| Mode | Source live | Repli |
+|---|---|---|
+| avion | Travelpayouts (`/api/flights/search`) | estimation km |
+| train | Trainline (`/api/prices/train`) | tarifs SNCF open data (min/max) → estimation |
+| bus | FlixBus (`/api/prices/bus`) | estimation (BlaBlaCar Bus non coté) |
+| voiture | `/api/prices/fuel` × conso + péages | `pricesConfig.fallbackFuelPrice` |
+| marche | 0 | — |
+
+`bookableSpans` aligne le prix sur chaque bouton « Réserver sur … » : **le segment le plus long** par mode (ex. Rennes → Paris Montparnasse, pas toute la chaîne Mont-Saint-Michel → salle). Trainline live si l'API répond, sinon tarifs SNCF open data (min/max), sinon estimation. `combineQuotes` additionne ces billets + accès voiture. `modeQuotes` alimente le prix affiché sur chaque bouton.
+
 ## Empreinte carbone (état actuel)
 
 `utils/constants/transport.ts` (`MODE_META`) expose une **bande CO₂ qualitative** (Bas/Moyen/Élevé) par mode — pas de grammes précis. Pour des chiffres exacts, il faudrait des facteurs d'émission (ex. ADEME) × `distanceKm` (déjà calculée par segment).
