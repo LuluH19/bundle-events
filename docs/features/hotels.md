@@ -21,7 +21,7 @@
 - **le moins cher** : plus petit prix par nuit ;
 - **le plus vert** : le plus proche de la salle.
 
-Aller-retour dans la journée : un hôtel (1 nuit) est encore proposé. Le retrait prévu par le ticket #137 est commenté dans le code (`TODO #137`).
+Aller-retour dans la journée : aucun hôtel n'est proposé ni recherché. L'écran Ton voyage (et Réserver) affiche une note « pas d'hôtel proposé » avec **Ajouter un hôtel**. Cet ajout (`hotelOptIn`) relance la recherche pour une nuit (`checkin` → lendemain) et peut être retiré. Un voyage déjà enregistré avec un hôtel le conserve.
 
 ## Choix manuel (`src/components/trip/HotelPicker.tsx`)
 
