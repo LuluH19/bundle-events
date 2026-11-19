@@ -20,6 +20,7 @@ interface TripPanelsProps {
   selectedOutboundId: string | null;
   selectedReturnId: string | null;
   optionsLoading: boolean;
+  pricesLoading?: boolean;
   onSelectOutbound: (id: string) => void;
   onSelectReturn: (id: string) => void;
   hotels: HotelMapItem[];
@@ -42,6 +43,7 @@ export function TripPanels(p: TripPanelsProps) {
           options={p.outboundOptions}
           selectedId={p.selectedOutboundId}
           loading={p.optionsLoading}
+          pricesLoading={p.pricesLoading}
           onSelect={(id) => {
             p.onSelectOutbound(id);
             p.onClose();
@@ -53,6 +55,7 @@ export function TripPanels(p: TripPanelsProps) {
           options={p.returnOptions}
           selectedId={p.selectedReturnId}
           loading={p.optionsLoading}
+          pricesLoading={p.pricesLoading}
           onSelect={(id) => {
             p.onSelectReturn(id);
             p.onClose();

@@ -10,6 +10,7 @@ import { LegFacts, SegmentList, TrainTimes } from "@/src/components/trip/Leg";
 import { StepsColumn, StepsInline } from "@/src/components/trip/Steps";
 import { TripMap, TripMapDialog } from "@/src/components/trip/TripMap";
 import { PREFERENCE_LABEL } from "@/src/components/trip/OptionList";
+import { PriceTag } from "@/src/components/trip/PriceTag";
 import { walkingMinutes } from "@/src/components/trip/HotelPicker";
 import { IconArrow, IconBed, IconInfo, IconMap, IconStar } from "@/src/components/ui";
 
@@ -20,6 +21,7 @@ function LegBlock({
   date,
   option,
   loading,
+  pricesLoading,
   journeys,
   flights,
   onChange,
@@ -28,6 +30,7 @@ function LegBlock({
   date: string;
   option: RouteOption | null;
   loading: boolean;
+  pricesLoading?: boolean;
   journeys: TrainJourney[];
   flights: FlightInfo[];
   onChange: () => void;
@@ -64,9 +67,9 @@ function LegBlock({
         </details>
       )}
       {option && !loading && (
-        <div className="flex items-center justify-between border-t border-line bg-page px-4 py-2.5 text-[13px] text-slate-500">
-          <span>Prix estimé</span>
-          <span className="font-display text-[18px] font-extrabold text-ink">{option.price} €</span>
+        <div className="flex items-center justify-between gap-3 border-t border-line bg-page px-4 py-2.5">
+          <span className="text-[13px] text-slate-500">Prix</span>
+          <PriceTag option={option} loading={pricesLoading} size="lg" />
         </div>
       )}
     </section>
@@ -149,11 +152,12 @@ function TotalCard({ trip, onBook }: { trip: TripViewProps["trip"]; onBook: () =
   const parts = [`Aller ${trip.total.outbound} €`];
   if (trip.withHotel && trip.hotel) parts.push(`Hôtel ${trip.total.hotel} €`);
   if (trip.roundTrip) parts.push(`Retour ${trip.total.ret} €`);
+  const totalLabel = trip.total.allLive ? "Total" : "Total estimé";
   return (
     <div className="grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-line">
       <div className="flex items-center gap-4">
         <div className="grid min-w-0 flex-1 gap-0.5">
-          <span className="text-[12px] text-slate-500">Total estimé</span>
+          <span className="text-[12px] text-slate-500">{totalLabel}</span>
           <span className="font-display text-[28px] font-extrabold leading-none text-ink">{trip.total.total}&nbsp;€</span>
         </div>
         <button
@@ -222,6 +226,7 @@ export function TripView({ trip, onGo, onOpenPanel, onPreference }: TripViewProp
           date={formatDay(trip.checkin)}
           option={trip.outbound}
           loading={trip.optionsLoading}
+          pricesLoading={trip.pricesLoading}
           journeys={trip.outboundTrains}
           flights={trip.outboundFlights}
           onChange={() => onOpenPanel("outbound")}
@@ -235,6 +240,7 @@ export function TripView({ trip, onGo, onOpenPanel, onPreference }: TripViewProp
             date={formatDay(trip.returnDate)}
             option={trip.ret}
             loading={trip.optionsLoading}
+            pricesLoading={trip.pricesLoading}
             journeys={trip.returnTrains}
             flights={trip.returnFlights}
             onChange={() => onOpenPanel("return")}
@@ -259,7 +265,7 @@ export function TripView({ trip, onGo, onOpenPanel, onPreference }: TripViewProp
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white px-4 py-3 lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-4">
           <div className="grid">
-            <span className="text-[12px] text-slate-500">Total estimé</span>
+            <span className="text-[12px] text-slate-500">{trip.total.allLive ? "Total" : "Total estimé"}</span>
             <span className="font-display text-[24px] font-extrabold leading-none text-ink">{trip.total.total} €</span>
           </div>
           <button
