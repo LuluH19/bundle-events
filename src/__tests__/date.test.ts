@@ -1,7 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { outboundSearch, returnSearch, isPastTime, formatDay } from "@/src/utils/date";
+import { outboundSearch, returnSearch, isPastTime, formatDay, isSameDayTrip } from "@/src/utils/date";
 
 const NOW = new Date(2026, 10, 11, 14, 20);
+
+describe("isSameDayTrip", () => {
+  it("is true only for a round trip on one calendar day", () => {
+    expect(isSameDayTrip(true, "2026-12-12", "2026-12-12")).toBe(true);
+    expect(isSameDayTrip(true, "2026-12-12T08:00", "2026-12-12")).toBe(true);
+    expect(isSameDayTrip(true, "2026-12-12", "2026-12-13")).toBe(false);
+    expect(isSameDayTrip(false, "2026-12-12", "2026-12-12")).toBe(false);
+    expect(isSameDayTrip(true, "2026-12-12", "")).toBe(false);
+  });
+});
 
 describe("isPastTime", () => {
   it("flags an earlier hour today", () => {
