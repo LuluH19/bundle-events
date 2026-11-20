@@ -17,3 +17,10 @@ export function timeOf(s: string) {
 export function capitalizeFirst(text: string): string {
   return text.trim().replace(/^([^\p{L}\p{N}]*)(\p{L})/u, (_, lead: string, letter: string) => lead + letter.toUpperCase());
 }
+
+const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+/** Escapes text for HTML strings (map popups): names come from third-party APIs and shared bundles. */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}

@@ -84,7 +84,7 @@ async function trainSegments(
 ): Promise<RouteSegment[]> {
   if (from.sncfId && to.sncfId) {
     try {
-      const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}`);
+      const res = await fetch(`/api/trains/route-geometry?${new URLSearchParams({ from: from.sncfId, to: to.sncfId })}`);
       if (res.ok) {
         const data = await res.json();
         if (data.sections && data.sections.length > 0) {
@@ -193,7 +193,7 @@ function extractAccessModes(modes: TransportMode[]): TransportMode[] {
 }
 
 function buildResult(rawSegments: RouteSegment[]): RouteResult {
-  const segments = removeEmptySegments(rawSegments);
+  const segments = mergeSegments(removeEmptySegments(rawSegments));
   const count = countTransports(segments);
   return {
     segments,

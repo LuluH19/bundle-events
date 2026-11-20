@@ -1,9 +1,7 @@
 import { LatLng, StationData } from "@/src/types";
-import { sncfConfig } from "@/src/config";
+import { apiCacheConfig, sncfConfig } from "@/src/config";
+import { cached, type CachedResult } from "@/src/lib/api-cache";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
-
-let cachedStations: StationData[] | null = null;
-let cacheTime = 0;
 
 async function fetchAllStations(): Promise<StationData[]> {
   const apiKey = sncfConfig.apiKey;
@@ -24,7 +22,8 @@ async function fetchAllStations(): Promise<StationData[]> {
       { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
     );
 
-    if (!res.ok) break;
+    // Never cache a partial list: a failed page fails the whole fetch (stale copy served instead).
+    if (!res.ok) throw new Error(`SNCF stop_areas error: ${res.status}`);
 
     const data = await res.json();
     const stopAreas = data.stop_areas || [];
@@ -52,13 +51,18 @@ async function fetchAllStations(): Promise<StationData[]> {
   return allStations;
 }
 
-/** All SNCF stop areas, fetched once and cached for `stationCacheTtl`. */
+/** All SNCF stop areas. The list barely changes: shared cache (memory + Supabase), 7 days fresh. */
+export function getSncfStationsCached(): Promise<CachedResult<StationData[]>> {
+  return cached({
+    provider: "sncf",
+    key: "stations:all",
+    ...apiCacheConfig.policies.stations,
+    fetcher: fetchAllStations,
+  });
+}
+
 export async function getSncfStations(): Promise<StationData[]> {
-  if (!cachedStations || Date.now() - cacheTime > sncfConfig.stationCacheTtl) {
-    cachedStations = await fetchAllStations();
-    cacheTime = Date.now();
-  }
-  return cachedStations;
+  return (await getSncfStationsCached()).data;
 }
 
 export async function nearbySncfStations(point: LatLng, radiusKm: number, limit = 20) {

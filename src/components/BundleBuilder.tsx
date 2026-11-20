@@ -51,6 +51,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const [cached] = useState(() => readTripCache(uuid));
   const snap = cached?.snapshot;
   const [hydrated, setHydrated] = useState(!uuid || !!cached);
+  // The saved bundle could not be read: never autosave the empty state over it.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [departure, setDeparture] = useState<Location | null>(snap?.departure ?? null);
   const [venue, setVenue] = useState<Location | null>(snap?.venue ?? null);
   const [checkin, setCheckin] = useState(snap?.checkin ?? "");
@@ -183,6 +185,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       .catch(() => {
         if (!cancelled) {
           setOptionsLoading(false);
+          setLoadFailed(true);
           setHydrated(true);
         }
       });
@@ -192,13 +195,13 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   }, [uuid, hydrated, router]);
 
   useEffect(() => {
-    if (!uuid || !hydrated) return;
+    if (!uuid || !hydrated || loadFailed) return;
     const snapshot = buildSnapshot();
     const t = setTimeout(() => {
       updateBundle(uuid, snapshot).catch(() => {});
     }, 600);
     return () => clearTimeout(t);
-  }, [uuid, hydrated, buildSnapshot]);
+  }, [uuid, hydrated, loadFailed, buildSnapshot]);
 
   useEffect(() => {
     if (!depSearch.trim() || departure) return;
@@ -352,11 +355,6 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   useEffect(() => {
     if (!venue || !checkin || !stayCheckout || !withHotel) return;
-    if (!withHotel) {
-      setHotelFetching(false);
-      return;
-    }
-    if (!venue || !checkin || !stayCheckout) return;
     const key = `${venue.coords.lat},${venue.coords.lng}|${dateOnly(checkin)}|${dateOnly(stayCheckout)}`;
     if (hotelsKeyRef.current === key) return;
     let cancelled = false;
@@ -390,6 +388,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     return () => {
       cancelled = true;
       clearTimeout(t);
+      // The pending request is dropped (e.g. hotel unchecked): never leave the spinner on.
+      setHotelFetching(false);
     };
   }, [venue, checkin, stayCheckout, withHotel]);
 
@@ -636,13 +636,13 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const go = useCallback(
     (s: Step) => {
       if (s !== "home" && !uuid) return;
-      if (uuid && hydrated) {
+      if (uuid && hydrated && !loadFailed) {
         const snapshot = rememberTrip(uuid);
         if (snapshot) updateBundle(uuid, snapshot).catch(() => {});
       }
       router.push(pathFor(s));
     },
-    [uuid, hydrated, rememberTrip, router, pathFor]
+    [uuid, hydrated, loadFailed, rememberTrip, router, pathFor]
   );
 
   const canCompose = !!(departure && venue && checkin && (!roundTrip || checkout));
