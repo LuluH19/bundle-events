@@ -18,6 +18,7 @@ export interface TripSummary {
   stayCheckout: string;
   returnDate: string;
   roundTrip: boolean;
+  sameDay: boolean;
   withHotel: boolean;
   nights: number;
   outbound: RouteOption | null;
@@ -40,6 +41,8 @@ export interface TripViewProps {
   onGo: (s: Step) => void;
   onOpenPanel: (p: PanelKind) => void;
   onPreference: (p: TripPreference) => void;
+  onAddHotel: () => void;
+  onRemoveHotel: () => void;
 }
 
 export interface BookViewProps {
@@ -49,6 +52,8 @@ export interface BookViewProps {
   onGo: (s: Step) => void;
   onOpenPanel: (p: PanelKind) => void;
   onShare: () => void;
+  onAddHotel: () => void;
+  onRemoveHotel: () => void;
 }
 
 export interface HomeViewProps {

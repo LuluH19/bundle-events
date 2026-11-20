@@ -23,6 +23,11 @@ export function dateOnly(iso: string): string {
   return iso.slice(0, 10);
 }
 
+/** Aller et retour choisis, et le même jour calendaire. */
+export function isSameDayTrip(roundTrip: boolean, checkin: string, checkout: string): boolean {
+  return roundTrip && !!checkin && !!checkout && dateOnly(checkout) === dateOnly(checkin);
+}
+
 export function addDaysIso(iso: string, days: number): string {
   const [y, m, d] = dateOnly(iso).split("-").map(Number);
   const date = new Date(Date.UTC(y, (m ?? 1) - 1, (d ?? 1) + days));

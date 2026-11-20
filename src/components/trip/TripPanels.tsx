@@ -24,6 +24,7 @@ interface TripPanelsProps {
   onSelectOutbound: (id: string) => void;
   onSelectReturn: (id: string) => void;
   hotels: HotelMapItem[];
+  stayCheckout: string;
   venue: Location | null;
   selectedHotel: HotelMapItem | null;
   preference: TripPreference;
@@ -72,6 +73,8 @@ export function TripPanels(p: TripPanelsProps) {
           onRadius={p.onHotelRadius}
           loading={p.hotelLoading}
           error={p.hotelError}
+          checkin={p.dates.checkin}
+          checkout={p.stayCheckout}
           onChoose={(h) => {
             p.onChooseHotel(h);
             p.onClose();

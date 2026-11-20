@@ -76,7 +76,7 @@ function LegBlock({
   );
 }
 
-function HotelBlock({ trip, onChange }: { trip: TripViewProps["trip"]; onChange: () => void }) {
+function HotelBlock({ trip, onChange, onRemove }: { trip: TripViewProps["trip"]; onChange: () => void; onRemove?: () => void }) {
   const h = trip.hotel;
   const d = h ? getHotelDistance(h, trip.venue) : null;
   return (
@@ -85,9 +85,16 @@ function HotelBlock({ trip, onChange }: { trip: TripViewProps["trip"]; onChange:
         <span className="eyebrow text-slate-500">
           Nuit · {trip.nights} nuit{trip.nights > 1 ? "s" : ""}
         </span>
-        <button type="button" onClick={onChange} className="text-[14px] font-semibold text-ink underline underline-offset-4">
-          Changer
-        </button>
+        <span className="flex items-center gap-3">
+          {onRemove && (
+            <button type="button" onClick={onRemove} className="text-[14px] font-semibold text-slate-500 underline underline-offset-4">
+              Retirer
+            </button>
+          )}
+          <button type="button" onClick={onChange} className="text-[14px] font-semibold text-ink underline underline-offset-4">
+            Changer
+          </button>
+        </span>
       </div>
       {trip.hotelLoading && !h ? (
         <div className="m-4 h-24 animate-pulse rounded-xl bg-mist" />
@@ -138,12 +145,16 @@ function HotelBlock({ trip, onChange }: { trip: TripViewProps["trip"]; onChange:
   );
 }
 
-// TODO #137 : inutilisé tant que withHotel est forcé à true dans BundleBuilder.
-function DayTripNote() {
+function DayTripNote({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-2xl border border-dashed border-line bg-white p-4 text-[14px] text-slate-500">
-      <IconInfo size={18} className="mt-0.5 shrink-0" />
-      <span>Aller-retour dans la journée : pas besoin d&apos;hôtel.</span>
+    <div className="flex items-start gap-2.5 rounded-2xl border border-dashed border-line bg-white p-4">
+      <IconInfo size={18} className="mt-0.5 shrink-0 text-slate-500" />
+      <div className="grid gap-2">
+        <p className="text-[14px] text-slate-500">Aller-retour dans la journée : pas d&apos;hôtel proposé. Tu passes directement au transport.</p>
+        <button type="button" onClick={onAdd} className="w-fit rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-ink ring-1 ring-line hover:bg-mist">
+          Ajouter un hôtel
+        </button>
+      </div>
     </div>
   );
 }
@@ -180,7 +191,7 @@ function TotalCard({ trip, onBook }: { trip: TripViewProps["trip"]; onBook: () =
   );
 }
 
-export function TripView({ trip, onGo, onOpenPanel, onPreference }: TripViewProps) {
+export function TripView({ trip, onGo, onOpenPanel, onPreference, onAddHotel, onRemoveHotel }: TripViewProps) {
   const title = `${trip.departure?.name ?? "Départ"} → ${trip.venue?.name ?? "Événement"}`;
   const subtitles = {
     home: title,
@@ -232,7 +243,11 @@ export function TripView({ trip, onGo, onOpenPanel, onPreference }: TripViewProp
           onChange={() => onOpenPanel("outbound")}
         />
 
-        {trip.withHotel ? <HotelBlock trip={trip} onChange={() => onOpenPanel("hotel")} /> : <DayTripNote />}
+        {trip.withHotel ? (
+          <HotelBlock trip={trip} onChange={() => onOpenPanel("hotel")} onRemove={trip.sameDay ? onRemoveHotel : undefined} />
+        ) : (
+          <DayTripNote onAdd={onAddHotel} />
+        )}
 
         {trip.roundTrip && (
           <LegBlock

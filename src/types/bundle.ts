@@ -16,6 +16,8 @@ export interface BundleSnapshot {
   outboundOption: RouteOption | null;
   returnOption: RouteOption | null;
   selectedHotel: HotelMapItem | null;
+  /** Aller-retour le même jour : l'utilisateur a choisi d'ajouter un hôtel. */
+  hotelOptIn?: boolean;
   preference?: TripPreference | null;
   arriveBy?: string;
   leaveAfter?: string;

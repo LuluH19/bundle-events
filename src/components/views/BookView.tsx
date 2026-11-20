@@ -12,9 +12,11 @@ import { LegFacts, ModeChip } from "@/src/components/trip/Leg";
 import { PREFERENCE_LABEL } from "@/src/components/trip/OptionList";
 import { PriceTag } from "@/src/components/trip/PriceTag";
 import { walkingMinutes } from "@/src/components/trip/HotelPicker";
+import { HotelConditionsLine, walkingMinutes } from "@/src/components/trip/HotelPicker";
+import { transportConditions } from "@/src/utils/fare-conditions";
 import { StepsColumn, StepsInline } from "@/src/components/trip/Steps";
 import { TripMap } from "@/src/components/trip/TripMap";
-import { IconBed, IconBus, IconCheck, IconChevron, IconExternal, IconShare, IconStar, IconTrain, MODE_ICON } from "@/src/components/ui";
+import { IconBed, IconBus, IconCheck, IconChevron, IconExternal, IconInfo, IconShare, IconStar, IconTrain, MODE_ICON } from "@/src/components/ui";
 
 type LegItem = {
   key: "outbound" | "return";
@@ -92,6 +94,31 @@ function ActionLinks({
         );
       })}
     </>
+  );
+}
+
+function TransportConditions({ option, links }: { option: RouteOption; links: BookingLink[] }) {
+  const carriers = transportConditions(option);
+  const plane = links.find((l) => l.mode === "plane");
+  if (!carriers.length && !plane) return null;
+  return (
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-slate-500">
+      Échange et annulation :
+      {carriers.map((c, i) => (
+        <span key={c.mode} className="inline-flex items-center gap-1.5">
+          {i > 0 && "·"}
+          <a
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-semibold text-ink underline underline-offset-2"
+          >
+            conditions {c.carrier} <IconExternal size={12} />
+          </a>
+        </span>
+      ))}
+      {plane && <span>{carriers.length ? "· " : ""}selon la compagnie aérienne, affichées sur {plane.provider}</span>}
+    </p>
   );
 }
 
@@ -207,6 +234,7 @@ function LegCard({
             <span className="text-[12px] text-slate-500">Vendu par {item.links[0]?.provider ?? "le transporteur"}</span>
           )}
         </div>
+        <TransportConditions option={option} links={item.links} />
         <div className="mt-auto grid gap-2 pt-2">
           {item.includedInRoundTrip ? (
             <p className="rounded-xl bg-page px-3 py-2.5 text-[13px] text-slate-500">
@@ -240,12 +268,14 @@ function HotelCard({
   booked,
   onToggle,
   onEdit,
+  onRemove,
 }: {
   hotel: HotelMapItem;
   trip: TripSummary;
   booked: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onRemove?: () => void;
 }) {
   const d = getHotelDistance(hotel, trip.venue);
   const link = getHotelBookingLink(hotel, trip.checkin, trip.stayCheckout, { adults: 1 });
@@ -299,6 +329,14 @@ function HotelCard({
           </span>
           <span className="text-[12px] text-slate-500">Vendu par {link.provider}</span>
         </div>
+        <div className="grid gap-0.5">
+          <HotelConditionsLine hotel={hotel} />
+          <p className="text-[12px] text-slate-500">
+            {hotel.refundable === undefined
+              ? `Conditions d'annulation à vérifier sur ${link.provider}.`
+              : `Conditions du tarif trouvé, à confirmer sur ${link.provider} avant de payer.`}
+          </p>
+        </div>
         <div className="mt-auto grid gap-2 pt-2">
           <ActionLinks
             links={[{ href: link.href, provider: link.provider, external: true, mode: "walking" }]}
@@ -307,9 +345,28 @@ function HotelCard({
             onOpened={(l) => posthog.capture("hotel_booking_opened", { provider: l.provider })}
           />
           <BookedToggle booked={booked} onToggle={onToggle} />
+          {onRemove && (
+            <button type="button" onClick={onRemove} className="justify-self-start text-[14px] font-semibold text-slate-500 underline underline-offset-4">
+              Retirer l&apos;hôtel
+            </button>
+          )}
         </div>
       </div>
     </article>
+  );
+}
+
+function DayTripHotelNote({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="order-3 flex items-start gap-2.5 rounded-2xl border border-dashed border-line bg-white p-4 md:order-none md:col-span-2">
+      <IconInfo size={18} className="mt-0.5 shrink-0 text-slate-500" />
+      <div className="grid gap-2">
+        <p className="text-[14px] text-slate-500">Aller-retour dans la journée : pas d&apos;hôtel proposé.</p>
+        <button type="button" onClick={onAdd} className="w-fit rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-ink ring-1 ring-line hover:bg-mist">
+          Ajouter un hôtel
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -439,7 +496,7 @@ function Progress({ done, count }: { done: number; count: number }) {
   );
 }
 
-export function BookView({ trip, booked, onToggleBooked, onGo, onOpenPanel, onShare }: BookViewProps) {
+export function BookView({ trip, booked, onToggleBooked, onGo, onOpenPanel, onShare, onAddHotel, onRemoveHotel }: BookViewProps) {
   const links = legLinks(trip);
   const legs: LegItem[] = [];
   if (trip.outbound) {
@@ -462,7 +519,7 @@ export function BookView({ trip, booked, onToggleBooked, onGo, onOpenPanel, onSh
   const returnLeg = legs.find((l) => l.key === "return");
   const subtitles = {
     home: `${trip.departure?.name ?? "Départ"} → ${trip.venue?.name ?? "Événement"}`,
-    trip: hasHotel ? "Hôtel, aller et retour" : "Aller et retour",
+    trip: trip.withHotel ? (trip.roundTrip ? "Hôtel, aller et retour" : "Hôtel et aller") : "Aller et retour",
     book: `${keys.length} réservation${keys.length > 1 ? "s" : ""}`,
   };
 
@@ -495,9 +552,11 @@ export function BookView({ trip, booked, onToggleBooked, onGo, onOpenPanel, onSh
                 booked={!!booked.hotel}
                 onToggle={() => onToggleBooked("hotel")}
                 onEdit={() => onOpenPanel("hotel")}
+                onRemove={trip.sameDay ? onRemoveHotel : undefined}
               />
             </div>
           )}
+          {trip.sameDay && !trip.withHotel && <DayTripHotelNote onAdd={onAddHotel} />}
           <div className="order-2 md:order-none md:contents">{legCard(outboundLeg, !returnLeg)}</div>
           <div className="order-4 md:order-none md:contents">{legCard(returnLeg)}</div>
           <div className="order-5 md:order-none md:col-span-2">

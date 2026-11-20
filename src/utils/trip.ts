@@ -1,5 +1,6 @@
 import type { HotelMapItem, RouteOption, RouteSegment, TransportMode, TripTotal } from "@/src/types";
 import { MODE_SHORT } from "@/src/utils/constants/transport";
+import { isSameDayTrip } from "@/src/utils/date";
 
 const VEHICLES: TransportMode[] = ["plane", "train", "bus"];
 const SUMMARY_ORDER: TransportMode[] = ["plane", "train", "bus", "car"];
@@ -40,6 +41,22 @@ export function stayNights(checkin: string, checkout: string): number {
   const b = Date.parse(`${checkout.slice(0, 10)}T00:00:00Z`);
   const diff = Math.round((b - a) / 86400000);
   return Number.isFinite(diff) && diff > 0 ? diff : 1;
+}
+
+/**
+ * Aller-retour dans la journée : pas d'hôtel, sauf si l'utilisateur l'a demandé.
+ * Un ancien voyage (sans `hotelOptIn`) qui a déjà un hôtel le conserve.
+ */
+export function restoredHotelOptIn(snap: {
+  roundTrip: boolean;
+  checkin: string;
+  checkout: string;
+  hotelOptIn?: boolean;
+  selectedHotel: unknown;
+}): boolean {
+  if (!isSameDayTrip(snap.roundTrip, snap.checkin, snap.checkout)) return false;
+  if (typeof snap.hotelOptIn === "boolean") return snap.hotelOptIn;
+  return snap.selectedHotel != null;
 }
 
 export function tripTotal(params: {

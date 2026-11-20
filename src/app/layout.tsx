@@ -27,7 +27,8 @@ export const metadata: Metadata = {
     "Ton trajet de porte à porte, ton hôtel près de la salle et ton retour, au même endroit. On te propose un voyage complet pour ton concert, ton match ou ton festival, tu modifies ce que tu veux.",
   icons: {
     icon: [
-      { url: "/favicon/logo-star.svg", type: "image/svg+xml" },
+      { url: "/favicon/logo-star.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon/logo-star-light.svg", type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
       { url: "/favicon/logo-star-32.png", type: "image/png", sizes: "32x32" },
       { url: "/favicon/logo-star-48.png", type: "image/png", sizes: "48x48" },
       { url: "/favicon/logo-star-96.png", type: "image/png", sizes: "96x96" },

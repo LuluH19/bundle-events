@@ -6,9 +6,12 @@ import dynamic from "next/dynamic";
 import type { HotelMapItem, Location, TripPreference } from "@/src/types";
 import { getHotelDistance } from "@/src/utils/hotel";
 import { formatDistance } from "@/src/utils/format";
+import { hotelConditions } from "@/src/utils/fare-conditions";
 import { pickHotel } from "@/src/utils/algorithms/recommend";
 import { Dropdown } from "@/src/components/Dropdown";
-import { IconBed, IconCheck, IconMap, IconStar } from "@/src/components/ui";
+import posthog from "posthog-js";
+import { getHotelBookingLink } from "@/src/utils/booking";
+import { IconBed, IconCheck, IconExternal, IconMap, IconStar } from "@/src/components/ui";
 
 const TravelMap = dynamic(() => import("@/src/components/TravelMap"), {
   ssr: false,
@@ -34,14 +37,27 @@ interface HotelPickerProps {
   onRadius: (r: number) => void;
   loading: boolean;
   error: string;
+  checkin: string;
+  checkout: string;
   onChoose: (h: HotelMapItem) => void;
+}
+
+export function HotelConditionsLine({ hotel }: { hotel: HotelMapItem }) {
+  const { cancellation, board } = hotelConditions(hotel);
+  if (!cancellation && !board) return null;
+  return (
+    <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px]">
+      {cancellation && <span className={`font-semibold ${cancellation.free ? "text-ok" : "text-slate-500"}`}>{cancellation.label}</span>}
+      {board && <span className="text-slate-500">{board}</span>}
+    </p>
+  );
 }
 
 export function walkingMinutes(km: number) {
   return Math.max(1, Math.round((km / 4.8) * 60));
 }
 
-export function HotelPicker({ hotels, venue, selected, preference, radius, onRadius, loading, error, onChoose }: HotelPickerProps) {
+export function HotelPicker({ hotels, venue, selected, preference, radius, onRadius, loading, error, checkin, checkout, onChoose }: HotelPickerProps) {
   const [sort, setSort] = useState<Sort>("recommended");
   const [showMap, setShowMap] = useState(false);
 
@@ -157,27 +173,40 @@ export function HotelPicker({ hotels, venue, selected, preference, radius, onRad
                     </span>
                   )}
                 </p>
-                <div className="mt-1 flex items-center justify-between gap-2">
+                <HotelConditionsLine hotel={h} />
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[15px] font-bold text-ink">
                     {h.pricePerNight ? `${h.pricePerNight} €` : "Prix indisponible"}
                     {h.pricePerNight ? <span className="text-[12px] font-medium text-slate-500"> / nuit</span> : null}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => onChoose(h)}
-                    disabled={isSelected}
-                    className={`flex items-center gap-1 rounded-full px-3.5 py-2 text-[13px] font-semibold ${
-                      isSelected ? "bg-ok-soft text-ok" : "bg-ink text-white hover:bg-navy-700"
-                    }`}
-                  >
-                    {isSelected ? (
-                      <>
-                        <IconCheck size={14} /> Choisi
-                      </>
-                    ) : (
-                      "Choisir"
-                    )}
-                  </button>
+                  <span className="flex items-center gap-1.5">
+                    <a
+                      href={getHotelBookingLink(h, checkin, checkout).href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Vérifier la disponibilité sur Booking.com"
+                      onClick={() => posthog.capture("hotel_availability_opened", { provider: "Booking.com" })}
+                      className="flex items-center gap-1 rounded-full px-3 py-2 text-[13px] font-semibold text-ink ring-1 ring-inset ring-line transition-colors hover:bg-mist"
+                    >
+                      Voir sur Booking <IconExternal size={13} />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => onChoose(h)}
+                      disabled={isSelected}
+                      className={`flex items-center gap-1 rounded-full px-3.5 py-2 text-[13px] font-semibold ${
+                        isSelected ? "bg-ok-soft text-ok" : "bg-ink text-white hover:bg-navy-700"
+                      }`}
+                    >
+                      {isSelected ? (
+                        <>
+                          <IconCheck size={14} /> Choisi
+                        </>
+                      ) : (
+                        "Choisir"
+                      )}
+                    </button>
+                  </span>
                 </div>
               </div>
             </article>
