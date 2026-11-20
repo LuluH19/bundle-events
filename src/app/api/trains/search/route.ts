@@ -79,26 +79,36 @@ async function fetchJourneys(url: string, apiKey: string) {
       fare?: { total?: { value?: string } };
     }) => {
       // Extract each train in the journey
-      const trains: TrainDetail[] = j.sections
-        .filter((s) => s.type === "public_transport")
-        .map((s) => {
-          const di = s.display_informations;
-          const commercialMode = di?.commercial_mode || "";
-          const tripNumber = di?.headsign || di?.trip_short_name || di?.code || "";
-          const label = di?.label || "";
+      const ptSections = j.sections.filter((s) => s.type === "public_transport");
+      const trains: TrainDetail[] = ptSections.map((s, idx) => {
+        const di = s.display_informations;
+        const commercialMode = di?.commercial_mode || "";
+        const tripNumber = di?.headsign || di?.trip_short_name || di?.code || "";
+        const label = di?.label || "";
 
-          return {
-            type: commercialMode,
-            name: `${commercialMode} ${label}`.trim() || `Train ${tripNumber}`,
-            number: tripNumber,
-            network: di?.network || "SNCF",
-            direction: di?.direction || "",
-            departureStation: s.from?.stop_area?.name || s.from?.name || "",
-            arrivalStation: s.to?.stop_area?.name || s.to?.name || "",
-            departureTime: s.departure_date_time ? formatSncfDate(s.departure_date_time) : "",
-            arrivalTime: s.arrival_date_time ? formatSncfDate(s.arrival_date_time) : "",
-          };
-        });
+        let waitTimeAfterMinutes: number | undefined;
+        const nextDep = ptSections[idx + 1]?.departure_date_time;
+        if (idx < ptSections.length - 1 && s.arrival_date_time && nextDep) {
+          const arrTime = Date.parse(formatSncfDate(s.arrival_date_time));
+          const depTime = Date.parse(formatSncfDate(nextDep));
+          if (Number.isFinite(arrTime) && Number.isFinite(depTime) && depTime >= arrTime) {
+            waitTimeAfterMinutes = Math.round((depTime - arrTime) / 60000);
+          }
+        }
+
+        return {
+          type: commercialMode,
+          name: `${commercialMode} ${label}`.trim() || `Train ${tripNumber}`,
+          number: tripNumber,
+          network: di?.network || "SNCF",
+          direction: di?.direction || "",
+          departureStation: s.from?.stop_area?.name || s.from?.name || "",
+          arrivalStation: s.to?.stop_area?.name || s.to?.name || "",
+          departureTime: s.departure_date_time ? formatSncfDate(s.departure_date_time) : "",
+          arrivalTime: s.arrival_date_time ? formatSncfDate(s.arrival_date_time) : "",
+          waitTimeAfterMinutes,
+        };
+      });
 
       // Collect geojson coordinates from all sections
       const coordinates: [number, number][] = [];

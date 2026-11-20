@@ -34,6 +34,8 @@ export interface TripSummary {
   pricesLoading: boolean;
   hotelLoading: boolean;
   hotelError: string;
+  arriveBy?: string;
+  leaveAfter?: string;
 }
 
 export interface TripViewProps {

@@ -11,6 +11,9 @@ export interface RouteSegment {
   durationMinutes: number;
   color?: string;
   label?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  waitTimeMinutes?: number;
 }
 
 export interface RouteResult {
@@ -60,6 +63,7 @@ export interface TrainJourney {
   departureAt: string;
   arrivalAt: string;
   transfers: number;
+  durationMinutes?: number;
   trains: {
     name: string;
     number: string;
@@ -67,5 +71,6 @@ export interface TrainJourney {
     arrivalStation: string;
     departureTime: string;
     arrivalTime: string;
+    waitTimeAfterMinutes?: number;
   }[];
 }

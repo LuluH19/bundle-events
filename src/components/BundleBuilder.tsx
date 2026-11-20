@@ -692,6 +692,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     pricesLoading,
     hotelLoading,
     hotelError,
+    arriveBy,
+    leaveAfter,
   };
 
   const openPanel = (p: PanelKind) => setPanel(p);
