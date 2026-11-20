@@ -76,7 +76,7 @@ Tutoiement, phrases courtes, verbes d'action. On nomme les choses comme le voyag
 
 ## Icône d'onglet
 
-`public/favicon/logo-star.svg` : étoile détaillée + orbite, sans le texte « BUNDLE - EVENTS », recadrée en carré. Déclarée en premier dans `metadata.icons` (`src/app/layout.tsx`) : le navigateur la dessine à la taille exacte de l'onglet. Replis rendus depuis ce SVG : `logo-star-32.png`, `logo-star-48.png`, `logo-star-96.png`, `logo-star.ico` (16/32/48). Le `src/app/favicon.ico` par défaut de Next est conservé (ticket #134) : Next l'injecte automatiquement en premier.
+`public/favicon/logo-star.svg` : étoile détaillée + orbite, sans le texte « BUNDLE - EVENTS », recadrée en carré. Déclarée dans `metadata.icons` (`src/app/layout.tsx`) pour les onglets clairs ; `logo-star-light.svg` (étoile claire, même dessin) pour `(prefers-color-scheme: dark)`. Replis : `logo-star-32.png`, `logo-star-48.png`, `logo-star-96.png`, `logo-star.ico` (16/32/48). `src/app/favicon.ico` est cette même étoile, donc `/favicon.ico` ne renvoie plus le triangle Next. `site.webmanifest` nomme l'app « Bundle Events » et pointe vers `/favicon/web-app-manifest-192x192.png` et `-512x512.png`.
 
 ## Cartes d'arguments de l'accueil
 
