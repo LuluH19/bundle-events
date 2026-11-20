@@ -35,7 +35,7 @@ Côté client : `services/prices.ts` (`quoteOptions`) cotise chaque option aprè
 
 ## Deep-links de réservation (redirections 302)
 
-- **`api/booking/train/route.ts`** — `GET`. Résout les noms de gare → URNs **Trainline**, redirige vers `book/results` (A/R via `journeySearchType=return` + `inwardDate`). Repli : Google Maps transit.
+- **`api/booking/train/route.ts`** — `GET`. Résout les noms de gare → URNs **Trainline**, redirige vers `book/results` avec un adulte (`passengers[]=1995-01-01`, requis par Trainline) (A/R via `journeySearchType=return` + `inwardDate`). Repli : Google Maps transit.
 - **`api/booking/bus/route.ts`** — `GET`. Résout les villes → UUIDs **FlixBus**, redirige vers `shop.flixbus.com/search` (A/R via `returnDate`). Repli : Google Maps transit.
 
 Détails : [../features/booking-links.md](../features/booking-links.md).
