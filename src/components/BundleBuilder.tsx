@@ -101,6 +101,10 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   useEffect(() => {
     preferenceRef.current = preference;
   }, [preference]);
+  const hotelRadiusRef = useRef(hotelRadius);
+  useEffect(() => {
+    hotelRadiusRef.current = hotelRadius;
+  }, [hotelRadius]);
 
   const sameDay = isSameDayTrip(roundTrip, checkin, checkout);
   const withHotel = !sameDay || hotelOptIn;
@@ -375,7 +379,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
           if (list.length) hotelsKeyRef.current = key;
           setHotelResults(list);
           setHotelError(list.length ? "" : "Aucun hôtel trouvé autour de la salle.");
-          setSelectedHotel((prev) => prev ?? pickHotel(list, venue.coords, preferenceRef.current ?? "fast"));
+          setSelectedHotel((prev) => prev ?? pickHotel(list, venue.coords, preferenceRef.current ?? "fast", hotelRadiusRef.current));
         })
         .catch(() => {
           if (!cancelled) {
@@ -519,7 +523,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     setPreference(p);
     const out = pickOption(outboundOptions, p);
     const back = pickOption(returnOptions, p);
-    const hotel = withHotel ? pickHotel(hotelResults, venue?.coords ?? null, p) : null;
+    const hotel = withHotel ? pickHotel(hotelResults, venue?.coords ?? null, p, hotelRadius) : null;
     const changed: BookingKey[] = [];
     if (out && out.id !== selectedOutboundId) {
       setSelectedOutboundId(out.id);
@@ -570,7 +574,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     posthog.capture("hotel_opt_in", { enabled: true });
     setHotelOptIn(true);
     if (selectedHotel) return;
-    const next = venue && hotelResults.length ? pickHotel(hotelResults, venue.coords, preferenceRef.current ?? "fast") : null;
+    const next = venue && hotelResults.length ? pickHotel(hotelResults, venue.coords, preferenceRef.current ?? "fast", hotelRadius) : null;
     if (next) {
       setSelectedHotel(next);
       return;

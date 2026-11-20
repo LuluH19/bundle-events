@@ -4,6 +4,7 @@ import { haversineDistance } from "./geodesic";
 
 export const WALKABLE_HOTEL_KM = 1.6;
 export const NEARBY_HOTEL_KM = 5;
+export const DEFAULT_HOTEL_RADIUS_KM = 10;
 
 export function optionCo2Kg(option: RouteOption): number {
   const grams = option.route.segments.reduce(
@@ -49,7 +50,8 @@ function hotelScore(h: HotelMapItem): number {
 export function pickHotel(
   hotels: HotelMapItem[],
   venue: LatLng | null,
-  preference: TripPreference
+  preference: TripPreference,
+  radiusKm: number = DEFAULT_HOTEL_RADIUS_KM
 ): HotelMapItem | null {
   const priced = hotels.filter((h) => h.pricePerNight != null);
   const pool = priced.length ? priced : hotels;
@@ -60,7 +62,8 @@ export function pickHotel(
   const candidates = walkable.length ? walkable : nearby.length ? nearby : pool;
 
   if (preference === "cheap") {
-    return minBy(candidates, (h) => (h.pricePerNight ?? Infinity) * 1000 + dist(h));
+    const inRadius = pool.filter((h) => dist(h) <= radiusKm);
+    return minBy(inRadius.length ? inRadius : pool, (h) => (h.pricePerNight ?? Infinity) * 1000 + dist(h));
   }
   if (preference === "green") {
     return minBy(candidates, (h) => dist(h) * 1000 - hotelScore(h));

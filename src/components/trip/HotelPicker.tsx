@@ -71,7 +71,7 @@ export function HotelPicker({ hotels, venue, selected, preference, radius, onRad
     if (sort === "price") {
       return [...inRadius].sort((a, b) => (a.pricePerNight ?? Infinity) - (b.pricePerNight ?? Infinity));
     }
-    const best = pickHotel(inRadius, venue?.coords ?? null, preference);
+    const best = pickHotel(inRadius, venue?.coords ?? null, preference, radius);
     const rest = inRadius.filter((h) => h.id !== best?.id).sort((a, b) => dist(a) - dist(b));
     return best ? [best, ...rest] : rest;
   }, [hotels, venue, radius, sort, preference]);

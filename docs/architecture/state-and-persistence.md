@@ -28,7 +28,7 @@ C'est l'unique objet persisté (JSONB) dans Supabase (voir [schéma](../database
 ## Choix automatiques
 
 - Trajets : à chaque calcul (`computeOptions`), on garde l'option déjà choisie si elle existe encore, sinon `pickOption(options, preference)`.
-- Hôtel : à l'arrivée des résultats LiteAPI, si aucun hôtel n'est choisi, `pickHotel(résultats, salle, preference)`.
+- Hôtel : à l'arrivée des résultats LiteAPI, si aucun hôtel n'est choisi, `pickHotel(résultats, salle, preference, rayon)` (rayon courant du sélecteur d'hôtel).
 - Puce de préférence : re-choisit les trois éléments et retire le statut « réservé » de ceux qui changent.
 - Choix manuel dans un panneau : `preference = null` et l'élément repasse « à réserver ».
 - Changement de dates : l'hôtel est re-choisi pour les nouvelles dates et tous les statuts « réservé » sont remis à zéro. Si l'aller et le retour tombent le même jour, l'hôtel est retiré (`hotelOptIn` repasse à `false`) tant que l'utilisateur n'en ajoute pas un.

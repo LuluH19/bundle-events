@@ -84,8 +84,12 @@ describe("pickHotel", () => {
     expect(pickHotel(hotels, VENUE, "fast")?.id).toBe("walk-good");
   });
 
-  it("prefers the cheapest walkable hotel", () => {
-    expect(pickHotel(hotels, VENUE, "cheap")?.id).toBe("walk-cheap");
+  it("picks the cheapest hotel within the search radius, even beyond walking distance", () => {
+    expect(pickHotel(hotels, VENUE, "cheap")?.id).toBe("far-cheap");
+  });
+
+  it("keeps the cheap pick inside the chosen radius", () => {
+    expect(pickHotel(hotels, VENUE, "cheap", 5)?.id).toBe("walk-cheap");
   });
 
   it("prefers the closest hotel for the green preference", () => {

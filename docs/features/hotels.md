@@ -18,11 +18,11 @@ Les deux adapters lèvent une erreur en cas d'échec (plus de `[]` silencieux), 
 
 ## Choix automatique (`src/utils/algorithms/recommend.ts`)
 
-`pickHotel(hotels, salle, préférence)` (testé dans `src/__tests__/recommend.test.ts`) :
+`pickHotel(hotels, salle, préférence, rayonKm = 10)` (testé dans `src/__tests__/recommend.test.ts`) :
 - ne garde que les hôtels avec un prix s'il y en a ;
-- cherche d'abord à moins de 1,6 km de la salle (environ 20 min à pied), puis à moins de 5 km, puis partout ;
+- pour « le plus rapide » et « le plus vert », cherche d'abord à moins de 1,6 km de la salle (environ 20 min à pied), puis à moins de 5 km, puis partout ;
 - **le plus rapide** : meilleure note (`rating`, sinon étoiles × 2), puis le plus proche ;
-- **le moins cher** : plus petit prix par nuit ;
+- **le moins cher** : plus petit prix par nuit parmi **tous les hôtels du rayon affiché** (rayon du sélecteur, 10 km par défaut, `DEFAULT_HOTEL_RADIUS_KM`), pas seulement ceux à pied ; à prix égal, le plus proche (issue #178).
 - **le plus vert** : le plus proche de la salle.
 
 Aller-retour dans la journée : aucun hôtel n'est proposé ni recherché. L'écran Ton voyage (et Réserver) affiche une note « pas d'hôtel proposé » avec **Ajouter un hôtel**. Cet ajout (`hotelOptIn`) relance la recherche pour une nuit (`checkin` → lendemain) et peut être retiré. Un voyage déjà enregistré avec un hôtel le conserve.
