@@ -17,7 +17,7 @@ import {
 } from "@/src/utils/algorithms/price";
 import { parseTrainlineQuote, type TrainlineSearchResponse } from "@/src/adapters/prices/trainline.adapter";
 import { parseFlixbusQuote, type FlixbusSearchResponse } from "@/src/adapters/prices/flixbus.adapter";
-import { parseTariffRecords } from "@/src/adapters/prices/sncf-tariffs.adapter";
+import { parseTariffRecords, pickTariffUics } from "@/src/adapters/prices/sncf-tariffs.adapter";
 import { tripTotal } from "@/src/utils/trip";
 import { pricesConfig } from "@/src/config/prices";
 
@@ -289,6 +289,18 @@ describe("parseTariffRecords", () => {
 
   it("returns null when no positive fare exists", () => {
     expect(parseTariffRecords([{ min: 0, max: 0 }])).toBeNull();
+  });
+});
+
+describe("pickTariffUics", () => {
+  it("skips the nearest stops that no fare grid lists", () => {
+    // Near a venue the closest stops are suburban halts; the main-line stations come later.
+    const nearest = ["halt1", "mainA", "mainA", "halt2", "halt3", "halt4", "mainB"];
+    expect(pickTariffUics(nearest, new Set(["mainA", "mainB"]), 5)).toEqual(["mainA", "mainB"]);
+  });
+
+  it("keeps the nearest candidates when the grids could not be listed", () => {
+    expect(pickTariffUics(["a", "b", "b", "c"], null, 2)).toEqual(["a", "b"]);
   });
 });
 
