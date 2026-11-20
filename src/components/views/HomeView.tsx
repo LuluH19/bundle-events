@@ -107,6 +107,8 @@ function SearchField({ id, label, icon, placeholder, selected, query, onQuery, s
   );
 }
 
+const MY_POSITION = "my-position";
+
 const CITIES = ["Paris", "Lyon", "Marseille", "Bordeaux", "Lille", "Toulouse", "Nantes"];
 const ALL_CITIES = "Toutes";
 
@@ -198,6 +200,9 @@ export function HomeView(props: HomeViewProps) {
     depResults,
     onPickDeparture,
     onClearDeparture,
+    onUseMyPosition,
+    locating,
+    geoError,
     venueSearch,
     setVenueSearch,
     venueResults,
@@ -239,8 +244,19 @@ export function HomeView(props: HomeViewProps) {
               selected={departure?.name ?? null}
               query={depSearch}
               onQuery={setDepSearch}
-              suggestions={depResults.map((r, i) => ({ key: String(i), title: r.displayName.split(",")[0], subtitle: r.address || r.displayName }))}
+              suggestions={[
+                {
+                  key: MY_POSITION,
+                  title: locating ? "Localisation en cours…" : "Utiliser ma position",
+                  subtitle: "Position actuelle de ton appareil",
+                },
+                ...depResults.map((r, i) => ({ key: String(i), title: r.displayName.split(",")[0], subtitle: r.address || r.displayName })),
+              ]}
               onPick={(k) => {
+                if (k === MY_POSITION) {
+                  if (!locating) onUseMyPosition();
+                  return;
+                }
                 const r = depResults[Number(k)];
                 if (r) onPickDeparture(r);
               }}
@@ -289,7 +305,11 @@ export function HomeView(props: HomeViewProps) {
               <IconSearch size={18} /> {composing ? "Préparation…" : "Voir mon voyage"}
             </button>
           </form>
-
+          {geoError && (
+            <p role="status" className="mt-3 text-[14px] text-white/85">
+              {geoError}
+            </p>
+          )}
         </div>
       </section>
 

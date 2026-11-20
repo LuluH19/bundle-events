@@ -64,6 +64,9 @@ export interface HomeViewProps {
   depResults: DepartureSuggestion[];
   onPickDeparture: (r: DepartureSuggestion) => void;
   onClearDeparture: () => void;
+  onUseMyPosition: () => void;
+  locating: boolean;
+  geoError: string;
   venueSearch: string;
   setVenueSearch: (v: string) => void;
   venueResults: Venue[];

@@ -23,7 +23,8 @@ import { STEPS } from "@/src/types";
 import { addDaysIso, dateOnly, formatDay, isSameDayTrip, outboundSearch, returnSearch } from "@/src/utils/date";
 import { pickHotel, pickOption } from "@/src/utils/algorithms/recommend";
 import { restoredHotelOptIn, stayNights, tripTotal } from "@/src/utils/trip";
-import { searchLocation } from "@/src/services/geocoding";
+import { reverseGeocode, searchLocation } from "@/src/services/geocoding";
+import { getCurrentCoords, isGeolocationGranted } from "@/src/utils/geolocation";
 import { searchEvents } from "@/src/services/events";
 import { computeOptions, fetchFlightInfo, fetchTrainInfo } from "@/src/services/travel";
 import { quoteOptions } from "@/src/services/prices";
@@ -54,6 +55,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   // The saved bundle could not be read: never autosave the empty state over it.
   const [loadFailed, setLoadFailed] = useState(false);
   const [departure, setDeparture] = useState<Location | null>(snap?.departure ?? null);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState("");
+  const departureTouchedRef = useRef(false);
   const [venue, setVenue] = useState<Location | null>(snap?.venue ?? null);
   const [checkin, setCheckin] = useState(snap?.checkin ?? "");
   const [checkout, setCheckout] = useState(snap?.checkout ?? "");
@@ -421,11 +425,49 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   };
 
   const handleDepSearchChange = (val: string) => {
+    departureTouchedRef.current = true;
+    setGeoError("");
     setDepSearch(val);
     if (val.length < 3) setDepResults([]);
   };
 
+  const handleUseMyPosition = async (source: "button" | "auto" = "button") => {
+    if (source === "button") departureTouchedRef.current = true;
+    setLocating(true);
+    setGeoError("");
+    try {
+      const coords = await getCurrentCoords();
+      const label = await reverseGeocode(coords);
+      if (source === "auto" && departureTouchedRef.current) return;
+      posthog.capture("departure_selected", { source: source === "auto" ? "geolocation_auto" : "geolocation" });
+      setDeparture({ id: `dep-${Date.now()}`, name: label.split(",")[0], coords, type: "departure", address: label });
+      setDepSearch(label);
+      setDepResults([]);
+      resetRoutes();
+      if (venue) setOptionsLoading(true);
+    } catch {
+      if (source === "button") setGeoError("Position indisponible : autorise la localisation dans ton navigateur, ou tape ton adresse.");
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const locateRef = useRef(handleUseMyPosition);
+  useEffect(() => {
+    locateRef.current = handleUseMyPosition;
+  });
+
+  const autoLocateRef = useRef(false);
+  useEffect(() => {
+    if (step !== "home" || departure || autoLocateRef.current) return;
+    autoLocateRef.current = true;
+    isGeolocationGranted().then((granted) => {
+      if (granted && !departureTouchedRef.current) void locateRef.current("auto");
+    });
+  }, [step, departure]);
+
   const handlePickDeparture = (r: DepartureSuggestion) => {
+    departureTouchedRef.current = true;
     posthog.capture("departure_selected", { source: "search" });
     setDeparture({ id: `dep-${Date.now()}`, name: r.displayName.split(",")[0], coords: r.coords, type: "departure", address: r.address });
     setDepSearch(r.displayName);
@@ -435,6 +477,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   };
 
   const handleClearDeparture = () => {
+    departureTouchedRef.current = true;
     setDeparture(null);
     setDepSearch("");
     resetRoutes();
@@ -716,6 +759,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             depResults={depResults}
             onPickDeparture={handlePickDeparture}
             onClearDeparture={handleClearDeparture}
+            onUseMyPosition={() => void handleUseMyPosition("button")}
+            locating={locating}
+            geoError={geoError}
             venueSearch={venueSearch}
             setVenueSearch={handleVenueSearchChange}
             venueResults={venueResults}
