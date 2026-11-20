@@ -4,7 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import type { HomeViewProps, Venue } from "@/src/types";
 import { searchEventIdeas } from "@/src/services/events";
-import { IconCalendar, IconClose, IconPin, IconSearch, IconShare, IconSliders, IconTicket } from "@/src/components/ui";
+import { socialConfig } from "@/src/config";
+import { IconCalendar, IconClose, IconInstagram, IconPin, IconSearch, IconShare, IconSliders, IconTicket } from "@/src/components/ui";
 
 interface Suggestion {
   key: string;
@@ -311,6 +312,16 @@ export function HomeView(props: HomeViewProps) {
       <footer className="border-t border-line py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-[13px] text-slate-500 sm:flex-row md:px-8">
           <span>© 2026 Bundle Events</span>
+          <a
+            href={socialConfig.instagram.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Suivre Bundle Events sur ${socialConfig.instagram.label}`}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-ink transition-colors hover:bg-mist hover:text-billet"
+          >
+            <IconInstagram size={18} />
+            {socialConfig.instagram.handle}
+          </a>
         </div>
       </footer>
     </div>
