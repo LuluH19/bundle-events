@@ -20,6 +20,16 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 - **`api/trains/search/route.ts`** — `GET`. Query `from,to` (IDs SNCF), `datetime?`, `represents?` (`departure` par défaut, ou `arrival` pour « arriver avant »). → **SNCF** `/journeys` (count 5, temps réel) → `TrainDetail[]` + coords + tarif. → `{ journeys }`.
 - **`api/trains/route-geometry/route.ts`** — `GET`, `dynamic="force-dynamic"`. Query `from,to`. Polyligne stylée : trajet SNCF → arrêts (`vehicle_journeys`) → géométrie via **OpenRailRouting** (train) ou `fetchRoadRoute` (Mapbox Directions → OSRM) pour la marche et la route. Cache 30 min. → `{ coordinates, sections, stops }`.
 
+## Prix des transports
+
+Paramètres communs des legs : `fromName, fromLat, fromLng, toName, toLat, toLng, datetime` (`YYYY-MM-DD` ou `YYYY-MM-DDTHH:mm`). Cache mémoire via `lib/memo-cache.ts` (`pricesConfig.quoteCacheTtl` / `fuelCacheTtl`). En-tête `X-Data-Source`.
+
+- **`api/prices/train/route.ts`** — `GET`. → **Trainline** `journey-search` (prix live), repli **SNCF open data** tarifs TGV INOUI / OUIGO / Intercités (fourchette min/max, `source: "tariff"`). → `{ quote: PriceQuote | null }`.
+- **`api/prices/bus/route.ts`** — `GET`. → **FlixBus** `search/service/v4/search` (prix live du départ le plus proche). → `{ quote }`.
+- **`api/prices/fuel/route.ts`** — `GET`. → API **prix-carburants** (moyenne nationale gazole + SP95). Repli `pricesConfig.fallbackFuelPrice`. → `{ pricePerLitre, gazole, sp95, e10, source }`.
+
+Côté client : `services/prices.ts` (`quoteOptions`) cotise chaque option après `computeOptions` ; `utils/algorithms/price.ts` (`combineQuotes`) ajoute le coût d'accès (carburant + péages). Affichage : `components/trip/PriceTag.tsx`.
+
 ## Deep-links de réservation (redirections 302)
 
 - **`api/booking/train/route.ts`** — `GET`. Résout les noms de gare → URNs **Trainline**, redirige vers `book/results` (A/R via `journeySearchType=return` + `inwardDate`). Repli : Google Maps transit.

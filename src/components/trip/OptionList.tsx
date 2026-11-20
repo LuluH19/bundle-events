@@ -6,6 +6,7 @@ import { formatDuration } from "@/src/utils/format";
 import { MODE_META } from "@/src/utils/constants/transport";
 import { modeSummary, transferLabel } from "@/src/utils/trip";
 import { ModeBar } from "@/src/components/trip/Leg";
+import { PriceTag } from "@/src/components/trip/PriceTag";
 
 export const PREFERENCE_LABEL: Record<TripPreference, string> = {
   fast: "Le plus rapide",
@@ -17,10 +18,11 @@ interface OptionListProps {
   options: RouteOption[];
   selectedId: string | null;
   loading: boolean;
+  pricesLoading?: boolean;
   onSelect: (id: string) => void;
 }
 
-export function OptionList({ options, selectedId, loading, onSelect }: OptionListProps) {
+export function OptionList({ options, selectedId, loading, pricesLoading, onSelect }: OptionListProps) {
   const badges = optionBadges(options);
 
   if (loading) {
@@ -64,7 +66,7 @@ export function OptionList({ options, selectedId, loading, onSelect }: OptionLis
                 ))}
                 {!badges[o.id] && <span className="text-[13px] font-semibold text-ink">{modeSummary(o)}</span>}
               </span>
-              <span className="shrink-0 font-display text-[20px] font-extrabold text-ink">{o.price} €</span>
+              <PriceTag option={o} loading={pricesLoading} className="shrink-0" />
             </span>
             <span className="font-mono text-[20px] font-bold tabular-nums text-ink">{formatDuration(o.durationMin)}</span>
             <span className="flex flex-wrap gap-x-3 text-[13px] text-slate-500">
@@ -76,7 +78,6 @@ export function OptionList({ options, selectedId, loading, onSelect }: OptionLis
           </button>
         );
       })}
-      <p className="text-[12px] text-slate-500">Prix estimés. Le prix exact s&apos;affiche sur le site de réservation.</p>
     </div>
   );
 }

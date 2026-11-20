@@ -31,6 +31,7 @@ export interface TripSummary {
   outboundFlights: FlightInfo[];
   returnFlights: FlightInfo[];
   optionsLoading: boolean;
+  pricesLoading: boolean;
   hotelLoading: boolean;
   hotelError: string;
 }

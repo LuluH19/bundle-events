@@ -14,6 +14,8 @@ export type TripCache = {
   returnFlights: FlightInfo[];
   outTimesKey: string;
   retTimesKey: string;
+  outPricesKey?: string;
+  retPricesKey?: string;
 };
 
 let cache: TripCache | null = null;

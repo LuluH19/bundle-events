@@ -26,6 +26,7 @@ import { restoredHotelOptIn, stayNights, tripTotal } from "@/src/utils/trip";
 import { searchLocation } from "@/src/services/geocoding";
 import { searchEvents } from "@/src/services/events";
 import { computeOptions, fetchFlightInfo, fetchTrainInfo } from "@/src/services/travel";
+import { quoteOptions } from "@/src/services/prices";
 import { createBundle, updateBundle, fetchBundle } from "@/src/services/bundles";
 import { Header } from "@/src/components/layout/Header";
 import { HomeView } from "@/src/components/views/HomeView";
@@ -74,6 +75,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const [returnTrains, setReturnTrains] = useState<TrainJourney[]>(cached?.returnTrains ?? []);
   const [outboundFlights, setOutboundFlights] = useState<FlightInfo[]>(cached?.outboundFlights ?? []);
   const [returnFlights, setReturnFlights] = useState<FlightInfo[]>(cached?.returnFlights ?? []);
+  const [outPricesLoading, setOutPricesLoading] = useState(false);
+  const [retPricesLoading, setRetPricesLoading] = useState(false);
 
   const [hotelRadius, setHotelRadius] = useState(10);
   const [hotelResults, setHotelResults] = useState<HotelMapItem[]>(cached?.hotelResults ?? []);
@@ -90,6 +93,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const hotelsKeyRef = useRef(cached?.hotelsKey ?? "");
   const outTimesKeyRef = useRef(cached?.outTimesKey ?? "");
   const retTimesKeyRef = useRef(cached?.retTimesKey ?? "");
+  const outPricesKeyRef = useRef(cached?.outPricesKey ?? "");
+  const retPricesKeyRef = useRef(cached?.retPricesKey ?? "");
   const preferenceRef = useRef(preference);
   useEffect(() => {
     preferenceRef.current = preference;
@@ -298,6 +303,55 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   }, [onTripPages, departure, venue, ret, returnDate, leaveAfter, arriveBy, sameDay]);
 
   useEffect(() => {
+    if (!onTripPages || !outboundOptions.length || !checkin) return;
+    const search = outboundSearch(checkin, arriveBy || undefined, new Date());
+    if (!search) return;
+    const key = `${optionsKeyRef.current}|${search.iso}|${search.represents}`;
+    if (outPricesKeyRef.current === key && outboundOptions.every((o) => o.quote)) return;
+    let cancelled = false;
+    setOutPricesLoading(true);
+    quoteOptions(outboundOptions, search)
+      .then((quoted) => {
+        if (cancelled) return;
+        outPricesKeyRef.current = key;
+        setOutboundOptions(quoted);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setOutPricesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- quote once per optionsKey + search window; options identity updates after quote
+  }, [onTripPages, checkin, arriveBy, outboundOptions.length, optionsLoading]);
+
+  useEffect(() => {
+    if (!onTripPages || !roundTrip || !returnOptions.length || !returnDate) return;
+    const search = returnSearch(returnDate, leaveAfter || undefined, new Date(), sameDay ? arriveBy || undefined : undefined);
+    if (!search) return;
+    const key = `${optionsKeyRef.current}|${search.iso}|${search.represents}`;
+    if (retPricesKeyRef.current === key && returnOptions.every((o) => o.quote)) return;
+    let cancelled = false;
+    setRetPricesLoading(true);
+    quoteOptions(returnOptions, search)
+      .then((quoted) => {
+        if (cancelled) return;
+        retPricesKeyRef.current = key;
+        setReturnOptions(quoted);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setRetPricesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- quote once per optionsKey + search window; options identity updates after quote
+  }, [onTripPages, roundTrip, returnDate, leaveAfter, arriveBy, sameDay, returnOptions.length, optionsLoading]);
+
+  useEffect(() => {
+    if (!venue || !checkin || !stayCheckout || !withHotel) return;
     if (!withHotel) {
       setHotelFetching(false);
       return;
@@ -339,10 +393,20 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     };
   }, [venue, checkin, stayCheckout, withHotel]);
 
+  const clearQuotes = (opts: RouteOption[]) =>
+    opts.map((o) => {
+      const next = { ...o };
+      delete next.quote;
+      delete next.modeQuotes;
+      return next;
+    });
+
   const resetRoutes = () => {
     optionsKeyRef.current = "";
     outTimesKeyRef.current = "";
     retTimesKeyRef.current = "";
+    outPricesKeyRef.current = "";
+    retPricesKeyRef.current = "";
     setOutboundOptions([]);
     setReturnOptions([]);
     setSelectedOutboundId(null);
@@ -351,6 +415,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     setReturnTrains([]);
     setOutboundFlights([]);
     setReturnFlights([]);
+    setOutPricesLoading(false);
+    setRetPricesLoading(false);
     setBooked({});
   };
 
@@ -414,12 +480,22 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const handleDates = (d: DateSelection) => {
     const changed = d.checkin !== dateOnly(checkin) || d.checkout !== dateOnly(checkout);
+    const timesChanged =
+      changed || d.arriveBy !== arriveBy || d.leaveAfter !== leaveAfter;
     setCheckin(d.checkin);
     setCheckout(d.checkout);
     setArriveBy(d.arriveBy);
     setLeaveAfter(d.leaveAfter);
     setOutboundTrains([]);
     setReturnTrains([]);
+    if (timesChanged) {
+      outTimesKeyRef.current = "";
+      retTimesKeyRef.current = "";
+      outPricesKeyRef.current = "";
+      retPricesKeyRef.current = "";
+      setOutboundOptions((prev) => clearQuotes(prev));
+      setReturnOptions((prev) => clearQuotes(prev));
+    }
     if (changed) {
       const nextSameDay = isSameDayTrip(true, d.checkin, d.checkout);
       setSelectedHotel(null);
@@ -543,6 +619,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         returnFlights,
         outTimesKey: outTimesKeyRef.current,
         retTimesKey: retTimesKeyRef.current,
+        outPricesKey: outPricesKeyRef.current,
+        retPricesKey: retPricesKeyRef.current,
       },
     };
   });
@@ -588,6 +666,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   }, [canCompose, uuid, go, buildSnapshot, rememberTrip, roundTrip, router, pathFor]);
 
   const total = tripTotal({ outbound, ret, hotel: selectedHotel, nights, roundTrip, withHotel });
+  const pricesLoading = outPricesLoading || retPricesLoading;
 
   const trip: TripSummary = {
     departure,
@@ -610,6 +689,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     outboundFlights,
     returnFlights,
     optionsLoading,
+    pricesLoading,
     hotelLoading,
     hotelError,
   };
@@ -696,6 +776,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         selectedOutboundId={selectedOutboundId}
         selectedReturnId={selectedReturnId}
         optionsLoading={optionsLoading}
+        pricesLoading={pricesLoading}
         onSelectOutbound={handleSelectOutbound}
         onSelectReturn={handleSelectReturn}
         hotels={hotelResults}

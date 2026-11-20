@@ -10,6 +10,8 @@ import { getHotelDistance } from "@/src/utils/hotel";
 import { formatDistance, formatDuration } from "@/src/utils/format";
 import { LegFacts, ModeChip } from "@/src/components/trip/Leg";
 import { PREFERENCE_LABEL } from "@/src/components/trip/OptionList";
+import { PriceTag } from "@/src/components/trip/PriceTag";
+import { walkingMinutes } from "@/src/components/trip/HotelPicker";
 import { HotelConditionsLine, walkingMinutes } from "@/src/components/trip/HotelPicker";
 import { transportConditions } from "@/src/utils/fare-conditions";
 import { StepsColumn, StepsInline } from "@/src/components/trip/Steps";
@@ -43,22 +45,34 @@ function legLinks(trip: TripSummary): { outbound: BookingLink[]; ret: BookingLin
   };
 }
 
+function linkPriceLabel(option: RouteOption, link: BookingLink): string | null {
+  if (!TICKETED.has(link.mode)) return null;
+  const part = option.modeQuotes?.[link.mode as "plane" | "train" | "bus"];
+  if (!part) return null;
+  const approx = part.source !== "live" ? "≈ " : "";
+  if (link.roundTrip) return `${approx}${part.amount * 2} € A/R`;
+  return `${approx}${part.amount} €`;
+}
+
 function ActionLinks({
   links,
   booked,
   onOpened,
   bookable,
+  option,
 }: {
   links: BookingLink[];
   booked: boolean;
   onOpened: (l: BookingLink) => void;
   bookable?: boolean;
+  option?: RouteOption;
 }) {
   return (
     <>
       {links.map((l, i) => {
         const primary = i === 0 && !booked;
         const verb = bookable || TICKETED.has(l.mode) ? (booked ? "Revoir sur" : "Réserver sur") : "Itinéraire sur";
+        const price = option ? linkPriceLabel(option, l) : null;
         return (
           <a
             key={`${l.provider}-${l.mode}`}
@@ -70,8 +84,12 @@ function ActionLinks({
               primary ? "bg-billet text-white hover:bg-billet-600" : "bg-white text-ink ring-1 ring-inset ring-line hover:bg-mist"
             }`}
           >
-            {verb} {l.provider}
-            {l.roundTrip ? " (aller-retour)" : ""} <IconExternal size={15} />
+            <span className="min-w-0 flex-1 text-left">
+              {verb} {l.provider}
+              {l.roundTrip ? " (aller-retour)" : ""}
+            </span>
+            {price ? <span className="shrink-0 tabular-nums opacity-90">{price}</span> : null}
+            <IconExternal size={15} className="shrink-0" />
           </a>
         );
       })}
@@ -203,20 +221,30 @@ function LegCard({
       <div className="flex flex-1 flex-col gap-2 px-4 pb-4 pt-2">
         <Badge>{trip.preference ? PREFERENCE_LABEL[trip.preference] : "Ton choix"}</Badge>
         <LegFacts option={option} journey={option.mode === "train" ? journeys[0] : undefined} />
-        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-          <span className="font-display text-[22px] font-extrabold text-ink">{option.price} €</span>
-          <span className="text-[12px] text-slate-500">Prix estimé · vendu par {item.links[0]?.provider ?? "le transporteur"}</span>
+        <div className="mt-1 flex flex-wrap items-end justify-between gap-x-2 gap-y-0.5">
+          {item.includedInRoundTrip ? (
+            <span className="grid gap-0.5">
+              <span className="font-display text-[22px] font-extrabold text-ink">Inclus</span>
+              <span className="text-[12px] text-slate-500">Dans l&apos;aller-retour · équiv. {option.price}&nbsp;€ en aller simple</span>
+            </span>
+          ) : (
+            <PriceTag option={option} loading={trip.pricesLoading} size="lg" className="justify-items-start" />
+          )}
+          {!item.includedInRoundTrip && (
+            <span className="text-[12px] text-slate-500">Vendu par {item.links[0]?.provider ?? "le transporteur"}</span>
+          )}
         </div>
         <TransportConditions option={option} links={item.links} />
         <div className="mt-auto grid gap-2 pt-2">
           {item.includedInRoundTrip ? (
             <p className="rounded-xl bg-page px-3 py-2.5 text-[13px] text-slate-500">
-              Inclus dans la réservation aller-retour de la carte Aller.
+              Réserve l&apos;aller-retour depuis la carte Aller (Kayak / Trainline). Le total additionne les allers simples ; le forfait A/R chez le vendeur peut être moins cher.
             </p>
           ) : (
             <ActionLinks
               links={item.links}
               booked={booked}
+              option={option}
               onOpened={(l) =>
                 posthog.capture("transport_booking_opened", {
                   booking_type: l.roundTrip ? "round_trip" : "one_way",
