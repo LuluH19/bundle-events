@@ -95,7 +95,7 @@ export function countTransports(segments: RouteSegment[]): TransportCount {
   const byMode: Partial<Record<TransportMode, number>> = {};
   let total = 0;
   for (const s of segments) {
-    if (!COUNTED_MODES.includes(s.mode)) continue;
+    if (s.access || !COUNTED_MODES.includes(s.mode)) continue;
     byMode[s.mode] = (byMode[s.mode] || 0) + 1;
     total++;
   }

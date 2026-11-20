@@ -8,4 +8,6 @@ export interface Venue {
   city: string;
   capacity?: number;
   dateLabel?: string;
+  startDate?: string;
+  endDate?: string;
 }

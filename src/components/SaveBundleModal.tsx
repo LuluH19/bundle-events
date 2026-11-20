@@ -26,7 +26,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
     () => typeof navigator !== "undefined" && typeof navigator.share === "function",
     () => false
   );
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "ok" | "failed">("");
   const [showQr, setShowQr] = useState(false);
   const link = origin ? `${origin}/${bundleId}/reserver` : "";
 
@@ -40,11 +40,11 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
     try {
       await navigator.clipboard.writeText(link);
       posthog.capture("bundle_link_copied");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied("ok");
     } catch {
-      /* empty */
+      setCopied("failed");
     }
+    setTimeout(() => setCopied(""), 2500);
   };
 
   const share = async () => {
@@ -77,6 +77,9 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-dialog-title"
         className="relative w-full max-w-md rounded-[1.75rem] bg-white p-8 shadow-2xl ring-1 ring-line"
         onClick={(e) => e.stopPropagation()}
       >
@@ -90,7 +93,7 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
         </button>
 
         <div className="space-y-2">
-          <h2 className="font-display text-[26px] font-extrabold leading-tight text-ink">Partager ton voyage</h2>
+          <h2 id="share-dialog-title" className="font-display text-[26px] font-extrabold leading-tight text-ink">Partager ton voyage</h2>
           <p className="text-[14px] text-slate-500">
             Envoie ce lien à ta bande ou garde-le pour retrouver ton voyage sur n&apos;importe quel appareil.
           </p>
@@ -106,10 +109,15 @@ export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
             disabled={!link}
             className="flex shrink-0 items-center gap-1.5 rounded-lg bg-ink px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-40"
           >
-            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-            {copied ? "Copié !" : "Copier"}
+            {copied === "ok" ? <IconCheck size={14} /> : <IconCopy size={14} />}
+            {copied === "ok" ? "Copié !" : "Copier"}
           </button>
         </div>
+        {copied === "failed" && (
+          <p role="status" className="mt-2 text-[13px] text-slate-500">
+            Copie impossible ici : sélectionne le lien et copie-le à la main.
+          </p>
+        )}
 
         <div className="mt-3 flex items-center gap-2">
           {canShare && (

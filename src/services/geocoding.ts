@@ -68,7 +68,13 @@ export async function searchLocation(query: string): Promise<GeocodingResult[]> 
     { name: "mapbox", run: () => searchMapbox(query) },
     { name: "nominatim", run: () => searchNominatim(query) },
   ]);
-  return value;
+  const seen = new Set<string>();
+  return value.filter((r) => {
+    const key = `${r.displayName}|${r.address}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 async function reverseMapbox(coords: LatLng): Promise<string> {

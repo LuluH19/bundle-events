@@ -1,5 +1,6 @@
 import { EventProvider, EventSearchCriteria, Venue } from "@/src/types";
 import { eventsConfig } from "@/src/config";
+import { parisIsoDate } from "@/src/utils/date";
 
 interface OpenDataEventRecord {
   uid: string;
@@ -33,7 +34,7 @@ export class OpenDataEventAdapter implements EventProvider {
   ) {}
 
   async searchEvents({ query, city, limit = eventsConfig.defaultLimit }: EventSearchCriteria): Promise<Venue[]> {
-    const q = query.trim().replace(/["\\]/g, "");
+    const q = query.trim().replace(/["\\]/g, "").replace(/[-‐–—’']+/g, " ").replace(/\s+/g, " ");
     if (!q) return [];
     const c = city?.trim().replace(/["\\]/g, "");
 
@@ -75,6 +76,8 @@ export class OpenDataEventAdapter implements EventProvider {
           coords: { lat: c.lat, lng: c.lon },
           city: r.location_city ?? "",
           dateLabel: r.daterange_fr ?? undefined,
+          startDate: parisIsoDate(r.firstdate_begin),
+          endDate: parisIsoDate(r.lastdate_end),
         },
       ];
     });

@@ -65,7 +65,7 @@ Toutes les cartes d'une ligne ont la même hauteur. Le titre de la sortie est to
 
 Tout le contenu des pages suit le même axe : conteneur `mx-auto max-w-6xl` avec la marge **à l'intérieur** (`px-4 md:px-8`). Les fonds pleine largeur (hero, pied de page) portent la couleur ou l'image, et le conteneur à l'intérieur porte la marge. L'en-tête (logo) garde sa propre marge, sur toute la largeur.
 
-Le pied de page de l'accueil affiche le copyright et le lien vers le compte Instagram (`IconInstagram` + `@bundleevent`, ouvert dans un nouvel onglet). L'URL est dans `src/config/social.ts` (`socialConfig`).
+Le pied de page (`components/layout/Footer.tsx`, rendu par `BundleBuilder` sous `<main>` sur toutes les pages : accueil, Ton voyage, Réserver) affiche le copyright et le lien vers le compte Instagram (`IconInstagram` + `@bundleevent`, ouvert dans un nouvel onglet). L'URL est dans `src/config/social.ts` (`socialConfig`). Il garde de la place en bas pour ne pas passer sous les éléments fixes : `bottomSpace="mobile"` sur Ton voyage (barre Total + Réserver sur mobile), `"always"` sur Réserver (bouton flottant Partager).
 
 ## Ton éditorial
 

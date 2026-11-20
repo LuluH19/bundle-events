@@ -59,7 +59,8 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
   const [hovered, setHovered] = useState("");
   const [arriveBy, setArriveBy] = useState(value.arriveBy);
   const [leaveAfter, setLeaveAfter] = useState(value.leaveAfter);
-  const [month, setMonth] = useState(monthKey(from || today));
+  const firstEventDay = eventDates.find((d) => d >= today);
+  const [month, setMonth] = useState(monthKey(from || firstEventDay || today));
 
   const sameDay = roundTrip && !!from && from === to;
   const arrivePast = !!from && !!arriveBy && isPastTime(from, arriveBy, now);
@@ -175,7 +176,7 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
         <button
           type="button"
           onClick={() => setPickingReturn(false)}
-          className={`rounded-xl bg-white px-3 py-2 text-left ring-inset ${roundTrip && !pickingReturn ? "ring-2 ring-billet" : "ring-1 ring-line"}`}
+          className={`rounded-xl bg-white px-3 py-2 text-left ring-inset ${roundTrip && !pickingReturn && !(from && to) ? "ring-2 ring-billet" : "ring-1 ring-line"}`}
         >
           <span className="block text-[12px] font-semibold text-slate-500">Aller</span>
           <span className={`block text-[15px] font-bold ${from ? "text-ink" : "text-slate-400"}`}>{from ? formatDay(from) : "Choisir"}</span>

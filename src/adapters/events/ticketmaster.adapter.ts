@@ -41,6 +41,8 @@ export function mapTicketmasterEvents(events: TicketmasterEvent[]): Venue[] {
         coords: { lat, lng },
         city: v.city?.name ?? "",
         dateLabel: formatTicketmasterDate(e.dates?.start?.localDate, e.dates?.start?.localTime),
+        startDate: e.dates?.start?.localDate,
+        endDate: e.dates?.start?.localDate,
       },
     ];
   });

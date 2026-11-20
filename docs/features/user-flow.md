@@ -16,11 +16,11 @@ Les écrans sont dans `src/components/views/`. Navigation : voir [../architectur
 
 ### Calendrier (`src/components/DateRangePicker.tsx`)
 - Deux cases **Aller** / **Retour** en haut : la case encadrée indique la date attendue (comme un formulaire de congés). On clique l'aller, puis au survol la plage jusqu'au jour pointé s'affiche (bande claire, jour de retour cerclé, date affichée dans la case Retour) ; le clic fixe le retour. Pas de texte d'aide sous les cases. Cliquer la case Aller ou Retour permet de rechoisir l'une des deux dates.
-- Un seul calendrier en plage aller → retour, navigation entre mois, jours passés barrés et non cliquables, aujourd'hui entouré. Légende : seulement « Date de l'événement » quand l'événement a des dates.
-- Le retour peut être **le même jour** que l'aller : aller-retour dans la journée. Aucun hôtel n'est proposé (message du calendrier : « Pas d'hôtel proposé, tu pourras en ajouter un si tu veux. »). Sur Ton voyage, une note remplace le bloc Nuit, avec **Ajouter un hôtel** ; **Retirer** revient à l'aller-retour sans logement.
+- Un seul calendrier en plage aller → retour, navigation entre mois, jours passés barrés et non cliquables, aujourd'hui entouré. Légende : seulement « Date de l'événement » quand l'événement a des dates. Les jours de l'événement (`startDate` → `endDate` du lieu choisi, `eventDays` dans `utils/date.ts`, 31 jours au plus) portent un point, et le calendrier s'ouvre sur le mois du premier jour à venir de l'événement quand aucune date n'est encore choisie.
+- Le retour peut être **le même jour** que l'aller : aller-retour dans la journée. Aucun hôtel n'est proposé (message du calendrier : « Pas d'hôtel proposé, tu pourras en ajouter un si tu veux. »). Sur Ton voyage, une note remplace le bloc Nuit, avec **Ajouter un hôtel** ; **Retirer** revient à l'aller-retour sans logement. Sans heure saisie, le retour d'un aller-retour dans la journée est cherché à partir de 18:00 (`DEFAULT_DAY_TRIP_RETURN_TIME`, jamais avant l'heure d'arrivée saisie) au lieu de 10:00. Si on ajoute un hôtel ce jour-là, le retour passe au lendemain (date de départ de l'hôtel) et l'en-tête affiche « aller → lendemain ».
 - Heures **facultatives** : « Aller · arriver avant » et « Retour · partir après », saisie au clavier ou créneaux.
 - Règles : une heure déjà passée aujourd'hui est barrée et bloque « Valider » ; un retour le même jour doit partir après l'arrivée.
-- Calcul des heures de recherche : `outboundSearch` / `returnSearch` dans `src/utils/date.ts` (testés). Sans heure : départs à partir de maintenant si la date est aujourd'hui, sinon départs du matin (08:00) ; retour après 10:00.
+- Calcul des heures de recherche : `outboundSearch` / `returnSearch` dans `src/utils/date.ts` (testés). Sans heure : départs à partir de maintenant si la date est aujourd'hui, sinon départs du matin (08:00) ; retour après 10:00 (18:00 pour un aller-retour dans la journée).
 
 ## 2 — Ton voyage (`TripView.tsx`, `/{uuid}/voyage`)
 - Titre « Départ → Événement », dates, lien « Modifier la recherche ».
@@ -33,7 +33,7 @@ Les écrans sont dans `src/components/views/`. Navigation : voir [../architectur
 - Détail d'un trajet (`SegmentList`) et feuille de route : l'étiquette du transport est au-dessus du trajet « départ → arrivée », sur tous les écrans, pour que les noms longs (ex. « Intercités de nuit Paris Austerlitz - Tarbes ») ne compriment plus le texte.
 
 ## 3 — Réserver (`BookView.tsx`, `/{uuid}/reserver`)
-- Grille 2 colonnes : **l'événement** (photo, critère choisi, addition Aller + Hôtel + Retour = total, « Modifier les dates »), **la nuit** (absente pour un aller-retour le même jour : note + **Ajouter un hôtel** ; **Retirer l'hôtel** si on en a ajouté un), **l'aller**, **le retour**. Une carte seule sur sa ligne prend toute la largeur. Mobile : une colonne dans l'ordre événement, aller, nuit, retour.
+- Grille 2 colonnes : **l'événement** (photo, critère choisi, addition Aller + Hôtel + Retour = total, « Modifier les dates »), **la nuit** (absente pour un aller-retour le même jour : note + **Ajouter un hôtel** ; **Retirer l'hôtel** si on en a ajouté un), **l'aller**, **le retour**. Une carte seule sur sa ligne prend toute la largeur. Deux cartes d'une même ligne ont la même hauteur (la carte remplit sa cellule de grille), et leurs boutons « J'ai réservé » restent alignés en bas. Mobile : une colonne dans l'ordre événement, aller, nuit, retour.
 - Chaque carte affiche les détails du choix et un bouton **« Réserver sur {vendeur} ↗ »** (liens de [booking-links.md](./booking-links.md)) ; un mode présent à l'aller et au retour est réservé en une fois sur la carte Aller.
 - **« J'ai réservé »** marque l'élément (persisté dans `booked`) ; « Modifier » ouvre le même panneau que sur « Ton voyage » et remet l'élément à réserver.
 - Progression « x sur n réservés » en pleine largeur sous la grille.
@@ -41,4 +41,5 @@ Les écrans sont dans `src/components/views/`. Navigation : voir [../architectur
 
 ## Layout
 - **`Header.tsx`** — logo (lien vers `/`) et, à droite, le bouton « Projet étudiant » (`StudentProjectNotice`) : une fenêtre explique que c’est un projet étudiant et propose « Donner mon avis », qui ouvre le formulaire Google.
+- **`Footer.tsx`** — sur toutes les pages : copyright et lien Instagram (@bundleevent). Voir [../design/design-system.md](../design/design-system.md).
 - Les anciens `SideNav` / `MobileTabBar` et les vues `HotelsView`, `RoutesView`, `BundleView` ont été supprimés.

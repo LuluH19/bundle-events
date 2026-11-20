@@ -63,7 +63,7 @@ export function SegmentList({ option, flights }: { option: RouteOption; flights?
     <ol className="grid">
       {segments.map((seg, i) => {
         const next = segments[i + 1];
-        const isChange = !!next && seg.mode !== "walking" && next.mode !== "walking" && seg.mode !== "car" && next.mode !== "car";
+        const isChange = !!next && !seg.access && !next.access && seg.mode !== "walking" && next.mode !== "walking" && seg.mode !== "car" && next.mode !== "car";
         const label =
           seg.label ||
           (seg.mode === "plane" && flights?.[0] ? `${flights[0].airline} ${flights[0].flightNumber}` : undefined);

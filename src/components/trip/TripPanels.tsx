@@ -5,6 +5,7 @@ import { Sheet } from "@/src/components/Sheet";
 import { DateRangePicker, type DateSelection } from "@/src/components/DateRangePicker";
 import { OptionList } from "@/src/components/trip/OptionList";
 import { HotelPicker } from "@/src/components/trip/HotelPicker";
+import { eventDays } from "@/src/utils/date";
 
 export type Panel = "outbound" | "return" | "hotel" | "dates" | null;
 
@@ -38,7 +39,15 @@ interface TripPanelsProps {
 export function TripPanels(p: TripPanelsProps) {
   return (
     <>
-      <DateRangePicker open={p.panel === "dates"} onClose={p.onClose} roundTrip={p.roundTrip} onRoundTripChange={p.onRoundTrip} value={p.dates} onApply={p.onDates} />
+      <DateRangePicker
+        open={p.panel === "dates"}
+        onClose={p.onClose}
+        roundTrip={p.roundTrip}
+        onRoundTripChange={p.onRoundTrip}
+        value={p.dates}
+        onApply={p.onDates}
+        eventDates={eventDays(p.venue?.startDate, p.venue?.endDate)}
+      />
       <Sheet open={p.panel === "outbound"} title="Changer l'aller" onClose={p.onClose}>
         <OptionList
           options={p.outboundOptions}

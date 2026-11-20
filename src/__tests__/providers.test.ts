@@ -37,6 +37,8 @@ describe("Ticketmaster", () => {
         coords: { lat: 44.8379, lng: -0.5264 },
         city: "Floirac",
         dateLabel: "Samedi 12 décembre, 20h00",
+        startDate: "2026-12-12",
+        endDate: "2026-12-12",
       },
     ]);
   });

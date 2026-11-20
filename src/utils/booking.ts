@@ -65,7 +65,7 @@ function segmentLink(mode: TransportMode, seg: RouteSegment, date: string, retur
         const path = returnDate
           ? `${depA.iataCode}-${arrA.iataCode}/${date}/${returnDate}`
           : `${depA.iataCode}-${arrA.iataCode}/${date}`;
-        return { href: `https://www.kayak.com/flights/${path}`, provider: "Kayak", external: true, mode, roundTrip: !!returnDate };
+        return { href: `https://www.kayak.fr/flights/${path}`, provider: "Kayak", external: true, mode, roundTrip: !!returnDate };
       }
       // No known airport nearby -> Google Flights text search (free, no key).
       const q = encodeURIComponent(
