@@ -12,13 +12,15 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 
 ## Recherche
 
-Toutes ces routes passent par le [cache partagé](../architecture/api-cache.md) (en-tête `X-Cache`).
+Toutes ces routes, sauf les cars, passent par le [cache partagé](../architecture/api-cache.md) (en-tête `X-Cache`).
 
-- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → **LiteAPI** (tri `pricePerNight` asc., cache 1 h), puis repli : hôtels déjà vus autour de la salle (sans prix), puis **Overpass** (OSM, 5 km), puis `[]`. En-tête `X-Data-Source`.
+- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → **LiteAPI** (tri `pricePerNight` asc., hôtels sans prix à la fin, cache 1 h), puis repli : hôtels déjà vus autour de la salle (sans prix), puis **Overpass** (OSM, 5 km), puis `[]`. En-tête `X-Data-Source: liteapi | liteapi-venue | overpass | none`.
+- **`api/events/search/route.ts`** — `GET`. Query `q` (recherche libre ; si `q` est une ville, ses concerts, festivals, spectacles et matchs à venir passent en tête, avant les résultats plein texte) ou `cities=Paris,Lyon,…` (idées de sortie : événements à venir filtrés sur `eventsConfig.ideaKeywords`, situés dans ces villes, alternés ville par ville, `eventsConfig.ideasLimit` au plus, sans lieux Mapbox/OSM). Dans les deux cas, la première lettre de chaque titre est mise en majuscule (`capitalizeFirst`, `utils/format.ts`), les sources renvoyant parfois des titres en minuscules. Événements (Ticketmaster → OpenAgenda → Open Data IDF) + lieux (Mapbox POI, Nominatim), dédoublonnés et classés. → `{ venues, eventSource }`. Garde la clé Ticketmaster côté serveur. Chaque fournisseur est en cache (événements 6 h, lieux 7 j).
+- **`api/buses/search/route.ts`** — `GET`. Query `fromLat,fromLng,toLat,toLng,date?`. Meilleure liaison directe en car entre les arrêts proches (≤ 50 km) d'après `bus-network.json` ; `date` filtre les jours de circulation. → `{ connection: { operator, from, to, durationMinutes, departures[] } | null, validTo }`. Aucun appel externe, donc pas de cache.
 - **`api/flights/search/route.ts`** — `GET`. Query `origin,destination` (IATA), `departure_at?`. → **Travelpayouts** `aviasales/v3/prices_for_dates` (EUR, tri prix, limit 5), cache 3 h. → `{ flights }`, ou `503 { flights: [], degraded: true }` si indisponible sans copie.
 - **`api/stations/route.ts`** — `GET`. Query `lat,lng,radius(=50)?`. Cache 7 j de tous les `stop_areas` **SNCF** (paginé, Basic auth ; une page en échec fait échouer la liste, `503` sans copie). Avec lat/lng : ≤20 gares les plus proches ; sinon toutes. → `{ stations, total }`.
 - **`api/trains/search/route.ts`** — `GET`. Query `from,to` (IDs SNCF), `datetime?`, `represents?` (`departure` par défaut, ou `arrival` pour « arriver avant »). → **SNCF** `/journeys` (count 5, temps réel) → `TrainDetail[]` + coords + tarif, cache 10 min (6 h sans `datetime`). → `{ journeys }`, ou `503 { journeys: [], degraded: true }`.
-- **`api/trains/route-geometry/route.ts`** — `GET`, `dynamic="force-dynamic"`. Query `from,to`. Polyligne stylée : trajet SNCF → arrêts (`vehicle_journeys`) → géométrie via **OpenRailRouting** (train) ou **OSRM** (marche). Cache 7 j par paire de gares (Supabase). → `{ coordinates, sections, stops }`.
+- **`api/trains/route-geometry/route.ts`** — `GET`, `dynamic="force-dynamic"`. Query `from,to`. Polyligne stylée : trajet SNCF → arrêts (`vehicle_journeys`) → géométrie via **OpenRailRouting** (train) ou `fetchRoadRoute` (Mapbox Directions → OSRM) pour la marche et la route. Cache 7 j par paire de gares (Supabase). → `{ coordinates, sections, stops }`.
 
 ## Deep-links de réservation (redirections 302)
 

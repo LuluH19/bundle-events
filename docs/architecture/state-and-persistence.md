@@ -34,7 +34,7 @@ C'est l'unique objet persisté (JSONB) dans Supabase (voir [schéma](../database
 
 ## Hydratation
 
-Au montage, `readTripCache(uuid)` (`src/utils/trip-cache.ts`, cache mémoire côté client) fournit l'état si on vient d'une autre étape de la même session : snapshot, options aller/retour, hôtels, horaires et les clés de calcul (`optionsKey`, `hotelsKey`, `outTimesKey`, `retTimesKey`). Les effets de calcul sautent la requête quand la clé n'a pas changé. Sinon (lien partagé, rechargement) : `fetchBundle(uuid)` recharge tout l'état. Bundle inexistant → redirection `/`.
+Au montage, `readTripCache(uuid)` (`src/utils/trip-cache.ts`, cache mémoire côté client) fournit l'état si on vient d'une autre étape de la même session : snapshot, options aller/retour, hôtels, horaires et les clés de calcul (`optionsKey`, `hotelsKey`, `outTimesKey`, `retTimesKey`). Les effets de calcul sautent la requête quand la clé n'a pas changé. Ce que `rememberTrip` écrit dans le cache (données **et** clés) est relevé au même rendu, via `liveTripRef` mis à jour après chaque rendu : une recherche qui se termine pendant la création du bundle ne peut donc pas laisser une clé « déjà chargé » avec une liste vide (cause de l'hôtel non présélectionné en arrivant de l'accueil). Sinon (lien partagé, rechargement) : `fetchBundle(uuid)` recharge tout l'état. Bundle inexistant → redirection `/`.
 
 ## Persistance — deux mécanismes
 

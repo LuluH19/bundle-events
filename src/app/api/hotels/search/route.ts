@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       fetcher: () => liteapi.searchHotels({ lat: rLat, lng: rLng, radiusKm, checkin, checkout }),
     });
     if (data.length) {
-      const sorted = [...data].sort((a, b) => (a.pricePerNight || 0) - (b.pricePerNight || 0));
+      const sorted = [...data].sort((a, b) => (a.pricePerNight ?? Infinity) - (b.pricePerNight ?? Infinity));
       if (status === "miss") void prime("liteapi", venueKey, withoutPrices(sorted), venueHotels.ttlMs).catch(() => {});
       return respond(sorted, "liteapi", status);
     }
