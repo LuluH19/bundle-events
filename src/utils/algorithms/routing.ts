@@ -9,6 +9,7 @@ import {
 import { openRailwayRoutingConfig } from "@/src/config";
 import { fetchRoadRoute } from "@/src/services/road-routing";
 import { mergeSegments, countTransports } from "./segments";
+import { removeEmptySegments } from "@/src/utils/algorithms/empty-segments";
 
 const stationCache = new Map<string, DynamicStation[]>();
 
@@ -194,6 +195,7 @@ function extractAccessModes(modes: TransportMode[]): TransportMode[] {
 function buildResult(rawSegments: RouteSegment[]): RouteResult {
   const segments = mergeSegments(rawSegments);
   const count = countTransports(segments);
+  const segments = removeEmptySegments(rawSegments);
   return {
     segments,
     transports: count.total,
