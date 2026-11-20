@@ -1,4 +1,13 @@
-export type ApiProvider = "sncf" | "liteapi" | "travelpayouts" | "overpass";
+export type ApiProvider =
+  | "sncf"
+  | "liteapi"
+  | "travelpayouts"
+  | "overpass"
+  | "ticketmaster"
+  | "openagenda"
+  | "opendata-idf"
+  | "mapbox"
+  | "nominatim";
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -26,6 +35,11 @@ export const apiCacheConfig = {
     liteapi: dailyLimit(process.env.API_DAILY_LIMIT_LITEAPI),
     travelpayouts: dailyLimit(process.env.API_DAILY_LIMIT_TRAVELPAYOUTS),
     overpass: dailyLimit(process.env.API_DAILY_LIMIT_OVERPASS),
+    ticketmaster: dailyLimit(process.env.API_DAILY_LIMIT_TICKETMASTER),
+    openagenda: dailyLimit(process.env.API_DAILY_LIMIT_OPENAGENDA),
+    "opendata-idf": dailyLimit(process.env.API_DAILY_LIMIT_OPENDATA_IDF),
+    mapbox: dailyLimit(process.env.API_DAILY_LIMIT_MAPBOX),
+    nominatim: dailyLimit(process.env.API_DAILY_LIMIT_NOMINATIM),
   } satisfies Record<ApiProvider, number | undefined>,
   /** ttl = fresh lifetime; stale = extra time an expired entry may still be served when the provider fails. */
   policies: {
@@ -38,5 +52,9 @@ export const apiCacheConfig = {
     /** Hotels last seen by LiteAPI around a venue, prices stripped: date-independent fallback. */
     venueHotels: { ttlMs: 30 * DAY, staleMs: 30 * DAY },
     osmHotels: { ttlMs: 7 * DAY, staleMs: 30 * DAY },
+    /** Upcoming events (search and city ideas): same answer for every user for a few hours. */
+    events: { ttlMs: 6 * HOUR, staleMs: 7 * DAY },
+    /** Venue POIs (Mapbox Search Box, Nominatim): places barely change. */
+    venues: { ttlMs: 7 * DAY, staleMs: 30 * DAY },
   },
 } as const;

@@ -1,5 +1,6 @@
-import type { Venue } from "@/src/types";
-import { eventsConfig } from "@/src/config";
+import type { EventProvider, EventSearchCriteria, Venue } from "@/src/types";
+import { apiCacheConfig, eventsConfig, mapboxConfig, type ApiProvider } from "@/src/config";
+import { cached } from "@/src/lib/api-cache";
 import {
   MapboxVenueAdapter,
   OpenAgendaEventAdapter,
@@ -11,13 +12,49 @@ import { firstNonEmpty } from "@/src/utils/fallback";
 import { capitalizeFirst } from "@/src/utils/format";
 import { dedupeVenues, isInCity, rankVenues } from "@/src/utils/algorithms/venue-dedupe";
 
-const eventChain = [
-  { name: "ticketmaster", adapter: new TicketmasterEventAdapter() },
-  { name: "openagenda", adapter: new OpenAgendaEventAdapter() },
-  { name: "opendata-idf", adapter: new OpenDataEventAdapter() },
+interface Source {
+  name: ApiProvider;
+  adapter: EventProvider;
+  policy: { ttlMs: number; staleMs: number };
+  /** False when the provider has no key: skipped without a cache lookup or usage count. */
+  enabled?: () => boolean;
+}
+
+const { events: eventPolicy, venues: venuePolicy } = apiCacheConfig.policies;
+
+const eventChain: Source[] = [
+  {
+    name: "ticketmaster",
+    adapter: new TicketmasterEventAdapter(),
+    policy: eventPolicy,
+    enabled: () => !!eventsConfig.ticketmaster.apiKey,
+  },
+  { name: "openagenda", adapter: new OpenAgendaEventAdapter(), policy: eventPolicy },
+  { name: "opendata-idf", adapter: new OpenDataEventAdapter(), policy: eventPolicy },
 ];
 
-const venueProviders = [new MapboxVenueAdapter(), new OsmVenueAdapter()];
+const venueProviders: Source[] = [
+  { name: "mapbox", adapter: new MapboxVenueAdapter(), policy: venuePolicy, enabled: () => !!mapboxConfig.token },
+  { name: "nominatim", adapter: new OsmVenueAdapter(), policy: venuePolicy },
+];
+
+const normalise = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+
+/** Shared cache per provider (issue #153): a failure still throws, so the chain moves on. */
+async function searchSource({ name, adapter, policy, enabled }: Source, criteria: EventSearchCriteria): Promise<Venue[]> {
+  if (enabled && !enabled()) return [];
+  const key = `events:${normalise(criteria.query)}:${normalise(criteria.city ?? "")}:${criteria.limit ?? ""}`;
+  // These adapters throw on failure, so an empty list is a real answer: cache it too,
+  // otherwise every query without results (e.g. a venue name used as a city) calls again.
+  const { data } = await cached({
+    provider: name,
+    key,
+    ...policy,
+    fetcher: () => adapter.searchEvents(criteria),
+    shouldStore: () => true,
+  });
+  return data;
+}
 
 const withTitle = (venues: Venue[]): Venue[] => venues.map((v) => ({ ...v, name: capitalizeFirst(v.name) }));
 
@@ -29,8 +66,8 @@ export interface EventSearchResult {
 export async function searchEventsAndVenues(query: string): Promise<EventSearchResult> {
   const [cityEvents, events, ...venues] = await Promise.allSettled([
     eventsInCity(query.trim(), eventsConfig.defaultLimit),
-    firstNonEmpty(eventChain.map(({ name, adapter }) => ({ name, run: () => adapter.searchEvents({ query }) }))),
-    ...venueProviders.map((p) => p.searchEvents({ query })),
+    firstNonEmpty(eventChain.map((source) => ({ name: source.name, run: () => searchSource(source, { query }) }))),
+    ...venueProviders.map((source) => searchSource(source, { query })),
   ]);
   const inCity = cityEvents.status === "fulfilled" ? cityEvents.value : [];
   const eventResult = events.status === "fulfilled" ? events.value : { source: null, value: [] };
@@ -43,9 +80,9 @@ export async function searchEventsAndVenues(query: string): Promise<EventSearchR
 
 async function eventsInCity(city: string, limit: number): Promise<Venue[]> {
   const { value } = await firstNonEmpty(
-    eventChain.map(({ name, adapter }) => ({
-      name,
-      run: async () => (await adapter.searchEvents({ query: city, city, limit })).filter((v) => isInCity(v, city)),
+    eventChain.map((source) => ({
+      name: source.name,
+      run: async () => (await searchSource(source, { query: city, city, limit })).filter((v) => isInCity(v, city)),
     }))
   );
   return value;
