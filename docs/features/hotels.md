@@ -4,12 +4,16 @@
 
 ## Providers (`src/adapters/hotels/`)
 
+- **`liteapi.adapter.ts`** (`LiteApiHotelAdapter`) — **provider en production**. POST vers **LiteAPI** `/v3.0/hotels/rates` (lat/lng, rayon m, 2 adultes, EUR, FR, dates, limit 100). Mappe `rates` + `data.hotels[]` → `HotelMapItem[]` (`source:"liteapi"`), `pricePerNight` via `getDaysDiff`. Photos depuis `static.cupid.travel` (autorisé dans `next.config.ts`).
+- **`overpass.adapter.ts`** (`OverpassHotelAdapter`) — provider OSM de **repli** (3 miroirs interrogés en parallèle avec un User-Agent applicatif, `tourism=hotel/hostel/guest_house`, 40 résultats max, sans prix). Lève une erreur si tous les miroirs échouent ; le cache est géré par la route.
+
+Les deux adapters lèvent une erreur en cas d'échec (plus de `[]` silencieux), pour que la route puisse servir une copie en cache ou passer au repli.
 - **`liteapi.adapter.ts`** (`LiteApiHotelAdapter`) — **provider en production**. POST vers **LiteAPI** `/v3.0/hotels/rates` (lat/lng, rayon m, 2 adultes, EUR, FR, dates, limit 100). Mappe `rates` + `data.hotels[]` → `HotelMapItem[]` (`source:"liteapi"`), `pricePerNight` via `getDaysDiff`. Le tarif le moins cher de chaque hôtel donne aussi ses conditions (`readRateConditions`) : `refundable` (`refundableTag` RFN / NRFN), `freeCancellationUntil` (première échéance payante de `cancelPolicyInfos`, en UTC) et `board` (code `boardType`, ex. `RO`, `BI`). Photos depuis `static.cupid.travel` (autorisé dans `next.config.ts`).
 - **`overpass.adapter.ts`** (`OverpassHotelAdapter`) — provider OSM alternatif (3 miroirs, `tourism=hotel/hostel/guest_house`), cache 5 min qui **ne met jamais en cache un résultat vide**. Sert de **secours** sur `/api/hotels/search` quand LiteAPI échoue ou ne renvoie rien (hôtels sans prix : « Prix indisponible »).
 
 ## API & utils
 
-- `/api/hotels/search` → LiteAPI puis Overpass (`utils/fallback.ts`), tri `pricePerNight` croissant, hôtels sans prix à la fin.
+- `/api/hotels/search` → LiteAPI, tri `pricePerNight` croissant, puis chaîne de repli (hôtels déjà vus autour de la salle sans prix → Overpass → `[]`). Détails : [cache des APIs](../architecture/api-cache.md).
 - `src/utils/hotel.ts` : `getHotelDistance(hotel, venue)` (haversine, `null` si inconnu) ; `deduplicateHotels` (fusion coord + nom flou, non câblé).
 
 ## Choix automatique (`src/utils/algorithms/recommend.ts`)

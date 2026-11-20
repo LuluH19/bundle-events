@@ -10,6 +10,8 @@
 | **Ticketmaster Discovery** | Événements (1er choix) | `adapters/events/ticketmaster.adapter.ts` |
 | **OpenAgenda** (open data national) | Événements (2e choix) | `OpenAgendaEventAdapter` |
 | **Open Data Île-de-France** | Événements (3e choix) | `OpenDataEventAdapter` |
+| **LiteAPI** | Hôtels + prix (1er choix) | `adapters/hotels/liteapi.adapter.ts` |
+| **Overpass** | Hôtels OSM sans prix (dernier secours de LiteAPI) | `adapters/hotels/overpass.adapter.ts` |
 | **LiteAPI** | Hôtels + prix + conditions du tarif (annulation, formule) (1er choix) | `adapters/hotels/liteapi.adapter.ts` |
 | **Overpass** | Hôtels OSM sans prix (secours de LiteAPI) | `adapters/hotels/overpass.adapter.ts` |
 | **OSRM** | Itinéraires route/marche (secours de Mapbox Directions) | `services/road-routing.ts` |
@@ -29,6 +31,8 @@
 | **Brevo** | Emailing | `lib/email.ts` |
 | **api.qrserver.com** | QR code du lien | `SaveBundleModal.tsx` |
 
+Les configs (baseUrl, timeouts, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
+`liteapi, mapbox, map, geoplateforme, events, bus, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, nominatim, api-cache`. Les durées de cache et quotas sont dans `config/api-cache.ts`. Les flux GTFS sont dans `config/bus-gtfs.json` (lu aussi par le script de synchronisation).
 Les configs (baseUrl, timeouts, TTL, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
 `liteapi, mapbox, map, geoplateforme, events, bus, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, nominatim, prices`. Les flux GTFS sont dans `config/bus-gtfs.json` (lu aussi par le script de synchronisation).
 `liteapi, fare-conditions, mapbox, map, geoplateforme, events, bus, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, nominatim`. Les flux GTFS sont dans `config/bus-gtfs.json` (lu aussi par le script de synchronisation).
@@ -40,7 +44,7 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 | Besoin | Ordre | Où |
 |---|---|---|
 | Événements | Ticketmaster → OpenAgenda → Open Data IDF (les lieux Mapbox POI + Nominatim sont toujours ajoutés en parallèle) | `services/event-search.ts` |
-| Hôtels | LiteAPI → Overpass | `/api/hotels/search` (en-tête `X-Data-Source`) |
+| Hôtels | LiteAPI → hôtels déjà vus autour de la salle (sans prix) → Overpass | `/api/hotels/search` (en-tête `X-Data-Source`) |
 | Adresse de départ | API Adresse → Mapbox → Nominatim | `services/geocoding.ts` |
 | Adresse inverse | API Adresse → Mapbox → coordonnées brutes | `services/geocoding.ts` |
 | Itinéraire route/marche | Mapbox Directions → OSRM | `services/road-routing.ts` |
@@ -48,7 +52,7 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 | Cars | Horaires GTFS → estimation (gares routières `bus-stations.ts`, 55 km/h) | `algorithms/routing.ts` |
 | Prix train | Trainline journey-search → tarifs SNCF open data | `/api/prices/train` |
 
-**Lien avec le cache en base** : un cache des appels (7 jours) en base est en cours de conception séparément. Il sert à ne pas rappeler une API pour une même requête et à économiser les quotas. Les chaînes de secours couvrent un autre cas : une API en panne, sans clé, sans résultat ou au quota épuisé pour une requête **pas encore en cache**. Les deux se combinent : le cache peut envelopper chaque fournisseur (clé par fournisseur) ou la chaîne entière (clé par besoin).
+**Lien avec le [cache des APIs](../architecture/api-cache.md)** : chaque maillon serveur d'une chaîne passe par `cached()` (clé par fournisseur). Le cache évite de rappeler une API pour une même requête et sert la dernière copie connue en cas de panne ; la chaîne de secours ne passe au fournisseur suivant que si le précédent n'a ni réponse ni copie. Couvert : événements, lieux (Mapbox POI, Nominatim), hôtels, SNCF, Travelpayouts. Non couvert : ce qui s'exécute dans le navigateur (adresse de départ, itinéraires `road-routing.ts`, carte), et les cars (fichier GTFS local, aucun appel).
 
 ## Ticketmaster Discovery — événements
 - `GET https://app.ticketmaster.com/discovery/v2/events.json?apikey=…&keyword={q}&countryCode=FR&locale=fr-fr&sort=date,asc`

@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { SNCFSection, TrainDetail } from "@/src/types";
 import { formatSncfDate, toSncfDateTime } from "@/src/utils/date";
-import { sncfConfig } from "@/src/config";
+import { apiCacheConfig, sncfConfig } from "@/src/config";
+import { cached } from "@/src/lib/api-cache";
 
 export async function GET(request: NextRequest) {
   const fromId = request.nextUrl.searchParams.get("from");
@@ -33,6 +34,24 @@ export async function GET(request: NextRequest) {
 
   const url = `${sncfConfig.baseUrl}/coverage/sncf/journeys?${params}`;
 
+  // With a datetime it is a real timetable (short TTL). Without one, callers only read
+  // durations (short-haul flight check), which are stable: a few hours is fine.
+  const policy = sncfDateTime ? apiCacheConfig.policies.trainTimetable : apiCacheConfig.policies.trainDuration;
+
+  try {
+    const { data: journeys, status } = await cached({
+      provider: "sncf",
+      key: `journeys:${fromId}:${toId}:${sncfDateTime || "now"}:${represents}`,
+      ...policy,
+      fetcher: () => fetchJourneys(url, apiKey),
+    });
+    return Response.json({ journeys }, { headers: { "X-Cache": status } });
+  } catch {
+    return Response.json({ journeys: [], degraded: true }, { status: 503 });
+  }
+}
+
+async function fetchJourneys(url: string, apiKey: string) {
   const res = await fetch(url, {
     headers: {
       Authorization: `Basic ${btoa(apiKey + ":")}`,
@@ -40,16 +59,16 @@ export async function GET(request: NextRequest) {
   });
 
   if (!res.ok) {
-    return Response.json({ error: `SNCF API error: ${res.status}` }, { status: res.status });
+    throw new Error(`SNCF API error: ${res.status}`);
   }
 
   const data = await res.json();
 
   if (!data.journeys?.length) {
-    return Response.json({ journeys: [] });
+    return [];
   }
 
-  const journeys = data.journeys.map(
+  return data.journeys.map(
     (j: {
       duration: number;
       departure_date_time: string;
@@ -102,6 +121,4 @@ export async function GET(request: NextRequest) {
       };
     }
   );
-
-  return Response.json({ journeys });
 }
