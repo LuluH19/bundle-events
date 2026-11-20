@@ -7,7 +7,7 @@ Tout est piloté par l'URL ; un seul composant client (`BundleBuilder`) est rend
 ## Pages
 
 - `src/app/page.tsx` → `/` → `<BundleBuilder step="home" />` (sans uuid).
-- `src/app/[uuid]/[[...step]]/page.tsx` → `/{uuid}/{segment?}` (catch-all optionnel) :
+- `src/app/[uuid]/[[...step]]/page.tsx` → `/{uuid}/{segment?}` (catch-all optionnel) ; un `uuid` mal formé (`isUuid`, `src/utils/uuid.ts`) → `notFound()` :
   - vide → `home` (modifier la recherche d'un bundle existant)
   - `voyage` → `trip`
   - `reserver` → `book`

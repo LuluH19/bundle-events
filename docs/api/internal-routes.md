@@ -6,15 +6,16 @@ Route Handlers Next.js sous `src/app/api/**` (exportent `GET`/`POST`/`PATCH`).
 
 ## Bundles (Supabase)
 
-- **`api/bundles/route.ts`** — `POST`. Crée un bundle. Body `{ data: BundleSnapshot }` → insert Supabase → `{ uuid }` (201).
-- **`api/bundles/[uuid]/route.ts`** — `GET` (récupère `uuid,email,data,created_at,updated_at`, 404 si absent) et `PATCH` (met à jour `data`).
-- **`api/bundles/[uuid]/save/route.ts`** — `POST`. Body `{ email }` (validé par regex). Enregistre l'email, appelle `sendBundleLinkEmail`, retourne `{ ok, link, sent }`.
+- **`api/bundles/route.ts`** — `POST`. Crée un bundle. Body `{ data: BundleSnapshot }` (objet, pas un tableau) → insert Supabase → `{ uuid }` (201).
+- **`api/bundles/[uuid]/route.ts`** — `GET` (récupère `uuid,data,created_at,updated_at` ; l'email n'est **jamais** renvoyé, la route étant lisible par quiconque a le lien) et `PATCH` (met à jour `data`). 404 si l'uuid est mal formé ou si aucune ligne ne correspond.
+- **`api/bundles/[uuid]/save/route.ts`** — `POST`. Body `{ email }` (chaîne ≤ 254 caractères, validée par regex). Enregistre l'email, appelle `sendBundleLinkEmail`, retourne `{ ok, link, sent }`. 404 si l'uuid est mal formé ou inconnu.
+- Les trois routes renvoient `{ error: "Database error" }` (500) sur erreur Supabase ; le détail part dans les logs serveur, pas au client.
 
 ## Recherche
 
 Toutes ces routes, sauf les cars, passent par le [cache partagé](../architecture/api-cache.md) (en-tête `X-Cache`).
 
-- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10),checkin,checkout`. → **LiteAPI** (tri `pricePerNight` asc., hôtels sans prix à la fin, cache 1 h), puis repli : hôtels déjà vus autour de la salle (sans prix), puis **Overpass** (OSM, 5 km), puis `[]`. En-tête `X-Data-Source: liteapi | liteapi-venue | overpass | none`.
+- **`api/hotels/search/route.ts`** — `GET`. Query `lat,lng,radius(=10, plafonné à 50),checkin,checkout` (`lat`/`lng` numériques dans les bornes, dates `YYYY-MM-DD`, sinon 400). → **LiteAPI** (tri `pricePerNight` asc., hôtels sans prix à la fin, cache 1 h), puis repli : hôtels déjà vus autour de la salle (sans prix), puis **Overpass** (OSM, 5 km), puis `[]`. En-tête `X-Data-Source: liteapi | liteapi-venue | overpass | none`.
 - **`api/events/search/route.ts`** — `GET`. Query `q` (recherche libre ; si `q` est une ville, ses concerts, festivals, spectacles et matchs à venir passent en tête, avant les résultats plein texte) ou `cities=Paris,Lyon,…` (idées de sortie : événements à venir filtrés sur `eventsConfig.ideaKeywords`, situés dans ces villes, alternés ville par ville, `eventsConfig.ideasLimit` au plus, sans lieux Mapbox/OSM). Dans les deux cas, la première lettre de chaque titre est mise en majuscule (`capitalizeFirst`, `utils/format.ts`), les sources renvoyant parfois des titres en minuscules. Événements (Ticketmaster → OpenAgenda → Open Data IDF) + lieux (Mapbox POI, Nominatim), dédoublonnés et classés. → `{ venues, eventSource }`. Garde la clé Ticketmaster côté serveur. Chaque fournisseur est en cache (événements 6 h, lieux 7 j).
 - **`api/buses/search/route.ts`** — `GET`. Query `fromLat,fromLng,toLat,toLng,date?`. Meilleure liaison directe en car entre les arrêts proches (≤ 50 km) d'après `bus-network.json` ; `date` filtre les jours de circulation. → `{ connection: { operator, from, to, durationMinutes, departures[] } | null, validTo }`. Aucun appel externe, donc pas de cache.
 - **`api/flights/search/route.ts`** — `GET`. Query `origin,destination` (IATA), `departure_at?`. → **Travelpayouts** `aviasales/v3/prices_for_dates` (EUR, tri prix, limit 5), cache 3 h. → `{ flights }`, ou `503 { flights: [], degraded: true }` si indisponible sans copie.
