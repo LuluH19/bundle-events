@@ -14,14 +14,15 @@ Tout vit dans `src/components/BundleBuilder.tsx`.
 | `arriveBy` | Heure « arriver avant » de l'aller (`HH:mm`), facultative. |
 | `leaveAfter` | Heure « partir après » du retour (`HH:mm`), facultative. |
 | `booked` | `{ outbound?, hotel?, return? }` : éléments marqués « J'ai réservé ». |
+| `hotelOptIn` | Aller-retour le même jour seulement. `true` si l'utilisateur a ajouté un hôtel. Absent sur un ancien voyage : on garde l'hôtel s'il y en a déjà un. |
 
 C'est l'unique objet persisté (JSONB) dans Supabase (voir [schéma](../database/schema.md)). Les anciens snapshots restent lisibles (champs optionnels). `checkin` / `checkout` sont désormais des dates `YYYY-MM-DD` ; une ancienne valeur avec heure est encore acceptée.
 
 ## Dérivés
 
 - `sameDay` : aller-retour avec `checkout` = `checkin`. Le retour doit partir après l'arrivée.
-- `withHotel` : forcé à `true` pour l'instant (`TODO #137`). Cible : `!sameDay` (pas d'hôtel ni de recherche d'hôtel pour un aller-retour dans la journée).
-- `stayCheckout` : `checkout` si séjour, sinon `checkin + 1 jour` (aller simple ou aller-retour dans la journée).
+- `withHotel` : `false` pour un aller-retour le même jour, sauf si `hotelOptIn` (l'utilisateur a ajouté un hôtel). Pas de recherche d'hôtel tant qu'il est `false`.
+- `stayCheckout` : `checkout` si séjour sur plusieurs jours, sinon `checkin + 1 jour` (aller simple, ou hôtel ajouté sur un aller-retour dans la journée).
 - `tripTotal` (`utils/trip.ts`) : aller + hôtel × nuits + retour.
 
 ## Choix automatiques
@@ -30,7 +31,7 @@ C'est l'unique objet persisté (JSONB) dans Supabase (voir [schéma](../database
 - Hôtel : à l'arrivée des résultats LiteAPI, si aucun hôtel n'est choisi, `pickHotel(résultats, salle, preference)`.
 - Puce de préférence : re-choisit les trois éléments et retire le statut « réservé » de ceux qui changent.
 - Choix manuel dans un panneau : `preference = null` et l'élément repasse « à réserver ».
-- Changement de dates : l'hôtel est re-choisi pour les nouvelles dates et tous les statuts « réservé » sont remis à zéro.
+- Changement de dates : l'hôtel est re-choisi pour les nouvelles dates et tous les statuts « réservé » sont remis à zéro. Si l'aller et le retour tombent le même jour, l'hôtel est retiré (`hotelOptIn` repasse à `false`) tant que l'utilisateur n'en ajoute pas un.
 
 ## Hydratation
 

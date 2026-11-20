@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { RouteOption, RouteSegment, TransportMode } from "@/src/types";
-import { changePoints, modeSummary, stayNights, transferCount, transferLabel, tripTotal } from "@/src/utils/trip";
+import { changePoints, modeSummary, restoredHotelOptIn, stayNights, transferCount, transferLabel, tripTotal } from "@/src/utils/trip";
 
 function seg(mode: TransportMode, from: string, to: string): RouteSegment {
   return {
@@ -52,6 +52,16 @@ describe("trip helpers", () => {
   it("counts nights with a one-night minimum", () => {
     expect(stayNights("2026-12-12", "2026-12-14")).toBe(2);
     expect(stayNights("2026-12-12", "2026-12-12")).toBe(1);
+  });
+
+  it("skips the hotel on a same-day round trip unless the traveller asked for one", () => {
+    const hotel = { id: "h" };
+    const day = { roundTrip: true, checkin: "2026-12-12", checkout: "2026-12-12", selectedHotel: null };
+    expect(restoredHotelOptIn(day)).toBe(false);
+    expect(restoredHotelOptIn({ ...day, hotelOptIn: true })).toBe(true);
+    expect(restoredHotelOptIn({ ...day, selectedHotel: hotel })).toBe(true);
+    expect(restoredHotelOptIn({ ...day, hotelOptIn: false, selectedHotel: hotel })).toBe(false);
+    expect(restoredHotelOptIn({ ...day, checkout: "2026-12-13", hotelOptIn: false })).toBe(false);
   });
 
   it("adds outbound, hotel nights and return", () => {
