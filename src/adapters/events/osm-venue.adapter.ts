@@ -30,6 +30,7 @@ export class OsmVenueAdapter implements EventProvider {
 
     const res = await fetch(`${nominatimConfig.baseUrl}/search?${params}`, {
       headers: { "User-Agent": nominatimConfig.userAgent },
+      signal: AbortSignal.timeout(eventsConfig.timeoutMs),
     });
     if (!res.ok) throw new Error(`Nominatim error: ${res.status}`);
 

@@ -8,7 +8,7 @@ import {
   OsmVenueAdapter,
   TicketmasterEventAdapter,
 } from "@/src/adapters/events";
-import { firstNonEmpty } from "@/src/utils/fallback";
+import { firstNonEmpty, firstNonEmptyParallel, withBudget } from "@/src/utils/fallback";
 import { capitalizeFirst } from "@/src/utils/format";
 import { dedupeVenues, isInCity, rankVenues } from "@/src/utils/algorithms/venue-dedupe";
 
@@ -63,15 +63,24 @@ export interface EventSearchResult {
   eventSource: string | null;
 }
 
+const NO_RESULT = { source: null, value: [] as Venue[] };
+
 export async function searchEventsAndVenues(query: string): Promise<EventSearchResult> {
-  const [cityEvents, events, ...venues] = await Promise.allSettled([
-    eventsInCity(query.trim(), eventsConfig.defaultLimit),
-    firstNonEmpty(eventChain.map((source) => ({ name: source.name, run: () => searchSource(source, { query }) }))),
-    ...venueProviders.map((source) => searchSource(source, { query })),
+  const { events: eventBudget, venues: venueBudget } = eventsConfig.searchBudgetMs;
+  const [inCity, eventResult, placeResult] = await Promise.all([
+    withBudget(eventsInCity(query.trim(), eventsConfig.defaultLimit), eventBudget, [] as Venue[]),
+    withBudget(
+      firstNonEmptyParallel(eventChain.map((source) => ({ name: source.name, run: () => searchSource(source, { query }) }))),
+      eventBudget,
+      NO_RESULT
+    ),
+    withBudget(
+      firstNonEmpty(venueProviders.map((source) => ({ name: source.name, run: () => searchSource(source, { query }) }))),
+      venueBudget,
+      NO_RESULT
+    ),
   ]);
-  const inCity = cityEvents.status === "fulfilled" ? cityEvents.value : [];
-  const eventResult = events.status === "fulfilled" ? events.value : { source: null, value: [] };
-  const places = venues.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  const places = placeResult.value;
   return {
     venues: withTitle(dedupeVenues([...inCity, ...rankVenues(dedupeVenues([...eventResult.value, ...places]), query)])),
     eventSource: eventResult.source,
@@ -92,7 +101,7 @@ async function eventsInCity(city: string, limit: number, category?: EventCategor
     keywords: category?.keywords,
     ticketmasterClassification: category && "ticketmaster" in category ? category.ticketmaster : undefined,
   };
-  const { value } = await firstNonEmpty(
+  const { value } = await firstNonEmptyParallel(
     eventChain.map((source) => ({
       name: source.name,
       run: async () => (await searchSource(source, criteria)).filter((v) => isInCity(v, city)),

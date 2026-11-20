@@ -24,7 +24,7 @@ import { addDaysIso, dateOnly, formatDay, isSameDayTrip, outboundSearch, returnS
 import { pickHotel, pickOption } from "@/src/utils/algorithms/recommend";
 import { restoredHotelOptIn, stayNights, tripTotal } from "@/src/utils/trip";
 import { searchLocation } from "@/src/services/geocoding";
-import { searchEvents } from "@/src/services/events";
+import { cachedEventSearch, searchEvents } from "@/src/services/events";
 import { computeOptions, fetchFlightInfo, fetchTrainInfo } from "@/src/services/travel";
 import { quoteOptions } from "@/src/services/prices";
 import { createBundle, updateBundle, fetchBundle } from "@/src/services/bundles";
@@ -45,6 +45,9 @@ interface BundleBuilderProps {
 }
 
 const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+const VENUE_SEARCH_MIN_CHARS = 2;
+const VENUE_SEARCH_DEBOUNCE_MS = 250;
 
 export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const router = useRouter();
@@ -67,6 +70,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const [depResults, setDepResults] = useState<DepartureSuggestion[]>([]);
   const [venueSearch, setVenueSearch] = useState("");
   const [venueResults, setVenueResults] = useState<Venue[]>([]);
+  const [venueSearching, setVenueSearching] = useState(false);
 
   const [outboundOptions, setOutboundOptions] = useState<RouteOption[]>(cached?.outboundOptions ?? []);
   const [returnOptions, setReturnOptions] = useState<RouteOption[]>(cached?.returnOptions ?? []);
@@ -217,18 +221,21 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   }, [depSearch, departure]);
 
   useEffect(() => {
-    if (!venueSearch.trim()) return;
-    let cancelled = false;
+    const q = venueSearch.trim();
+    if (q.length < VENUE_SEARCH_MIN_CHARS || cachedEventSearch(q)) return;
+    const controller = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const r = await searchEvents(venueSearch);
-        if (!cancelled) setVenueResults(r);
+        const r = await searchEvents(q, controller.signal);
+        if (!controller.signal.aborted) setVenueResults(r);
       } catch {
-        if (!cancelled) setVenueResults([]);
+        if (!controller.signal.aborted) setVenueResults([]);
+      } finally {
+        if (!controller.signal.aborted) setVenueSearching(false);
       }
-    }, 400);
+    }, VENUE_SEARCH_DEBOUNCE_MS);
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(t);
     };
   }, [venueSearch]);
@@ -442,13 +449,22 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const handleVenueSearchChange = (val: string) => {
     setVenueSearch(val);
-    if (!val.trim()) setVenueResults([]);
+    const q = val.trim();
+    if (q.length < VENUE_SEARCH_MIN_CHARS) {
+      setVenueResults([]);
+      setVenueSearching(false);
+      return;
+    }
+    const hit = cachedEventSearch(q);
+    if (hit) setVenueResults(hit);
+    setVenueSearching(!hit);
   };
 
   const handlePickVenue = (v: Venue) => {
     posthog.capture("venue_selected", { source: "search" });
     setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
     setVenueSearch("");
+    setVenueSearching(false);
     setVenueResults([]);
     setSelectedHotel(null);
     resetRoutes();
@@ -462,6 +478,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const handleClearVenue = () => {
     setVenue(null);
     setVenueSearch("");
+    setVenueSearching(false);
     setVenueResults([]);
     setSelectedHotel(null);
     resetRoutes();
@@ -719,6 +736,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             venueSearch={venueSearch}
             setVenueSearch={handleVenueSearchChange}
             venueResults={venueResults}
+            venueSearching={venueSearching}
             onPickVenue={handlePickVenue}
             onClearVenue={handleClearVenue}
             dateLabel={dateLabel}

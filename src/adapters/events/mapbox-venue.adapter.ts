@@ -29,7 +29,7 @@ export class MapboxVenueAdapter implements EventProvider {
       limit: String(Math.min(limit * 2, 10)),
     });
 
-    const res = await fetch(`${mapboxConfig.searchBoxBaseUrl}/forward?${params}`);
+    const res = await fetch(`${mapboxConfig.searchBoxBaseUrl}/forward?${params}`, { signal: AbortSignal.timeout(eventsConfig.timeoutMs) });
     if (!res.ok) throw new Error(`Mapbox Search Box error: ${res.status}`);
 
     const data: { features?: SearchBoxFeature[] } = await res.json();

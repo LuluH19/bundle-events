@@ -16,6 +16,7 @@ export const eventsConfig = {
     extraFilter: "",
   },
   timeoutMs: 6000,
+  searchBudgetMs: { events: 2500, venues: 1500 },
   defaultLimit: 6,
   ideaKeywords: ["concert", "festival", "spectacle", "match"],
   ideaCategories: EVENT_CATEGORIES,

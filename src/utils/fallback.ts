@@ -31,3 +31,33 @@ export async function firstSuccess<T>(steps: ProviderStep<T>[]): Promise<Fallbac
   }
   throw lastError;
 }
+
+export async function firstNonEmptyParallel<T>(steps: ProviderStep<T[]>[]): Promise<FallbackResult<T[]>> {
+  const running = steps.map((step) => step.run());
+  running.forEach((p) => p.catch(() => undefined));
+  for (let i = 0; i < steps.length; i++) {
+    try {
+      const value = await running[i];
+      if (value.length > 0) return { source: steps[i].name, value };
+    } catch {
+      continue;
+    }
+  }
+  return { source: null, value: [] };
+}
+
+export function withBudget<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      }
+    );
+  });
+}
