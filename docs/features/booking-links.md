@@ -12,7 +12,7 @@ Construits dans **`src/utils/booking.ts`**. `getBookingLinks(option, dep, arr, d
 | `train` | `/api/booking/train` → **Trainline** | Résout la gare → URN Trainline (serveur), redirige vers `/book/results`. Repli : Google Maps transit. |
 | `bus` | `/api/booking/bus` → **FlixBus** | Résout la ville → UUID FlixBus, redirige vers `shop.flixbus.com/search` (date `DD.MM.YYYY`). Repli : Google Maps transit. |
 | `car` / `walking` | **Google Maps** directions | Lien direct client (coords). |
-| hôtel | **Booking.com** | `getHotelBookingLink` : dates **éclatées** `checkin_year/month/monthday`, `ss` = nom + ville, `lang=fr`, `EUR`. |
+| hôtel | **Booking.com** (page Réserver, et bouton « Voir sur Booking » de chaque hôtel dans « Changer d'hôtel ») | `getHotelBookingLink` : dates **éclatées** `checkin_year/month/monthday`, `ss` = nom + ville, `lang=fr`, `EUR`. |
 
 ## Aller-retour (A/R)
 
@@ -28,3 +28,11 @@ Dans `BookView`, un mode présent **dans les deux directions** est réservé une
 Trainline/FlixBus exigent un identifiant interne (URN/UUID) **non dérivable d'un nom** → résolution serveur (évite aussi le CORS). Seuls Kayak (IATA) et Google Maps (coords) marchent purement côté client.
 
 Les liens sont **reconstruits depuis le snapshot** (noms + coords + dates), car il ne persiste ni IATA, ni IDs SNCF, ni horaires (voir [../database/schema.md](../database/schema.md)).
+
+## Conditions tarifaires (#148)
+
+Affichées sur les cartes de la page Réserver (`BookView`).
+
+- **Hôtel** : conditions du tarif LiteAPI (annulation, formule) sous le prix, avec « Conditions du tarif trouvé, à confirmer sur Booking.com avant de payer » : le lien ouvre Booking.com, dont le tarif peut différer. Sans information de LiteAPI : « Conditions d'annulation à vérifier sur Booking.com ».
+- **Train / car** : aucune API ne donne les conditions d'un billet. Chaque carte affiche « Échange et annulation : conditions SNCF ↗ / conditions FlixBus ↗ », liens définis dans `config/fare-conditions.ts` (`fareConditionsConfig.transport`) et choisis par `transportConditions(option)` selon les modes du trajet.
+- **Avion** : la compagnie n'est pas connue avant la recherche Kayak : « selon la compagnie aérienne, affichées sur Kayak ».

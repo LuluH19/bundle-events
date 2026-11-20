@@ -11,3 +11,4 @@ export * from "./nominatim";
 export * from "./geoplateforme";
 export * from "./map";
 export * from "./bus";
+export * from "./fare-conditions";

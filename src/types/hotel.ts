@@ -13,6 +13,9 @@ export interface HotelMapItem {
   pricePerNight?: number;
   currency?: string;
   rating?: number;
+  refundable?: boolean;
+  freeCancellationUntil?: string;
+  board?: string;
   source?: "liteapi" | "overpass";
 }
 

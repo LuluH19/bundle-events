@@ -689,6 +689,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         roundTrip={roundTrip}
         onRoundTrip={step === "home" ? handleRoundTrip : undefined}
         dates={{ checkin, checkout, arriveBy, leaveAfter }}
+        stayCheckout={stayCheckout}
         onDates={handleDates}
         outboundOptions={outboundOptions}
         returnOptions={returnOptions}
