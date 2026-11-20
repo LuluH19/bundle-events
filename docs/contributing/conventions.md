@@ -20,7 +20,11 @@
 ## Tests
 
 - `src/__tests__/geodesic.test.ts` + `e2e/geodesic.test.ts` — math géodésique.
+- `src/utils/date.test.ts` — bornes datetime-local (passé / retour après aller).
+- `src/__tests__/date.test.ts`, `recommend.test.ts`, `trip.test.ts`, `format.test.ts` — recherche par date, choix auto, résumé du voyage, formatage des durées.
 - `src/services/travel.integration.test.ts` — intégration service transport.
+- `src/__tests__/fallback.test.ts`, `providers.test.ts`, `bus-connection.test.ts`, `bus-network.test.ts` — chaînes de secours, mapping Ticketmaster / API Adresse, liaison en car, construction du réseau GTFS.
+- Données : `npm run gtfs:sync` régénère `src/utils/constants/bus-network.json` (horaires des cars).
 - `e2e/home-flow.spec.ts` — parcours home (Playwright).
 - Runners : Vitest (`vitest.config.ts`), Playwright (`playwright.config.ts`).
 

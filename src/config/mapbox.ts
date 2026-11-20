@@ -1,5 +1,26 @@
 export const mapboxConfig = {
   token: process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "",
   baseUrl: "https://api.mapbox.com/search/geocode/v6",
+  searchBoxBaseUrl: "https://api.mapbox.com/search/searchbox/v1",
+  directionsBaseUrl: "https://api.mapbox.com/directions/v5/mapbox",
+  directionsTimeoutMs: 6000,
+  styleUrl: "mapbox://styles/mapbox/outdoors-v12",
+  // Metropolitan France (minLng,minLat,maxLng,maxLat): `country` alone still leaks foreign POIs
+  franceBbox: "-5.5,41.2,9.8,51.2",
   defaultLanguage: "fr",
+  venueCategoryIds: [
+    "concert_hall",
+    "music_venue",
+    "theatre",
+    "theater",
+    "stadium",
+    "arena",
+    "theme_park",
+    "fair_grounds",
+    "amphitheater",
+    "event_venue",
+    "convention_center",
+    "exhibition_center",
+    "festival",
+  ],
 } as const;

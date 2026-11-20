@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/src/lib/supabase/server";
 import { sendBundleLinkEmail } from "@/src/lib/email";
 import { flushPostHogLogs, logBundleLinkEmailRequested } from "@/src/lib/posthog-logs";
+import { isUuid } from "@/src/utils/uuid";
 
 type Ctx = { params: Promise<{ uuid: string }> };
 
@@ -9,6 +10,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: NextRequest, { params }: Ctx) {
   const { uuid } = await params;
+  if (!isUuid(uuid)) {
+    return Response.json({ error: "Bundle not found" }, { status: 404 });
+  }
 
   let body: { email?: string };
   try {
@@ -17,8 +21,8 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const email = (body?.email || "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email)) {
+  const email = (typeof body?.email === "string" ? body.email : "").trim().toLowerCase();
+  if (email.length > 254 || !EMAIL_RE.test(email)) {
     return Response.json({ error: "Adresse email invalide" }, { status: 400 });
   }
 
@@ -31,7 +35,8 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     .maybeSingle();
 
   if (findError) {
-    return Response.json({ error: findError.message }, { status: 500 });
+    console.error("[bundles] read failed:", findError.message);
+    return Response.json({ error: "Database error" }, { status: 500 });
   }
   if (!existing) {
     return Response.json({ error: "Bundle not found" }, { status: 404 });
@@ -43,7 +48,8 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     .eq("uuid", uuid);
 
   if (updateError) {
-    return Response.json({ error: updateError.message }, { status: 500 });
+    console.error("[bundles] email update failed:", updateError.message);
+    return Response.json({ error: "Database error" }, { status: 500 });
   }
 
   const { link, sent } = await sendBundleLinkEmail(email, uuid);

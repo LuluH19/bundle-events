@@ -1,4 +1,4 @@
-import type { LatLng, RouteResult, RouteSegment, TransportMode, DynamicStation } from "@/src/types";
+import type { BusConnection, LatLng, RouteResult, RouteSegment, TransportMode, DynamicStation } from "@/src/types";
 import { airports } from "@/src/utils/constants/airports";
 import { busStations } from "@/src/utils/constants/bus-stations";
 import {
@@ -6,7 +6,10 @@ import {
   interpolateGreatCircle,
   estimateFlightDuration,
 } from "./geodesic";
-import { osrmConfig, openRailwayRoutingConfig } from "@/src/config";
+import { openRailwayRoutingConfig } from "@/src/config";
+import { fetchRoadRoute } from "@/src/services/road-routing";
+import { mergeSegments, countTransports } from "./segments";
+import { removeEmptySegments } from "@/src/utils/algorithms/empty-segments";
 
 const stationCache = new Map<string, DynamicStation[]>();
 
@@ -35,39 +38,13 @@ function findNearestSorted<T extends { coords: LatLng; id: string }>(point: LatL
     .map((x) => x.item);
 }
 
-const OSRM_BASE = osrmConfig.baseUrl;
-
-const osrmProfileMap: Record<string, string> = {
-  car: "driving",
-  bus: "driving",
-  walking: "foot",
-};
-
-async function fetchOSRMSegment(
+async function fetchRoadSegment(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
   mode: "car" | "bus" | "walking"
 ): Promise<RouteSegment> {
-  const profile = osrmProfileMap[mode];
-  const url = `${OSRM_BASE}/${profile}/${from.coords.lng},${from.coords.lat};${to.coords.lng},${to.coords.lat}?overview=full&geometries=geojson`;
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`OSRM error: ${res.status}`);
-
-  const data = await res.json();
-  if (data.code !== "Ok" || !data.routes?.length) {
-    throw new Error(`OSRM: pas de route trouvee (${data.code})`);
-  }
-
-  const route = data.routes[0];
-  const coordinates: [number, number][] = route.geometry.coordinates.map(
-    ([lng, lat]: [number, number]) => [lat, lng]
-  );
-
-  const distanceKm = route.distance / 1000;
-  const durationMinutes = route.duration / 60;
-
-  return { from, to, mode, coordinates, distanceKm, durationMinutes };
+  const road = await fetchRoadRoute([from.coords, to.coords], mode === "walking" ? "walking" : "car");
+  return { from, to, mode, ...road };
 }
 
 function planeSegment(
@@ -89,12 +66,12 @@ async function fetchOpenRailRoutingSegment(
   if (!res.ok) throw new Error("OpenRailRouting error");
   const data = await res.json();
   if (!data.paths?.length || !data.paths[0].points?.coordinates) throw new Error("OpenRailRouting no route");
-  
+
   const route = data.paths[0];
   const coordinates: [number, number][] = route.points.coordinates.map(
     ([lng, lat]: [number, number]) => [lat, lng]
   );
-  
+
   const distanceKm = route.distance / 1000;
   const durationMinutes = route.time / 60000;
 
@@ -107,7 +84,7 @@ async function trainSegments(
 ): Promise<RouteSegment[]> {
   if (from.sncfId && to.sncfId) {
     try {
-      const res = await fetch(`/api/trains/route-geometry?from=${from.sncfId}&to=${to.sncfId}&t=${Date.now()}`);
+      const res = await fetch(`/api/trains/route-geometry?${new URLSearchParams({ from: from.sncfId, to: to.sncfId })}`);
       if (res.ok) {
         const data = await res.json();
         if (data.sections && data.sections.length > 0) {
@@ -151,9 +128,9 @@ async function trainSegments(
   try {
     return [await fetchOpenRailRoutingSegment(from, to)];
   } catch {
-    const osrm = await fetchOSRMSegment(from, to, "car");
-    const durationMinutes = (osrm.distanceKm / 200) * 60;
-    return [{ ...osrm, mode: "train", durationMinutes }];
+    const road = await fetchRoadSegment(from, to, "car");
+    const durationMinutes = (road.distanceKm / 200) * 60;
+    return [{ ...road, mode: "train", durationMinutes }];
   }
 }
 
@@ -161,9 +138,9 @@ async function busLongSegment(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng }
 ): Promise<RouteSegment> {
-  const osrm = await fetchOSRMSegment(from, to, "car");
-  const durationMinutes = (osrm.distanceKm / 55) * 60;
-  return { from, to, mode: "bus", coordinates: osrm.coordinates, distanceKm: osrm.distanceKm, durationMinutes };
+  const road = await fetchRoadSegment(from, to, "car");
+  const durationMinutes = (road.distanceKm / 55) * 60;
+  return { from, to, mode: "bus", coordinates: road.coordinates, distanceKm: road.distanceKm, durationMinutes };
 }
 
 async function accessSegment(
@@ -175,26 +152,28 @@ async function accessSegment(
   const viable = allowedAccessModes.filter((m) => !(m === "walking" && dist > 8));
 
   if (viable.length === 0) {
-    return fetchOSRMSegment(from, to, (allowedAccessModes[0] === "train" ? "car" : allowedAccessModes[0]) as "walking" | "car" || "walking");
+    return fetchRoadSegment(from, to, (allowedAccessModes[0] === "train" ? "car" : allowedAccessModes[0]) as "walking" | "car" || "walking");
   }
 
   const results = await Promise.all(
     viable.map(async (m) => {
       if (m === "train") {
-        const seg = await fetchOSRMSegment(from, to, "car").catch(() => null);
-        if (seg) return { ...seg, mode: "train", durationMinutes: seg.durationMinutes * 0.8 } as RouteSegment;
+        const seg = await fetchRoadSegment(from, to, "car").catch(() => null);
+        // Local access estimate only: not a real train leg, so it must not be
+        // merged with / counted as the main SNCF train.
+        if (seg) return { ...seg, mode: "car", label: "Accès à la gare", durationMinutes: seg.durationMinutes * 0.8 } as RouteSegment;
       }
       if (m === "bus") {
-        const seg = await fetchOSRMSegment(from, to, "car").catch(() => null);
+        const seg = await fetchRoadSegment(from, to, "car").catch(() => null);
         if (seg) return { ...seg, mode: "bus", durationMinutes: seg.durationMinutes * 1.5 } as RouteSegment;
       }
-      return fetchOSRMSegment(from, to, m as "car" | "walking").catch(() => null);
+      return fetchRoadSegment(from, to, m as "car" | "walking").catch(() => null);
     })
   );
   const valid = results.filter(Boolean) as RouteSegment[];
 
   if (valid.length === 0) {
-    const fallback = await fetchOSRMSegment(from, to, "walking").catch(() => null);
+    const fallback = await fetchRoadSegment(from, to, "walking").catch(() => null);
     return fallback || { from, to, mode: "walking", coordinates: [[from.coords.lat, from.coords.lng], [to.coords.lat, to.coords.lng]], distanceKm: 0, durationMinutes: 0 } as RouteSegment;
   }
 
@@ -213,9 +192,13 @@ function extractAccessModes(modes: TransportMode[]): TransportMode[] {
   return access;
 }
 
-function buildResult(segments: RouteSegment[]): RouteResult {
+function buildResult(rawSegments: RouteSegment[]): RouteResult {
+  const segments = mergeSegments(removeEmptySegments(rawSegments));
+  const count = countTransports(segments);
   return {
     segments,
+    transports: count.total,
+    transportsByMode: count.byMode,
     totalDistanceKm: segments.reduce((s, seg) => s + seg.distanceKm, 0),
     totalDurationMinutes: segments.reduce((s, seg) => s + seg.durationMinutes, 0),
     isMultimodal: new Set(segments.map((s) => s.mode)).size > 1,
@@ -227,7 +210,54 @@ export async function computeDirectRoute(
   to: { name: string; coords: LatLng },
   mode: "car" | "walking"
 ): Promise<RouteResult> {
-  return buildResult([await fetchOSRMSegment(from, to, mode)]);
+  return buildResult([await fetchRoadSegment(from, to, mode)]);
+}
+
+async function fetchBusConnection(from: LatLng, to: LatLng): Promise<BusConnection | null> {
+  const params = new URLSearchParams({
+    fromLat: String(from.lat),
+    fromLng: String(from.lng),
+    toLat: String(to.lat),
+    toLng: String(to.lng),
+  });
+  try {
+    const res = await fetch(`/api/buses/search?${params}`);
+    if (!res.ok) return null;
+    const data: { connection?: BusConnection | null } = await res.json();
+    return data.connection ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function timetableBusRoute(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng },
+  accessModes: TransportMode[]
+): Promise<RouteResult | null> {
+  const connection = await fetchBusConnection(from.coords, to.coords);
+  if (!connection) return null;
+  const straight: RouteSegment = {
+    from: connection.from,
+    to: connection.to,
+    mode: "bus",
+    coordinates: [
+      [connection.from.coords.lat, connection.from.coords.lng],
+      [connection.to.coords.lat, connection.to.coords.lng],
+    ],
+    distanceKm: haversineDistance(connection.from.coords, connection.to.coords),
+    durationMinutes: connection.durationMinutes,
+  };
+  const [toStop, line, fromStop] = await Promise.all([
+    accessSegment(from, connection.from, accessModes),
+    fetchRoadSegment(connection.from, connection.to, "bus").catch(() => straight),
+    accessSegment(connection.to, to, accessModes),
+  ]);
+  return buildResult([
+    toStop,
+    { ...line, mode: "bus", durationMinutes: connection.durationMinutes, label: connection.operator },
+    fromStop,
+  ]);
 }
 
 export async function computeBusRoute(
@@ -235,6 +265,12 @@ export async function computeBusRoute(
   to: { name: string; coords: LatLng },
   allowedAccessModes: TransportMode[]
 ): Promise<RouteResult> {
+  const accessModes = allowedAccessModes.filter((m) => m !== "bus");
+  if (haversineDistance(from.coords, to.coords) >= 15) {
+    const timetable = await timetableBusRoute(from, to, accessModes.length > 0 ? accessModes : ["walking"]);
+    if (timetable) return timetable;
+  }
+
   const depCandidates = findNearestSorted(from.coords, busStations, 3);
   const arrCandidates = findNearestSorted(to.coords, busStations, 3);
   let dep = depCandidates[0], arr = arrCandidates[0];
@@ -245,7 +281,7 @@ export async function computeBusRoute(
   }
 
   if (dep.id === arr.id || haversineDistance(from.coords, to.coords) < 15) {
-    const seg = await fetchOSRMSegment(from, to, "bus" as "car");
+    const seg = await fetchRoadSegment(from, to, "bus" as "car");
     return buildResult([{ ...seg, mode: "bus" }]);
   }
 
@@ -301,7 +337,26 @@ async function railMainLegForPair(fromSncfId: string, toSncfId: string): Promise
   }
 }
 
-async function railJourneyDurationMin(
+// Up to 9 SNCF journeys per check: computed once per city pair (~1 km) per session.
+// Failures (null) are not kept, so a later attempt can still succeed.
+const railDurationCache = new Map<string, Promise<number | null>>();
+
+function railJourneyDurationMin(
+  from: { name: string; coords: LatLng },
+  to: { name: string; coords: LatLng }
+): Promise<number | null> {
+  const key = [from.coords, to.coords].map((c) => `${c.lat.toFixed(2)},${c.lng.toFixed(2)}`).join("|");
+  const known = railDurationCache.get(key);
+  if (known) return known;
+  const run = computeRailJourneyDurationMin(from, to).then((d) => {
+    if (d == null) railDurationCache.delete(key);
+    return d;
+  });
+  railDurationCache.set(key, run);
+  return run;
+}
+
+async function computeRailJourneyDurationMin(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng }
 ): Promise<number | null> {

@@ -1,8 +1,16 @@
-import { EventProvider, Venue } from "@/src/types";
-import { LocalEventAdapter } from "@/src/adapters/events";
+import type { Venue } from "@/src/types";
 
-const provider: EventProvider = new LocalEventAdapter();
+export async function searchEvents(query: string): Promise<Venue[]> {
+  return fetchVenues({ q: query });
+}
 
-export function searchEvents(query: string): Promise<Venue[]> {
-  return provider.searchEvents({ query });
+export async function searchEventIdeas(cities: string[]): Promise<Venue[]> {
+  return fetchVenues({ cities: cities.join(",") });
+}
+
+async function fetchVenues(params: Record<string, string>): Promise<Venue[]> {
+  const res = await fetch(`/api/events/search?${new URLSearchParams(params)}`);
+  if (!res.ok) throw new Error(`Event search failed: ${res.status}`);
+  const data: { venues?: Venue[] } = await res.json();
+  return data.venues ?? [];
 }

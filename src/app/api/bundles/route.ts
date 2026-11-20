@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   const data = body?.data;
-  if (!data || typeof data !== "object") {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
     return Response.json({ error: "data is required" }, { status: 400 });
   }
 
@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error("[bundles] insert failed:", error.message);
+    return Response.json({ error: "Database error" }, { status: 500 });
   }
 
   logBundleCreated();

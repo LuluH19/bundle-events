@@ -1,6 +1,7 @@
 import type { Location } from "./location";
 import type { RouteOption } from "./route";
 import type { HotelMapItem } from "./hotel";
+import type { BookedState, TripPreference } from "./trip";
 
 /**
  * Snapshot of everything the user has composed. Stored as JSONB in Supabase and
@@ -15,12 +16,17 @@ export interface BundleSnapshot {
   outboundOption: RouteOption | null;
   returnOption: RouteOption | null;
   selectedHotel: HotelMapItem | null;
+  /** Aller-retour le même jour : l'utilisateur a choisi d'ajouter un hôtel. */
+  hotelOptIn?: boolean;
+  preference?: TripPreference | null;
+  arriveBy?: string;
+  leaveAfter?: string;
+  booked?: BookedState;
 }
 
-/** A persisted bundle row (public shape — the internal bigint id is never exposed). */
+/** A persisted bundle row (public shape: neither the internal bigint id nor the owner's email is exposed). */
 export interface BundleRecord {
   uuid: string;
-  email: string | null;
   data: BundleSnapshot;
   created_at: string;
   updated_at: string;

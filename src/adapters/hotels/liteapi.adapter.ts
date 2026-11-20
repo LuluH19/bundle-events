@@ -14,13 +14,49 @@ type LiteApiHotelMeta = {
   rating?: number;
 };
 
+export type LiteApiRoomRate = {
+  retailRate?: { total?: { amount?: number; currency?: string }[] };
+  boardType?: string;
+  cancellationPolicies?: {
+    refundableTag?: string;
+    cancelPolicyInfos?: { cancelTime?: string; amount?: number }[];
+  };
+};
+
 type LiteApiRate = {
   hotelId: string;
   roomTypes?: {
     offerRetailRate?: { amount?: number; currency?: string };
-    rates?: { retailRate?: { total?: { amount?: number; currency?: string }[] } }[];
+    rates?: LiteApiRoomRate[];
   }[];
 };
+
+export type RateConditions = Pick<HotelMapItem, "refundable" | "freeCancellationUntil" | "board">;
+
+function toUtcIso(cancelTime: string): string | undefined {
+  const raw = cancelTime.trim().replace(" ", "T");
+  const d = new Date(/(Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : `${raw}Z`);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+export function readRateConditions(rate: LiteApiRoomRate | undefined): RateConditions {
+  if (!rate) return {};
+  const tag = rate.cancellationPolicies?.refundableTag;
+  const refundable = tag === "RFN" ? true : tag === "NRFN" ? false : undefined;
+  const deadlines = refundable
+    ? (rate.cancellationPolicies?.cancelPolicyInfos ?? [])
+        .filter((p) => p.cancelTime && Number(p.amount) > 0)
+        .map((p) => toUtcIso(p.cancelTime!))
+        .filter((d): d is string => !!d)
+        .sort()
+    : [];
+  const board = rate.boardType?.trim().toUpperCase().replace(/\d+$/, "") || undefined;
+  return {
+    ...(refundable !== undefined && { refundable }),
+    ...(deadlines[0] && { freeCancellationUntil: deadlines[0] }),
+    ...(board && { board }),
+  };
+}
 
 export class LiteApiHotelAdapter implements HotelProvider {
   async searchHotels(criteria: HotelSearchCriteria): Promise<HotelMapItem[]> {
@@ -31,86 +67,88 @@ export class LiteApiHotelAdapter implements HotelProvider {
 
     const apiKey = liteApiConfig.apiKey;
 
-    try {
-      const res = await fetch(`${liteApiConfig.baseUrl}/hotels/rates`, {
-        method: "POST",
-        headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(liteApiConfig.timeoutMs),
-        body: JSON.stringify({
-          latitude: Number(lat),
-          longitude: Number(lng),
-          radius: Number(radiusKm) * 1000,
-          occupancies: [{ adults: 2 }],
-          currency: "EUR",
-          guestNationality: "FR",
-          checkin,
-          checkout,
-          limit: 100,
-          maxRatesPerHotel: 1,
-          includeHotelData: true,
-        }),
-      });
+    // Errors are thrown (not swallowed into []) so the caller can serve a cached copy or fall back.
+    const res = await fetch(`${liteApiConfig.baseUrl}/hotels/rates`, {
+      method: "POST",
+      headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(liteApiConfig.timeoutMs),
+      body: JSON.stringify({
+        latitude: Number(lat),
+        longitude: Number(lng),
+        radius: Number(radiusKm) * 1000,
+        occupancies: [{ adults: 2 }],
+        currency: "EUR",
+        guestNationality: "FR",
+        checkin,
+        checkout,
+        limit: 100,
+        maxRatesPerHotel: 1,
+        includeHotelData: true,
+      }),
+    });
 
-      if (!res.ok) {
-        console.error("LiteAPI rates error:", res.status, await res.text());
-        return [];
-      }
-      const data = await res.json();
-      const rates: LiteApiRate[] = data.data || [];
-      if (!rates.length) return [];
+    if (!res.ok) {
+      throw new Error(`LiteAPI rates error: ${res.status} ${await res.text()}`);
+    }
+    const data = await res.json();
+    const rates: LiteApiRate[] = data.data || [];
+    if (!rates.length) return [];
 
-      // Hotel metadata (name/photo/coords/stars/rating) comes straight from the
-      // same rates response under `data.hotels[]` (keyed by id === rate.hotelId),
-      // so we don't fire a separate /data/hotel call per hotel.
-      const meta = new Map<string, LiteApiHotelMeta>(
-        ((data.hotels || []) as LiteApiHotelMeta[]).map((h) => [h.id, h])
-      );
+    // Hotel metadata (name/photo/coords/stars/rating) comes straight from the
+    // same rates response under `data.hotels[]` (keyed by id === rate.hotelId),
+    // so we don't fire a separate /data/hotel call per hotel.
+    const meta = new Map<string, LiteApiHotelMeta>(
+      ((data.hotels || []) as LiteApiHotelMeta[]).map((h) => [h.id, h])
+    );
 
-      return rates
-        .map((h) => {
-          const detail = meta.get(h.hotelId);
-          let price: number | undefined;
-          let currency = "EUR";
-          for (const rt of h.roomTypes || []) {
-            if (rt.offerRetailRate?.amount) {
-              const p = Number(rt.offerRetailRate.amount);
+    return rates
+      .map((h) => {
+        const detail = meta.get(h.hotelId);
+        let price: number | undefined;
+        let currency = "EUR";
+        let bestRate: LiteApiRoomRate | undefined;
+        for (const rt of h.roomTypes || []) {
+          for (const rate of rt.rates || []) {
+            const total = rate.retailRate?.total?.[0];
+            if (total?.amount) {
+              const p = Number(total.amount);
               if (!price || p < price) {
                 price = p;
-                currency = rt.offerRetailRate.currency || "EUR";
-              }
-            }
-            for (const rate of rt.rates || []) {
-              const total = rate.retailRate?.total?.[0];
-              if (total?.amount) {
-                const p = Number(total.amount);
-                if (!price || p < price) {
-                  price = p;
-                  currency = total.currency || "EUR";
-                }
+                currency = total.currency || "EUR";
+                bestRate = rate;
               }
             }
           }
+        }
+        for (const rt of h.roomTypes || []) {
+          if (rt.offerRetailRate?.amount) {
+            const p = Number(rt.offerRetailRate.amount);
+            if (!price || p < price) {
+              price = p;
+              currency = rt.offerRetailRate.currency || "EUR";
+              bestRate = rt.rates?.[0];
+            }
+          }
+        }
 
-          return {
-            id: `lite-${h.hotelId}`,
-            name: detail?.name || h.hotelId,
-            locationName: [detail?.address, detail?.city_name].filter(Boolean).join(", "),
-            coords: {
-              lat: detail?.latitude ?? Number(lat),
-              lng: detail?.longitude ?? Number(lng),
-            },
-            stars: detail?.stars,
-            photo: detail?.main_photo,
-            pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
-            currency,
-            rating: detail?.rating,
-            type: "hotel",
-            source: "liteapi" as const,
-          };
-        })
-        .filter((h: HotelMapItem) => h.name !== h.id.replace("lite-", "") && h.pricePerNight != null);
-    } catch {
-      return [];
-    }
+        return {
+          id: `lite-${h.hotelId}`,
+          name: detail?.name || h.hotelId,
+          locationName: [detail?.address, detail?.city_name].filter(Boolean).join(", "),
+          coords: {
+            lat: detail?.latitude ?? Number(lat),
+            lng: detail?.longitude ?? Number(lng),
+          },
+          stars: detail?.stars,
+          photo: detail?.main_photo,
+          pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
+          currency,
+          rating: detail?.rating,
+          ...readRateConditions(bestRate),
+          type: "hotel",
+          source: "liteapi" as const,
+        };
+      })
+      .filter((h: HotelMapItem) => h.name !== h.id.replace("lite-", "") && h.pricePerNight != null);
   }
 }

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "gtfs:sync": "node scripts/sync-bus-gtfs.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.10.0",
@@ -21,8 +22,9 @@
     "@types/mapbox-gl": "^3.4.1",
     "@vercel/analytics": "^2.0.1",
     "mapbox-gl": "^3.20.0",
+    "maplibre-gl": "^6.16.0",
+    "next": "^16.4.6",
     "posthog-js": "^1.433.3",
-    "next": "^16.4.3",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -33,7 +35,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
+    "fflate": "^0.8.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.12"

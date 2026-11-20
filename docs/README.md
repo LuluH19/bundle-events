@@ -11,7 +11,7 @@ docs/
 ├── getting-started/    Installation, environnement
 ├── architecture/       Couches, routing/URL, état & persistance
 ├── api/                Routes internes + APIs externes
-├── database/           Supabase (table bundles)
+├── database/           Supabase (bundles, cache des APIs)
 ├── design/             Design system
 ├── features/           Parcours, hôtels, transport, réservation, email
 └── contributing/       Conventions, tests, commits
@@ -27,6 +27,7 @@ docs/
 - [Vue d'ensemble (couches & flux)](./architecture/overview.md)
 - [Routing & URLs](./architecture/routing-and-urls.md)
 - [État & persistance](./architecture/state-and-persistence.md)
+- [Cache des APIs & fallbacks](./architecture/api-cache.md)
 
 ### API
 - [Routes internes (`/api/*`)](./api/internal-routes.md)
@@ -51,6 +52,6 @@ docs/
 ## Résumé technique
 
 - **Framework** : Next.js `^16.2.10` (App Router), React `19.2.4`, TypeScript.
-- **Styles** : Tailwind CSS v4. **Données** : Supabase. **Cartes** : Mapbox GL. **Emailing** : Brevo.
+- **Styles** : Tailwind CSS v4. **Données** : Supabase. **Cartes** : Mapbox GL (MapLibre GL + OpenFreeMap en secours). **Emailing** : Brevo.
 - **Alias d'import** : `@/*` → racine (imports en `@/src/...`).
 - Orchestrateur central : `src/components/BundleBuilder.tsx` (état, hydratation, persistance, rendu de l'étape).

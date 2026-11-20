@@ -1,31 +1,43 @@
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-allan), ui-sans-serif, system-ui, cursive;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-  /* Brand surfaces */
-  --color-ink: #00113a; /* primary dark text + dark panels */
-  --color-navy: #0e3c60; /* hero background */
-  --color-navy-700: #002366;
-  --color-navy-500: #00497d; /* small labels */
+  --color-nuit: #16153a;
+  --color-nuit-doux: #e9e8f4;
+  --color-billet: #d23f24;
+  --color-billet-600: #b8361d;
+  --color-billet-soft: #fde8e3;
+  --color-ok: #0b7f58;
+  --color-ok-soft: #e2f4ec;
 
-  /* Orange accent ramp */
-  --color-ember: #f96c1a; /* brand orange */
-  --color-ember-600: #ea580c;
-  --color-ember-700: #d35400;
-  --color-ember-ink: #9f4200; /* orange used as text on light bg */
-  --color-ember-soft: #ffdbcb; /* light orange chip background */
+  --color-train: #1f5bea;
+  --color-bus: #0b7f58;
+  --color-plane: #7340e0;
+  --color-car: #a66300;
+  --color-walk: #5a5b78;
 
-  /* Neutrals */
-  --color-page: #f9f9fb;
-  --color-mist: #f3f3f5;
-  --color-cloud: #f8fafc;
-  --color-line: #e2e8f0;
-  --color-line-soft: #e8e8ea;
-  --color-slate-ink: #444650;
-  --color-slate-500: #64748b;
-  --color-slate-400: #94a3b8;
-  --color-slate-600: #475569;
-  --color-muted: #757582;
+  --color-ink: #16153a;
+  --color-navy: #0e3c60;
+  --color-navy-700: #26245a;
+  --color-navy-500: #45465f;
+
+  --color-ember: #d23f24;
+  --color-ember-600: #b8361d;
+  --color-ember-700: #9e2e18;
+  --color-ember-ink: #a8321a;
+  --color-ember-soft: #fde8e3;
+
+  --color-page: #f5f6fa;
+  --color-mist: #ecedf3;
+  --color-cloud: #f8f9fc;
+  --color-line: #e3e4ee;
+  --color-line-soft: #ebecf3;
+  --color-slate-ink: #45465f;
+  --color-slate-500: #5a5b78;
+  --color-slate-400: #6f7090;
+  --color-slate-600: #45465f;
+  --color-muted: #6f7090;
 
   --radius-card: 16px;
 }
