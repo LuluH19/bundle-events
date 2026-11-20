@@ -41,46 +41,13 @@ export async function GET(request: NextRequest) {
 async function buildGeometry(fromId: string, toId: string, apiKey: string): Promise<Geometry> {
   // 1. Find a journey to get the vehicle_journey/line
   const journeyRes = await fetch(
-    `${sncfConfig.baseUrl}/coverage/sncf/journeys?from=${fromId}&to=${toId}&count=1&disable_geojson=false`,
+    `${sncfConfig.baseUrl}/coverage/sncf/journeys?${new URLSearchParams({ from: fromId, to: toId, count: "1", disable_geojson: "false" })}`,
     { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
   );
 
   if (!journeyRes.ok) {
     throw new Error(`SNCF journeys error: ${journeyRes.status}`);
   }
-    // 2. Process sections to build coordinates per section (for styling)
-    const resultSections: RouteSection[] = [];
-    const allStops: string[] = [];
-
-    for (const section of journey.sections) {
-      if (section.type === "waiting") continue;
-
-      let mode = "train";
-      let color: string | undefined = undefined;
-      let label: string | undefined = undefined;
-      const fromName = section.from?.name || section.from?.stop_area?.name || "";
-      const toName = section.to?.name || section.to?.stop_area?.name || "";
-
-      if (
-        (section.type === "transfer" || section.type === "street_network") &&
-        normalizeStationName(fromName) !== "" &&
-        normalizeStationName(fromName) === normalizeStationName(toName)
-      ) {
-        continue;
-      }
-      let sectionCoords: [number, number][] = [];
-
-      // Extract transport display info (color, label)
-      const di = section.display_informations;
-      if (di) {
-        if (di.color) {
-          color = di.color.startsWith("#") ? di.color : `#${di.color}`;
-        }
-        const commMode = di.commercial_mode || "";
-        const code = di.code || di.label || "";
-        label = commMode ? `${commMode} ${code}`.trim() : (di.name || "");
-      }
-
   const journeyData = await journeyRes.json();
   const journey = journeyData.journeys?.[0];
   if (!journey) {
@@ -99,6 +66,15 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
     let label: string | undefined = undefined;
     const fromName = section.from?.name || section.from?.stop_area?.name || "";
     const toName = section.to?.name || section.to?.stop_area?.name || "";
+
+    // Drop zero-length transfers inside the same station (e.g. "Paris Gare de Lyon" -> "Paris Gare de Lyon").
+    if (
+      (section.type === "transfer" || section.type === "street_network") &&
+      normalizeStationName(fromName) !== "" &&
+      normalizeStationName(fromName) === normalizeStationName(toName)
+    ) {
+      continue;
+    }
     let sectionCoords: [number, number][] = [];
 
     // Extract transport display info (color, label)
@@ -123,7 +99,7 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
     const vjLink = section.links?.find((l: { type: string }) => l.type === "vehicle_journey");
     if (vjLink?.id) {
       const vjRes = await fetch(
-        `${sncfConfig.baseUrl}/coverage/sncf/vehicle_journeys/${vjLink.id}?depth=2`,
+        `${sncfConfig.baseUrl}/coverage/sncf/vehicle_journeys/${encodeURIComponent(vjLink.id)}?depth=2`,
         { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
       );
 

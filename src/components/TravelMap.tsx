@@ -7,6 +7,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import type { Location, TravelMapProps } from "@/src/types";
 import { MODE_COLOR } from "@/src/utils/constants/transport";
 import { loadMapEngine, type MapEngine } from "@/src/lib/map-engine";
+import { escapeHtml } from "@/src/utils/format";
 
 const MARKER_COLORS: Record<string, string> = {
   departure: "#0e3c60",
@@ -147,7 +148,7 @@ export default function TravelMap({
         .setLngLat([loc.coords.lng, loc.coords.lat])
         .setPopup(
           new lib.Popup({ offset: [0, -28], closeButton: false }).setHTML(
-            `<strong style="color:#16153a">${loc.name}</strong>`
+            `<strong style="color:#16153a">${escapeHtml(loc.name)}</strong>`
           )
         )
         .addTo(map);
@@ -237,10 +238,10 @@ export default function TravelMap({
             map.getCanvas().style.cursor = "pointer";
             const p = e.features?.[0]?.properties;
             if (!p) return;
-            const price = p.pricePerNight ? `<br/><span style="color:#a8321a;font-weight:600">${p.currency || "€"}${p.pricePerNight}/nuit</span>` : "";
+            const price = p.pricePerNight ? `<br/><span style="color:#a8321a;font-weight:600">${escapeHtml(p.currency || "€")}${escapeHtml(p.pricePerNight)}/nuit</span>` : "";
             popup
               .setLngLat([p.lng, p.lat])
-              .setHTML(`<strong style="color:#16153a">${p.name}</strong>${price}`)
+              .setHTML(`<strong style="color:#16153a">${escapeHtml(p.name)}</strong>${price}`)
               .addTo(map);
           });
           map.on("mouseleave", layer, () => {

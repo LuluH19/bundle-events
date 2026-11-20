@@ -106,14 +106,8 @@ export class LiteApiHotelAdapter implements HotelProvider {
         const detail = meta.get(h.hotelId);
         let price: number | undefined;
         let currency = "EUR";
+        let bestRate: LiteApiRoomRate | undefined;
         for (const rt of h.roomTypes || []) {
-          if (rt.offerRetailRate?.amount) {
-            const p = Number(rt.offerRetailRate.amount);
-            if (!price || p < price) {
-              price = p;
-              currency = rt.offerRetailRate.currency || "EUR";
-            }
-          }
           for (const rate of rt.rates || []) {
             const total = rate.retailRate?.total?.[0];
             if (total?.amount) {
@@ -121,7 +115,18 @@ export class LiteApiHotelAdapter implements HotelProvider {
               if (!price || p < price) {
                 price = p;
                 currency = total.currency || "EUR";
+                bestRate = rate;
               }
+            }
+          }
+        }
+        for (const rt of h.roomTypes || []) {
+          if (rt.offerRetailRate?.amount) {
+            const p = Number(rt.offerRetailRate.amount);
+            if (!price || p < price) {
+              price = p;
+              currency = rt.offerRetailRate.currency || "EUR";
+              bestRate = rt.rates?.[0];
             }
           }
         }
@@ -139,62 +144,11 @@ export class LiteApiHotelAdapter implements HotelProvider {
           pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
           currency,
           rating: detail?.rating,
+          ...readRateConditions(bestRate),
           type: "hotel",
           source: "liteapi" as const,
         };
       })
       .filter((h: HotelMapItem) => h.name !== h.id.replace("lite-", "") && h.pricePerNight != null);
-      return rates
-        .map((h) => {
-          const detail = meta.get(h.hotelId);
-          let price: number | undefined;
-          let currency = "EUR";
-          let bestRate: LiteApiRoomRate | undefined;
-          for (const rt of h.roomTypes || []) {
-            for (const rate of rt.rates || []) {
-              const total = rate.retailRate?.total?.[0];
-              if (total?.amount) {
-                const p = Number(total.amount);
-                if (!price || p < price) {
-                  price = p;
-                  currency = total.currency || "EUR";
-                  bestRate = rate;
-                }
-              }
-            }
-          }
-          for (const rt of h.roomTypes || []) {
-            if (rt.offerRetailRate?.amount) {
-              const p = Number(rt.offerRetailRate.amount);
-              if (!price || p < price) {
-                price = p;
-                currency = rt.offerRetailRate.currency || "EUR";
-                bestRate = rt.rates?.[0];
-              }
-            }
-          }
-
-          return {
-            id: `lite-${h.hotelId}`,
-            name: detail?.name || h.hotelId,
-            locationName: [detail?.address, detail?.city_name].filter(Boolean).join(", "),
-            coords: {
-              lat: detail?.latitude ?? Number(lat),
-              lng: detail?.longitude ?? Number(lng),
-            },
-            stars: detail?.stars,
-            photo: detail?.main_photo,
-            pricePerNight: price ? Math.round(price / getDaysDiff(checkin, checkout)) : undefined,
-            currency,
-            rating: detail?.rating,
-            ...readRateConditions(bestRate),
-            type: "hotel",
-            source: "liteapi" as const,
-          };
-        })
-        .filter((h: HotelMapItem) => h.name !== h.id.replace("lite-", "") && h.pricePerNight != null);
-    } catch {
-      return [];
-    }
   }
 }

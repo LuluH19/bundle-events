@@ -30,7 +30,7 @@ Chaque route renvoie l'en-tête `X-Cache: hit | miss | stale`. Les dégradations
 
 | Donnée | Route | Frais | Repli périmé |
 |---|---|---|---|
-| Gares SNCF (toutes) | `/api/stations` | 7 j | 30 j |
+| Gares SNCF (toutes) | `/api/stations`, `/api/prices/train` (via `src/lib/sncf-stations.ts`) | 7 j | 30 j |
 | Géométrie ferroviaire | `/api/trains/route-geometry` | 7 j | 30 j |
 | Horaires SNCF (avec `datetime`) | `/api/trains/search` | 10 min | 2 h |
 | Trajets SNCF sans `datetime` (durées, interdiction vols courts) | `/api/trains/search` | 6 h | 30 j |

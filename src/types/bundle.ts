@@ -24,10 +24,9 @@ export interface BundleSnapshot {
   booked?: BookedState;
 }
 
-/** A persisted bundle row (public shape — the internal bigint id is never exposed). */
+/** A persisted bundle row (public shape: neither the internal bigint id nor the owner's email is exposed). */
 export interface BundleRecord {
   uuid: string;
-  email: string | null;
   data: BundleSnapshot;
   created_at: string;
   updated_at: string;

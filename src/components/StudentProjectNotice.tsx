@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Sheet } from "@/src/components/Sheet";
 import { IconExternal } from "@/src/components/ui";
@@ -8,11 +8,12 @@ import { IconExternal } from "@/src/components/ui";
 const FEEDBACK_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSeOYVL_06Yi1nsKvNN-3v454WI5uEMQR1GlkihjGt3xfNFoyg/viewform";
 
+const noopSubscribe = () => () => {};
+
 export function StudentProjectNotice() {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // false during SSR and hydration, true on the client: the portal needs document.body.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   return (
     <>

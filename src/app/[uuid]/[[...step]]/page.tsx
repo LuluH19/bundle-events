@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import BundleBuilder from "@/src/components/BundleBuilder";
 import { STEPS, type Step } from "@/src/types";
+import { isUuid } from "@/src/utils/uuid";
 
 const LEGACY_SEGMENTS: Record<string, string> = {
   hotels: "voyage",
@@ -15,6 +16,7 @@ export default async function BundlePage({
   params: Promise<{ uuid: string; step?: string[] }>;
 }) {
   const { uuid, step } = await params;
+  if (!isUuid(uuid)) notFound();
 
   if (!step || step.length === 0) {
     return <BundleBuilder uuid={uuid} step="home" />;

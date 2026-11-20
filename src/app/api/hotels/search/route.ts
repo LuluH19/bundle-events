@@ -10,6 +10,10 @@ const overpass = new OverpassHotelAdapter();
 // ~110 m: users searching the same venue share one cache entry.
 const round = (v: string) => Number(v).toFixed(3);
 
+const MAX_RADIUS_KM = 50;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const inRange = (v: string, max: number) => v.trim() !== "" && Number.isFinite(Number(v)) && Math.abs(Number(v)) <= max;
+
 /**
  * Fallback chain, all without price beyond step 1 (the UI shows "Prix indisponible"):
  * 1. LiteAPI rates for these dates (fresh, cached, or stale copy);
@@ -21,15 +25,16 @@ const round = (v: string) => Number(v).toFixed(3);
 export async function GET(request: NextRequest) {
   const lat = request.nextUrl.searchParams.get("lat");
   const lng = request.nextUrl.searchParams.get("lng");
-  const radiusKm = request.nextUrl.searchParams.get("radius") || "10";
+  const radiusParam = Number(request.nextUrl.searchParams.get("radius"));
+  const radiusKm = String(radiusParam > 0 ? Math.min(radiusParam, MAX_RADIUS_KM) : 10);
   const checkin = request.nextUrl.searchParams.get("checkin");
   const checkout = request.nextUrl.searchParams.get("checkout");
 
-  if (!lat || !lng) {
+  if (!lat || !lng || !inRange(lat, 90) || !inRange(lng, 180)) {
     return Response.json({ error: "lat and lng required" }, { status: 400 });
   }
-  if (!checkin || !checkout) {
-    return Response.json({ error: "checkin and checkout required" }, { status: 400 });
+  if (!checkin || !checkout || !ISO_DATE.test(checkin) || !ISO_DATE.test(checkout)) {
+    return Response.json({ error: "checkin and checkout required (YYYY-MM-DD)" }, { status: 400 });
   }
 
   const rLat = round(lat);

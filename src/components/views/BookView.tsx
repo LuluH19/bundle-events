@@ -11,7 +11,6 @@ import { formatDistance, formatDuration } from "@/src/utils/format";
 import { LegFacts, ModeChip } from "@/src/components/trip/Leg";
 import { PREFERENCE_LABEL } from "@/src/components/trip/OptionList";
 import { PriceTag } from "@/src/components/trip/PriceTag";
-import { walkingMinutes } from "@/src/components/trip/HotelPicker";
 import { HotelConditionsLine, walkingMinutes } from "@/src/components/trip/HotelPicker";
 import { transportConditions } from "@/src/utils/fare-conditions";
 import { StepsColumn, StepsInline } from "@/src/components/trip/Steps";
