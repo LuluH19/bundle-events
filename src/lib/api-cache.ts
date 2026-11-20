@@ -3,6 +3,7 @@ import "server-only";
 import { apiCacheConfig, type ApiProvider } from "@/src/config";
 import { getSupabaseAdmin } from "@/src/lib/supabase/server";
 import { logApiDegraded, type ApiDegradedReason } from "@/src/lib/posthog-logs";
+import { createStoreHealth } from "@/src/lib/store-health";
 
 /**
  * Shared cache in front of every token-billed provider (issue #153).
@@ -50,7 +51,11 @@ const memory = new Map<string, Entry>();
 const inflight = new Map<string, Promise<CachedResult<unknown>>>();
 const breakers = new Map<ApiProvider, { failures: number; openUntil: number }>();
 const lastDegradedLog = new Map<string, number>();
-let storeDisabledUntil = 0;
+const storeHealth = createStoreHealth({
+  errorRetryMs: apiCacheConfig.storeRetryMs,
+  timeoutThreshold: apiCacheConfig.storeTimeoutThreshold,
+  timeoutRetryMs: apiCacheConfig.storeTimeoutRetryMs,
+});
 
 export function cached<T>(opts: CachedOptions<T>): Promise<CachedResult<T>> {
   const key = `${opts.provider}:${opts.key}`;
@@ -184,20 +189,23 @@ function recordSuccess(provider: ApiProvider) {
 // ── Supabase store (optional: every failure degrades to memory-only) ──
 
 function store() {
-  if (Date.now() < storeDisabledUntil) return null;
+  if (!storeHealth.available(Date.now())) return null;
   try {
     return getSupabaseAdmin();
   } catch {
-    storeDisabledUntil = Date.now() + apiCacheConfig.storeRetryMs;
+    storeHealth.disableFor(apiCacheConfig.storeRetryMs, Date.now());
     return null;
   }
 }
 
-function disableStore(error: unknown) {
-  if (Date.now() >= storeDisabledUntil) {
-    console.warn("[api-cache] Supabase store unavailable, using memory only:", error);
+function storeFailed(error: unknown) {
+  const failure = storeHealth.failed(error, Date.now());
+  if (failure.log) {
+    console.warn(
+      `[api-cache] Supabase store ${failure.kind === "timeout" ? "timed out repeatedly" : "unavailable"}, memory only for ${Math.round(failure.disabledForMs / 1000)} s:`,
+      error
+    );
   }
-  storeDisabledUntil = Date.now() + apiCacheConfig.storeRetryMs;
 }
 
 async function readStore(key: string): Promise<Entry | null> {
@@ -211,13 +219,14 @@ async function readStore(key: string): Promise<Entry | null> {
       .abortSignal(AbortSignal.timeout(apiCacheConfig.storeTimeoutMs))
       .maybeSingle();
     if (error) {
-      disableStore(error);
+      storeFailed(error);
       return null;
     }
+    storeHealth.succeeded();
     if (!data) return null;
     return { data: data.payload, expiresAt: Date.parse(data.expires_at) };
   } catch (err) {
-    disableStore(err);
+    storeFailed(err);
     return null;
   }
 }
@@ -226,16 +235,19 @@ async function writeStore(key: string, provider: ApiProvider, entry: Entry) {
   const db = store();
   if (!db) return;
   try {
-    const { error } = await db.from("api_cache").upsert({
-      key,
-      provider,
-      payload: entry.data,
-      expires_at: new Date(entry.expiresAt).toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    if (error) disableStore(error);
+    const { error } = await db
+      .from("api_cache")
+      .upsert({
+        key,
+        provider,
+        payload: entry.data,
+        expires_at: new Date(entry.expiresAt).toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .abortSignal(AbortSignal.timeout(apiCacheConfig.storeWriteTimeoutMs));
+    if (error) storeFailed(error);
   } catch (err) {
-    disableStore(err);
+    storeFailed(err);
   }
 }
 
@@ -247,12 +259,12 @@ async function countUsage(provider: ApiProvider): Promise<number | null> {
       .rpc("increment_api_usage", { p_provider: provider })
       .abortSignal(AbortSignal.timeout(apiCacheConfig.storeTimeoutMs));
     if (error) {
-      disableStore(error);
+      storeFailed(error);
       return null;
     }
     return typeof data === "number" ? data : null;
   } catch (err) {
-    disableStore(err);
+    storeFailed(err);
     return null;
   }
 }
@@ -263,5 +275,5 @@ export function resetApiCache() {
   inflight.clear();
   breakers.clear();
   lastDegradedLog.clear();
-  storeDisabledUntil = 0;
+  storeHealth.reset();
 }

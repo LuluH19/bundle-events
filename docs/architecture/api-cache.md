@@ -11,7 +11,7 @@ Un **cache partagé entre tous les utilisateurs**, côté serveur. Le premier ut
 `src/lib/api-cache.ts` → `cached({ provider, key, ttlMs, staleMs, fetcher, shouldStore? })` :
 
 1. **Mémoire** (par instance, 500 entrées max, la plus ancienne sort en premier).
-2. **Supabase `api_cache`** (partagé entre instances, survit aux démarrages à froid). Lecture limitée à 1,5 s.
+2. **Supabase `api_cache`** (partagé entre instances, survit aux démarrages à froid). Lecture limitée à 2,5 s (`storeTimeoutMs`), écriture à 5 s (`storeWriteTimeoutMs`, en tâche de fond, ne retarde jamais la réponse).
 3. **Appel au fournisseur** (`fetcher`). Les requêtes identiques simultanées partagent un seul appel.
 
 Règles :
@@ -21,7 +21,8 @@ Règles :
 - **Repli périmé** : si le fournisseur échoue, dépasse son quota ou a son disjoncteur ouvert, la dernière entrée connue est servie même expirée, tant qu'elle a moins de `staleMs` de retard. Sinon `UpstreamUnavailableError`.
 - **Disjoncteur** par fournisseur : 3 échecs consécutifs → plus d'appel pendant 60 s.
 - **Quota journalier** optionnel par fournisseur (`API_DAILY_LIMIT_*`, voir [environnement](../getting-started/environment.md)). Chaque appel réel est compté dans `api_usage`, même sans limite.
-- Si Supabase est absent ou la table pas encore créée, le cache passe en **mémoire seule** (un avertissement `[api-cache]` dans les logs, nouvel essai toutes les 5 min).
+- Si Supabase est absent ou la table pas encore créée (vraie erreur), le cache passe en **mémoire seule** pendant 5 min (`storeRetryMs`, avertissement `[api-cache] Supabase store unavailable`).
+- Un **délai dépassé** isolé (démarrage à froid, latence) ne coupe plus Supabase : la requête part simplement vers le fournisseur. Seuls 3 délais dépassés d'affilée (`storeTimeoutThreshold`) coupent Supabase, et seulement 30 s (`storeTimeoutRetryMs`, avertissement `[api-cache] Supabase store timed out repeatedly`). Une lecture réussie remet le compteur à zéro. Logique dans `src/lib/store-health.ts` (testée). Issue #180 : avant, le premier délai de 1,5 s coupait Supabase 5 min sur l'instance.
 - `prime()` écrit une valeur calculée ailleurs, `peek()` lit sans jamais appeler le fournisseur (utilisés par le repli hôtels).
 
 Chaque route renvoie l'en-tête `X-Cache: hit | miss | stale`. Les dégradations (`error`, `quota`, `circuit_open`) sont envoyées à PostHog Logs (`logApiDegraded`, au plus une par fournisseur et par raison chaque minute).

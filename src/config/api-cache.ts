@@ -22,9 +22,14 @@ export const apiCacheConfig = {
   /** In-memory entries kept per server instance (oldest evicted first). */
   memoryMaxEntries: 500,
   /** Supabase read budget: past it, the request goes upstream as if the cache were empty. */
-  storeTimeoutMs: 1500,
+  storeTimeoutMs: 2500,
+  /** Supabase write budget (writes never block the response). */
+  storeWriteTimeoutMs: 5000,
   /** After a Supabase error (e.g. table not created yet), skip the store for this long. */
   storeRetryMs: 5 * MIN,
+  /** Consecutive Supabase timeouts before skipping the store, and for how long. */
+  storeTimeoutThreshold: 3,
+  storeTimeoutRetryMs: 30 * 1000,
   /** Consecutive upstream failures that open the circuit, and how long it stays open. */
   breaker: { failureThreshold: 3, cooldownMs: MIN },
   /** Minimum gap between two identical "degraded" logs (provider + reason). */
