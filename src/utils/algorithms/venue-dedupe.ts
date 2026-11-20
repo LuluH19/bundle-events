@@ -3,12 +3,15 @@ import { haversineDistance } from "./geodesic";
 
 const SAME_PLACE_KM = 2;
 
-/** Lowercase, strip accents/punctuation, collapse spaces ("Parc Astérix" ≡ "parc-asterix"). */
+/** Lowercase, strip accents/diacritics, unfold ligatures and curly apostrophes, collapse spaces ("Parc Astérix" ≡ "parc-asterix"). */
 export function normalizeName(s: string): string {
-  return s
+  return (s || "")
     .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+    .replace(/œ/g, "oe")
+    .replace(/æ/g, "ae")
+    .replace(/[\u2018\u2019`]/g, "'")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }

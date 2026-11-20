@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { StopCoord, RouteSection } from "@/src/types";
 import { sncfConfig, openRailwayRoutingConfig } from "@/src/config";
 import { fetchRoadRoute } from "@/src/services/road-routing";
+import { normalizeStationName } from "@/src/utils/algorithms/segments";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,14 @@ export async function GET(request: NextRequest) {
       let label: string | undefined = undefined;
       const fromName = section.from?.name || section.from?.stop_area?.name || "";
       const toName = section.to?.name || section.to?.stop_area?.name || "";
+
+      if (
+        (section.type === "transfer" || section.type === "street_network") &&
+        normalizeStationName(fromName) !== "" &&
+        normalizeStationName(fromName) === normalizeStationName(toName)
+      ) {
+        continue;
+      }
       let sectionCoords: [number, number][] = [];
 
       // Extract transport display info (color, label)

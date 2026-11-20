@@ -18,6 +18,8 @@ export interface RouteResult {
   totalDistanceKm: number;
   totalDurationMinutes: number;
   isMultimodal: boolean;
+  transports?: number;
+  transportsByMode?: Partial<Record<TransportMode, number>>;
 }
 
 /** `live` = prix du jour chez le vendeur, `tariff` = grille officielle min/max, `estimate` = calcul local. */
