@@ -9,4 +9,5 @@ export interface TripTotal {
   hotel: number;
   ret: number;
   total: number;
+  allLive: boolean;
 }

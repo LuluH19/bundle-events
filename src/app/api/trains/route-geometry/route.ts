@@ -3,6 +3,7 @@ import { StopCoord, RouteSection } from "@/src/types";
 import { apiCacheConfig, sncfConfig, openRailwayRoutingConfig } from "@/src/config";
 import { cached } from "@/src/lib/api-cache";
 import { fetchRoadRoute } from "@/src/services/road-routing";
+import { normalizeStationName } from "@/src/utils/algorithms/segments";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,38 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
   if (!journeyRes.ok) {
     throw new Error(`SNCF journeys error: ${journeyRes.status}`);
   }
+    // 2. Process sections to build coordinates per section (for styling)
+    const resultSections: RouteSection[] = [];
+    const allStops: string[] = [];
+
+    for (const section of journey.sections) {
+      if (section.type === "waiting") continue;
+
+      let mode = "train";
+      let color: string | undefined = undefined;
+      let label: string | undefined = undefined;
+      const fromName = section.from?.name || section.from?.stop_area?.name || "";
+      const toName = section.to?.name || section.to?.stop_area?.name || "";
+
+      if (
+        (section.type === "transfer" || section.type === "street_network") &&
+        normalizeStationName(fromName) !== "" &&
+        normalizeStationName(fromName) === normalizeStationName(toName)
+      ) {
+        continue;
+      }
+      let sectionCoords: [number, number][] = [];
+
+      // Extract transport display info (color, label)
+      const di = section.display_informations;
+      if (di) {
+        if (di.color) {
+          color = di.color.startsWith("#") ? di.color : `#${di.color}`;
+        }
+        const commMode = di.commercial_mode || "";
+        const code = di.code || di.label || "";
+        label = commMode ? `${commMode} ${code}`.trim() : (di.name || "");
+      }
 
   const journeyData = await journeyRes.json();
   const journey = journeyData.journeys?.[0];

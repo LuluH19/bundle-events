@@ -8,6 +8,7 @@ import {
 } from "./geodesic";
 import { openRailwayRoutingConfig } from "@/src/config";
 import { fetchRoadRoute } from "@/src/services/road-routing";
+import { mergeSegments, countTransports } from "./segments";
 import { removeEmptySegments } from "@/src/utils/algorithms/empty-segments";
 
 const stationCache = new Map<string, DynamicStation[]>();
@@ -65,12 +66,12 @@ async function fetchOpenRailRoutingSegment(
   if (!res.ok) throw new Error("OpenRailRouting error");
   const data = await res.json();
   if (!data.paths?.length || !data.paths[0].points?.coordinates) throw new Error("OpenRailRouting no route");
-  
+
   const route = data.paths[0];
   const coordinates: [number, number][] = route.points.coordinates.map(
     ([lng, lat]: [number, number]) => [lat, lng]
   );
-  
+
   const distanceKm = route.distance / 1000;
   const durationMinutes = route.time / 60000;
 
@@ -158,7 +159,9 @@ async function accessSegment(
     viable.map(async (m) => {
       if (m === "train") {
         const seg = await fetchRoadSegment(from, to, "car").catch(() => null);
-        if (seg) return { ...seg, mode: "train", durationMinutes: seg.durationMinutes * 0.8 } as RouteSegment;
+        // Local access estimate only: not a real train leg, so it must not be
+        // merged with / counted as the main SNCF train.
+        if (seg) return { ...seg, mode: "car", label: "Accès à la gare", durationMinutes: seg.durationMinutes * 0.8 } as RouteSegment;
       }
       if (m === "bus") {
         const seg = await fetchRoadSegment(from, to, "car").catch(() => null);
@@ -191,8 +194,11 @@ function extractAccessModes(modes: TransportMode[]): TransportMode[] {
 
 function buildResult(rawSegments: RouteSegment[]): RouteResult {
   const segments = removeEmptySegments(rawSegments);
+  const count = countTransports(segments);
   return {
     segments,
+    transports: count.total,
+    transportsByMode: count.byMode,
     totalDistanceKm: segments.reduce((s, seg) => s + seg.distanceKm, 0),
     totalDurationMinutes: segments.reduce((s, seg) => s + seg.durationMinutes, 0),
     isMultimodal: new Set(segments.map((s) => s.mode)).size > 1,

@@ -53,6 +53,7 @@ async function fetchAllStations(): Promise<StationData[]> {
 
   return allStations;
 }
+import { getSncfStations, nearbySncfStations } from "@/src/lib/sncf-stations";
 
 // GET /api/stations — returns all stations (cached)
 // GET /api/stations?lat=X&lng=Y&radius=50 — returns stations near a point
@@ -74,6 +75,11 @@ export async function GET(request: NextRequest) {
     cacheStatus = result.status;
   } catch {
     return Response.json({ error: "Stations unavailable", stations: [], total: 0 }, { status: 503 });
+  let stations;
+  try {
+    stations = await getSncfStations();
+  } catch (e) {
+    return Response.json({ error: (e as Error).message }, { status: 500 });
   }
   const headers = { "X-Cache": cacheStatus };
 
@@ -81,7 +87,6 @@ export async function GET(request: NextRequest) {
   const lng = request.nextUrl.searchParams.get("lng");
   const radius = request.nextUrl.searchParams.get("radius");
 
-  // Filter by proximity if lat/lng provided
   if (lat && lng) {
     const pLat = parseFloat(lat);
     const pLng = parseFloat(lng);
@@ -113,4 +118,15 @@ export async function GET(request: NextRequest) {
     },
     { headers }
   );
+    const nearby = await nearbySncfStations(
+      { lat: parseFloat(lat), lng: parseFloat(lng) },
+      radius ? parseFloat(radius) : 50
+    );
+    return Response.json({ stations: nearby, total: stations.length });
+  }
+
+  return Response.json({
+    total: stations.length,
+    stations,
+  });
 }

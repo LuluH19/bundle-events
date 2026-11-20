@@ -2,6 +2,7 @@ import { Location, LatLng, RouteOption, RouteSegment, TransportMode } from "@/sr
 import { airports } from "@/src/utils/constants/airports";
 import { findNearest } from "@/src/utils/travel";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
+import { isLongDistanceTicket } from "@/src/utils/algorithms/price";
 import { dateOnly } from "@/src/utils/date";
 import { busConfig } from "@/src/config/bus";
 
@@ -122,8 +123,10 @@ export function getBookingLinks(
     // whole trajet is that mode (a pure road / walking trip).
     if ((mode === "car" || mode === "walking") && option.mode !== mode) continue;
 
-    // Representative segment = the longest of this mode (the main leg).
-    const seg = segs.reduce((a, b) => (b.distanceKm > a.distanceKm ? b : a));
+    // Representative segment = the longest bookable leg (skip airport shuttles).
+    const candidates = segs.filter((s) => isLongDistanceTicket(option, mode, s));
+    if (!candidates.length) continue;
+    const seg = candidates.reduce((a, b) => (b.distanceKm > a.distanceKm ? b : a));
     const rt = mode === "car" || mode === "walking" ? undefined : returnDate;
     const link = segmentLink(mode, seg, date, rt);
     if (link) links.push(link);
