@@ -27,7 +27,7 @@ Toutes ces routes, sauf les cars, passent par le [cache partagé](../architectur
 
 Paramètres communs des legs : `fromName, fromLat, fromLng, toName, toLat, toLng, datetime` (`YYYY-MM-DD` ou `YYYY-MM-DDTHH:mm`). Cache mémoire via `lib/memo-cache.ts` (`pricesConfig.quoteCacheTtl` / `fuelCacheTtl`). En-tête `X-Data-Source`.
 
-- **`api/prices/train/route.ts`** — `GET`. → **Trainline** `journey-search` (prix live), repli **SNCF open data** tarifs TGV INOUI / OUIGO / Intercités (fourchette min/max, `source: "tariff"`). → `{ quote: PriceQuote | null }`.
+- **`api/prices/train/route.ts`** — `GET`. → **Trainline** `journey-search` (prix du jour, seulement si l'API répond). Les appels serveur envoient `User-Agent: Mozilla/5.0` et ne se font pas passer pour un navigateur. Sinon, repli **SNCF open data** : fourchette officielle TGV INOUI / OUIGO / Intercités (min/max, `source: "tariff"`). → `{ quote: PriceQuote | null }`.
 - **`api/prices/bus/route.ts`** — `GET`. → **FlixBus** `search/service/v4/search` (prix live du départ le plus proche). → `{ quote }`.
 - **`api/prices/fuel/route.ts`** — `GET`. → API **prix-carburants** (moyenne nationale gazole + SP95). Repli `pricesConfig.fallbackFuelPrice`. → `{ pricePerLitre, gazole, sp95, e10, source }`.
 
