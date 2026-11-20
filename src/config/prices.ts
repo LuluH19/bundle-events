@@ -1,5 +1,13 @@
 export const pricesConfig = {
   quoteCacheTtl: 30 * 60 * 1000, // 30 minutes
+  /**
+   * Trainline journey-search sits behind DataDome, which answers 403 to server
+   * IPs (Vercel, curl). Off unless `TRAINLINE_LIVE_PRICES=true`: the route then
+   * goes straight to the SNCF fare grids instead of a wasted call per request.
+   */
+  trainlineLivePrices: process.env.TRAINLINE_LIVE_PRICES === "true",
+  /** Set of stations present in the SNCF fare grids (changes a few times a year). */
+  tariffStationsTtl: 24 * 60 * 60 * 1000, // 24 hours
   fuelCacheTtl: 24 * 60 * 60 * 1000, // 24 hours
   timeoutMs: 8000,
   sncfOpenDataUrl: "https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets",
