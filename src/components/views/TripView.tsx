@@ -7,7 +7,7 @@ import { getHotelDistance } from "@/src/utils/hotel";
 import { formatDistance, timeOf } from "@/src/utils/format";
 import { dateOnly, formatDay } from "@/src/utils/date";
 import { resolveTimedSegments } from "@/src/utils/trip";
-import { LegFacts, SegmentList, TrainTimes } from "@/src/components/trip/Leg";
+import { LegFacts, SegmentList } from "@/src/components/trip/Leg";
 import { StepsColumn, StepsInline } from "@/src/components/trip/Steps";
 import { TripMap, TripMapDialog } from "@/src/components/trip/TripMap";
 import { PREFERENCE_LABEL } from "@/src/components/trip/OptionList";
