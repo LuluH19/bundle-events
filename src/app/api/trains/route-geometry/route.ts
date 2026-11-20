@@ -79,7 +79,7 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
       label = commMode ? `${commMode} ${code}`.trim() : (di.name || "");
     }
 
-    if (section.type === "transfer" || section.type === "street_network") {
+    if (section.type === "transfer" || section.type === "street_network" || section.type === "crow_fly") {
       mode = "walking";
       color = "#94a3b8";
       label = "Transfert à pied";

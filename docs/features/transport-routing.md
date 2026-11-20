@@ -41,7 +41,7 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 
 ## Multimodal & géodésie
 
-`computeMultimodalRoute` évalue les candidats **en parallèle**, retourne le plus rapide ; `buildResult` agrège et pose `isMultimodal`.
+`computeMultimodalRoute` évalue les candidats **en parallèle**, retourne le plus rapide ; `buildResult` retire d'abord les étapes vides (`removeEmptySegments`, `utils/algorithms/empty-segments.ts` : durée arrondie à 0 min et moins de 100 m, au moins une étape gardée), puis agrège et pose `isMultimodal`. Ces étapes venaient des sections SNCF sans transport (liaisons `crow_fly` de 0 m en début et fin de trajet, affichées comme un faux « train », et transferts de 0 m dans une même gare). `/api/trains/route-geometry` traite désormais `crow_fly` comme de la marche.
 
 `src/utils/algorithms/geodesic.ts` : `haversineDistance` (km, R=6371), `interpolateGreatCircle`, `estimateFlightDuration` (800 km/h + 60 min).
 

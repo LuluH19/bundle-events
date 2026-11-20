@@ -40,5 +40,5 @@ Les écrans sont dans `src/components/views/`. Navigation : voir [../architectur
 - Colonne de droite : progression, carte, feuille de route par jour. Chaque trajet y est replié en une ligne « départ → icônes des transports → arrivée » (modes consécutifs identiques fusionnés, marches de 0 min ignorées) avec la durée ; on déplie pour voir toutes les étapes. Bouton flottant **« Partager »** → [save-and-email.md](./save-and-email.md).
 
 ## Layout
-- **`Header.tsx`** — logo (lien vers `/`) uniquement.
+- **`Header.tsx`** — logo (lien vers `/`) et, à droite, le bouton « Projet étudiant » (`StudentProjectNotice`) : une fenêtre explique que c’est un projet étudiant et propose « Donner mon avis », qui ouvre le formulaire Google.
 - Les anciens `SideNav` / `MobileTabBar` et les vues `HotelsView`, `RoutesView`, `BundleView` ont été supprimés.
