@@ -7,36 +7,28 @@ Tout est piloté par l'URL ; un seul composant client (`BundleBuilder`) est rend
 ## Pages
 
 - `src/app/page.tsx` → `/` → `<BundleBuilder step="home" />` (sans uuid).
-- `src/app/[uuid]/[[...step]]/page.tsx` → `/{uuid}/{step?}` (catch-all optionnel) :
-  - vide → `home`
-  - `hotels` | `routes-outbound` | `routes-return` | `bundle`
+- `src/app/[uuid]/[[...step]]/page.tsx` → `/{uuid}/{segment?}` (catch-all optionnel) :
+  - vide → `home` (modifier la recherche d'un bundle existant)
+  - `voyage` → `trip`
+  - `reserver` → `book`
+  - anciens segments, redirigés (307) pour que les liens déjà partagés marchent : `hotels`, `routes-outbound`, `routes-return` → `voyage` ; `bundle` → `reserver`
   - autre → `notFound()`
   - `params` est `await`é (params asynchrones Next 16).
 
 ## Étapes (`src/types/step.ts`, `STEPS`)
 
-| # | id | label |
+| id | label | segment |
 |---|---|---|
-| 01 | `home` | Trajet |
-| 02 | `hotels` | Hôtels |
-| 03 | `routes-outbound` | Aller |
-| 04 | `routes-return` | Retour |
-| 05 | `bundle` | Bundle |
+| `home` | Recherche | (aucun) |
+| `trip` | Ton voyage | `voyage` |
+| `book` | Réserver | `reserver` |
 
 ## Navigation
 
-`go(step)` fait `router.push(pathFor(step))` → **chaque changement d'étape est un changement de route** : `BundleBuilder` est démonté/remonté et réhydrate depuis Supabase.
+`go(step)` met l'état en cache (`writeTripCache`), sauvegarde le snapshot en arrière-plan puis fait `router.push(pathFor(step))` → chaque changement d'étape est un changement de route : `BundleBuilder` est démonté/remonté et se réhydrate depuis le cache mémoire (sinon depuis Supabase).
 
-L'uuid est créé à la transition **home → hotels** (`handleCompose` → `createBundle` → `router.push('/{id}/hotels')`), donc un uuid existe pendant quasiment tout le parcours.
+L'uuid est créé au clic sur « Voir mon voyage » (`handleCompose` → `createBundle` → `router.push('/{id}/voyage')`).
 
-## Gating (`canReach` / `stepComplete`)
+## Progression
 
-Une étape n'est atteignable via l'aside/tabbar que si **toutes** les précédentes sont complètes :
-
-- `home` = départ + venue
-- `hotels` = `selectedHotel` non nul
-- `routes-outbound` = un aller sélectionné
-- `routes-return` = `!roundTrip` ou un retour sélectionné (étape ignorée en aller simple)
-- `bundle` = terminal
-
-> Conséquence : si `selectedHotel` est perdu (mauvaise persistance), les étapes Aller/Retour deviennent injoignables. Voir [État & persistance](./state-and-persistence.md).
+Plus de gating par étape : « Ton voyage » est toujours complet (choix automatiques). Les indicateurs `StepsInline` / `StepsColumn` (`components/trip/Steps.tsx`) ne rendent cliquables que les étapes passées. Si l'on ouvre `voyage` ou `reserver` sans départ ni événement, la page propose de commencer une recherche.

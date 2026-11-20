@@ -8,7 +8,7 @@ export interface BundleLinkEmail {
 }
 
 export async function sendBundleLinkEmail(to: string, bundleId: string): Promise<BundleLinkEmail> {
-  const link = `${supabaseConfig.siteUrl.replace(/\/$/, "")}/${bundleId}/bundle`;
+  const link = `${supabaseConfig.siteUrl.replace(/\/$/, "")}/${bundleId}/reserver`;
   const subject = "Votre bundle BundleEvent est sauvegardé";
   const html = bundleEmailHtml(link);
   const from = parseFrom();

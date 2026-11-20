@@ -1,19 +1,16 @@
-import { EventProvider, Venue } from "@/src/types";
-import { OpenDataEventAdapter, MapboxVenueAdapter, OsmVenueAdapter } from "@/src/adapters/events";
-import { dedupeVenues, rankVenues } from "@/src/utils/algorithms/venue-dedupe";
+import type { Venue } from "@/src/types";
 
-// Order matters: live events, then Mapbox POIs, then OpenStreetMap.
-const providers: EventProvider[] = [
-  new OpenDataEventAdapter(),
-  new MapboxVenueAdapter(),
-  new OsmVenueAdapter(),
-];
-
-/** Merges all sources, drops duplicates of the same place, ranks by name relevance, and tolerates a source failing. */
 export async function searchEvents(query: string): Promise<Venue[]> {
-  const settled = await Promise.allSettled(providers.map((p) => p.searchEvents({ query })));
-  return rankVenues(
-    dedupeVenues(settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []))),
-    query
-  );
+  return fetchVenues({ q: query });
+}
+
+export async function searchEventIdeas(cities: string[]): Promise<Venue[]> {
+  return fetchVenues({ cities: cities.join(",") });
+}
+
+async function fetchVenues(params: Record<string, string>): Promise<Venue[]> {
+  const res = await fetch(`/api/events/search?${new URLSearchParams(params)}`);
+  if (!res.ok) throw new Error(`Event search failed: ${res.status}`);
+  const data: { venues?: Venue[] } = await res.json();
+  return data.venues ?? [];
 }

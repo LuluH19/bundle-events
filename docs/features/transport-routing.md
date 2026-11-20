@@ -12,11 +12,11 @@ Exports de `routing.ts` : `computeDirectRoute`, `computeBusRoute`, `computeTrain
 
 ## Construction des segments
 
-- `fetchOSRMSegment(from,to,mode)` — géométrie réelle route/marche via **OSRM** (`driving`/`foot`), coords `[lat,lng]`.
+- `fetchRoadSegment(from,to,mode)` — géométrie réelle route/marche via `services/road-routing.ts` : **Mapbox Directions** puis **OSRM** en secours, coords `[lat,lng]`.
 - `planeSegment` — arc grand-cercle (`interpolateGreatCircle`) + `estimateFlightDuration`.
 - `fetchOpenRailRoutingSegment` — géométrie rail via **OpenRailRouting** (`profile=all_tracks`).
-- `trainSegments` — privilégie `/api/trains/route-geometry` (sections SNCF stylées) ; repli OpenRailRouting, puis OSRM-driving à 200 km/h.
-- `busLongSegment` — OSRM driving, durée recalculée à 55 km/h.
+- `trainSegments` — privilégie `/api/trains/route-geometry` (sections SNCF stylées) ; repli OpenRailRouting, puis route (Mapbox/OSRM) à 200 km/h.
+- `computeBusRoute` — interroge d'abord `/api/buses/search` (horaires GTFS FlixBus / BlaBlaCar Bus) : vrais arrêts, durée réelle du car, opérateur dans `segment.label`. Sans liaison directe, repli sur l'estimation : gares routières de `bus-stations.ts` et `busLongSegment` (route, 55 km/h).
 - `accessSegment` — premier/dernier km vers gares/aéroports ; mode d'accès le plus rapide (marche ≤ 8 km ; train/bus approximés depuis le driving).
 
 ## Seuils de mode (distance à vol d'oiseau)
@@ -61,4 +61,4 @@ Affichage (`RoutesView`) : un seul mode → « 3 Trains » ; modes mélangés �
 
 ## Datasets (`src/utils/constants/`)
 
-- `airports.ts` (10 aéroports FR), `bus-stations.ts` (18 gares routières), `transport.ts` (`MODE_META`).
+- `airports.ts` (10 aéroports FR), `bus-stations.ts` (gares routières de secours), `bus-network.json` (réseau de cars généré par `npm run gtfs:sync`, voir [APIs externes](../api/external-apis.md)), `transport.ts` (`MODE_META`).

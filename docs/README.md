@@ -51,6 +51,6 @@ docs/
 ## Résumé technique
 
 - **Framework** : Next.js `^16.2.10` (App Router), React `19.2.4`, TypeScript.
-- **Styles** : Tailwind CSS v4. **Données** : Supabase. **Cartes** : Mapbox GL. **Emailing** : Brevo.
+- **Styles** : Tailwind CSS v4. **Données** : Supabase. **Cartes** : Mapbox GL (MapLibre GL + OpenFreeMap en secours). **Emailing** : Brevo.
 - **Alias d'import** : `@/*` → racine (imports en `@/src/...`).
 - Orchestrateur central : `src/components/BundleBuilder.tsx` (état, hydratation, persistance, rendu de l'étape).

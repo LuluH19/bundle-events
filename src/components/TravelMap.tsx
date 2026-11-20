@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import mapboxgl from "mapbox-gl";
+import { useEffect, useRef, useState } from "react";
+import type { GeoJSONSource, Map as EngineMap, MapGeoJSONFeature, MapMouseEvent, Marker } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { Location, TravelMapProps } from "@/src/types";
-
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+import { MODE_COLOR } from "@/src/utils/constants/transport";
+import { loadMapEngine, type MapEngine } from "@/src/lib/map-engine";
 
 const MARKER_COLORS: Record<string, string> = {
-  departure: "#0e3c60", // navy
-  venue: "#f96c1a", // ember
-  hotel: "#caa24a", // gold
+  departure: "#0e3c60",
+  venue: "#d23f24",
+  hotel: "#16153a",
 };
 
 const MODE_DASH: Record<string, number[]> = {
@@ -36,9 +37,10 @@ export default function TravelMap({
   fitPadding = 90,
 }: TravelMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<EngineMap | null>(null);
+  const [engine, setEngine] = useState<MapEngine | null>(null);
   const readyRef = useRef(false);
-  const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
+  const markersRef = useRef<Record<string, Marker>>({});
   const hotelLayersReady = useRef(false);
   const radiusIdsRef = useRef<string[]>([]);
   const routeIdsRef = useRef<string[]>([]);
@@ -50,26 +52,39 @@ export default function TravelMap({
 
   // ── Init map (declared first so the map exists before other effects run) ──
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    mapboxgl.accessToken = MAPBOX_TOKEN;
+    let cancelled = false;
+    let map: EngineMap | null = null;
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/outdoors-v12",
-      center: [2.3522, 46.6],
-      zoom: 4.6,
-      attributionControl: false,
-    });
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-    mapRef.current = map;
+    loadMapEngine()
+      .then((loaded) => {
+        if (cancelled || !containerRef.current || mapRef.current) return;
+        const { lib } = loaded;
+        map = new lib.Map({
+          container: containerRef.current,
+          style: loaded.style,
+          center: [2.3522, 46.6],
+          zoom: 4.6,
+          attributionControl: false,
+        });
+        map.addControl(new lib.NavigationControl({ showCompass: false }), "top-right");
+        map.addControl(new lib.ScaleControl({ unit: "metric", maxWidth: 100 }), "bottom-left");
+        map.addControl(new lib.AttributionControl({ compact: true }), "bottom-right");
+        mapRef.current = map;
 
-    map.on("load", () => {
-      readyRef.current = true;
-      drawRef.current();
-    });
+        map.on("load", () => {
+          containerRef.current
+            ?.querySelectorAll(".maplibregl-compact-show, .mapboxgl-compact-show")
+            .forEach((el) => el.classList.remove("maplibregl-compact-show", "mapboxgl-compact-show"));
+          readyRef.current = true;
+          drawRef.current();
+        });
+        setEngine(loaded);
+      })
+      .catch(() => {});
 
     return () => {
-      map.remove();
+      cancelled = true;
+      map?.remove();
       mapRef.current = null;
       readyRef.current = false;
       hotelLayersReady.current = false;
@@ -79,7 +94,8 @@ export default function TravelMap({
   // ── Markers + fit bounds (markers don't require the style to be loaded) ──
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !engine) return;
+    const { lib } = engine;
 
     const sync = (key: string, loc: Location | null) => {
       markersRef.current[key]?.remove();
@@ -127,11 +143,11 @@ export default function TravelMap({
       `;
       el.appendChild(dotEl);
 
-      markersRef.current[key] = new mapboxgl.Marker({ element: el, anchor: "bottom", offset: [0, 7] })
+      markersRef.current[key] = new lib.Marker({ element: el, anchor: "bottom", offset: [0, 7] })
         .setLngLat([loc.coords.lng, loc.coords.lat])
         .setPopup(
-          new mapboxgl.Popup({ offset: [0, -28], closeButton: false }).setHTML(
-            `<strong style="color:#00113a">${loc.name}</strong>`
+          new lib.Popup({ offset: [0, -28], closeButton: false }).setHTML(
+            `<strong style="color:#16153a">${loc.name}</strong>`
           )
         )
         .addTo(map);
@@ -147,28 +163,30 @@ export default function TravelMap({
     if (locs.length === 1) {
       map.flyTo({ center: [locs[0].coords.lng, locs[0].coords.lat], zoom: 12 });
     } else if (locs.length > 1) {
-      const bounds = new mapboxgl.LngLatBounds();
+      const bounds = new lib.LngLatBounds();
       locs.forEach((l) => bounds.extend([l.coords.lng, l.coords.lat]));
+      route?.segments.forEach((seg) => seg.coordinates.forEach(([lat, lng]) => bounds.extend([lng, lat])));
       map.fitBounds(bounds, { padding: fitPadding, maxZoom: 13.5, duration: 800 });
     }
-  }, [departure, venue, hotel, showHotels, fitPadding]);
+  }, [engine, departure, venue, hotel, route, showHotels, fitPadding]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !showHotels || !venue) return;
+    if (!map || !engine || !showHotels || !venue) return;
     const lng = venue.coords.lng;
     const lat = venue.coords.lat;
     const dx = hotelRadius / (111.32 * Math.cos((lat * Math.PI) / 180));
     const dy = hotelRadius / 110.574;
-    const bounds = new mapboxgl.LngLatBounds([lng - dx, lat - dy], [lng + dx, lat + dy]);
+    const bounds = new engine.lib.LngLatBounds([lng - dx, lat - dy], [lng + dx, lat + dy]);
     map.fitBounds(bounds, { padding: 64, duration: 600 });
-  }, [showHotels, venue, hotelRadius]);
+  }, [engine, showHotels, venue, hotelRadius]);
 
   // ── Style-dependent layers: hotels, radius, route ──
   useEffect(() => {
     const draw = () => {
       const map = mapRef.current;
-      if (!map || !map.isStyleLoaded()) return;
+      const lib = engine?.lib;
+      if (!map || !lib || !readyRef.current) return;
 
       /* Hotels (create the source + layers once, then just update constants) */
       if (!hotelLayersReady.current) {
@@ -180,7 +198,7 @@ export default function TravelMap({
           filter: ["!=", ["get", "selected"], true],
           paint: {
             "circle-radius": 7,
-            "circle-color": "#caa24a",
+            "circle-color": "#16153a",
             "circle-stroke-color": "#fff",
             "circle-stroke-width": 2,
           },
@@ -192,13 +210,13 @@ export default function TravelMap({
           filter: ["==", ["get", "selected"], true],
           paint: {
             "circle-radius": 10,
-            "circle-color": "#f96c1a",
+            "circle-color": "#d23f24",
             "circle-stroke-color": "#fff",
             "circle-stroke-width": 3,
           },
         });
 
-        const click = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.GeoJSONFeature[] }) => {
+        const click = (e: MapMouseEvent & { features?: MapGeoJSONFeature[] }) => {
           const p = e.features?.[0]?.properties;
           if (!p) return;
           onHotelSelectRef.current({
@@ -212,17 +230,17 @@ export default function TravelMap({
             photo: p.photo || undefined,
           });
         };
-        const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+        const popup = new lib.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
         for (const layer of ["hotels-circle", "hotels-circle-selected"]) {
           map.on("click", layer, click);
           map.on("mouseenter", layer, (e) => {
             map.getCanvas().style.cursor = "pointer";
             const p = e.features?.[0]?.properties;
             if (!p) return;
-            const price = p.pricePerNight ? `<br/><span style="color:#9f4200;font-weight:600">${p.currency || "€"}${p.pricePerNight}/nuit</span>` : "";
+            const price = p.pricePerNight ? `<br/><span style="color:#a8321a;font-weight:600">${p.currency || "€"}${p.pricePerNight}/nuit</span>` : "";
             popup
               .setLngLat([p.lng, p.lat])
-              .setHTML(`<strong style="color:#00113a">${p.name}</strong>${price}`)
+              .setHTML(`<strong style="color:#16153a">${p.name}</strong>${price}`)
               .addTo(map);
           });
           map.on("mouseleave", layer, () => {
@@ -249,7 +267,7 @@ export default function TravelMap({
         },
         geometry: { type: "Point" as const, coordinates: [h.coords.lng, h.coords.lat] },
       }));
-      (map.getSource("hotels") as mapboxgl.GeoJSONSource | undefined)?.setData({
+      (map.getSource("hotels") as GeoJSONSource | undefined)?.setData({
         type: "FeatureCollection",
         features,
       });
@@ -273,12 +291,12 @@ export default function TravelMap({
           type: "geojson",
           data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } },
         });
-        map.addLayer({ id: "radius-fill", type: "fill", source: "radius", paint: { "fill-color": "#f96c1a", "fill-opacity": 0.06 } });
+        map.addLayer({ id: "radius-fill", type: "fill", source: "radius", paint: { "fill-color": "#d23f24", "fill-opacity": 0.06 } });
         map.addLayer({
           id: "radius-line",
           type: "line",
           source: "radius",
-          paint: { "line-color": "#f96c1a", "line-width": 1.5, "line-opacity": 0.45, "line-dasharray": [3, 3] },
+          paint: { "line-color": "#d23f24", "line-width": 1.5, "line-opacity": 0.45, "line-dasharray": [3, 3] },
         });
         radiusIdsRef.current = ["radius-fill", "radius-line"];
       }
@@ -301,24 +319,13 @@ export default function TravelMap({
             },
           });
           const dash = MODE_DASH[seg.mode] || [];
-          const getLineColor = () => {
-            if (seg.color) return seg.color;
-            switch (seg.mode) {
-              case "walking": return "#94a3b8";
-              case "car": return "#64748b";
-              case "bus": return "#0d5c63";
-              case "plane": return "#0ea5e9";
-              case "train": return "#9f4200";
-              default: return "#0e3c60";
-            }
-          };
           map.addLayer({
             id,
             type: "line",
             source: id,
             layout: { "line-cap": "round", "line-join": "round" },
             paint: {
-              "line-color": getLineColor(),
+              "line-color": MODE_COLOR[seg.mode] ?? "#16153a",
               "line-width": seg.mode === "walking" ? 3 : 4,
               "line-opacity": 0.9,
               ...(dash.length ? { "line-dasharray": dash } : {}),
@@ -331,7 +338,7 @@ export default function TravelMap({
 
     drawRef.current = draw;
     if (readyRef.current) draw();
-  }, [route, hotelResults, selectedHotelId, hotelRadius, showHotels, venue]);
+  }, [engine, route, hotelResults, selectedHotelId, hotelRadius, showHotels, venue]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

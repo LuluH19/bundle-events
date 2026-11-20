@@ -2,12 +2,11 @@
 
 [← Sommaire](../README.md)
 
-Le bundle est déjà une URL permanente Supabase (`/{uuid}/bundle`). « Sauvegarder pour plus tard » = donner ce lien à l'utilisateur, avec l'email en option.
+Le voyage est déjà une URL permanente Supabase (`/{uuid}/reserver` ; l'ancien `/{uuid}/bundle` redirige). « Partager » = donner ce lien, avec l'e-mail en option.
 
 ## UI — `src/components/SaveBundleModal.tsx`
 
-Branché dans `BundleBuilder` sur l'étape `bundle` :
-- **Auto-ouverte une fois** (garde `saveAutoShown`) ; la croix la ferme et révèle un **bouton flottant « Sauvegarder mon bundle »** (`IconBookmark`) qui la rouvre.
+Popup « Partager ton voyage », ouverte par le **bouton flottant « Partager »** de l'écran Réserver. Elle ne s'ouvre plus toute seule : quelqu'un qui ouvre un lien partagé voit directement le voyage (ticket #141).
 - **Lien copiable** (construit côté client depuis `window.location.origin` + uuid) + **Partager** (`navigator.share`, mobile) + **QR code** à la demande (image `api.qrserver.com`, `<img>` simple, sans dépendance).
 - Champ **email** optionnel → `saveBundleEmail` → `/api/bundles/{uuid}/save`.
 - `sent` (retourné par l'API) pilote un message honnête : « email envoyé » vs « email enregistré, utilisez le lien ci-dessus ».

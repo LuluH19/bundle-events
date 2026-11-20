@@ -5,6 +5,7 @@ interface SearchBoxFeature {
   geometry: { coordinates: [number, number] };
   properties: {
     mapbox_id: string;
+    poi_category_ids?: string[];
     name: string;
     full_address?: string;
     place_formatted?: string;
@@ -25,19 +26,23 @@ export class MapboxVenueAdapter implements EventProvider {
       bbox: mapboxConfig.franceBbox,
       types: "poi",
       language: mapboxConfig.defaultLanguage,
-      limit: String(limit),
+      limit: String(Math.min(limit * 2, 10)),
     });
 
     const res = await fetch(`${mapboxConfig.searchBoxBaseUrl}/forward?${params}`);
     if (!res.ok) throw new Error(`Mapbox Search Box error: ${res.status}`);
 
     const data: { features?: SearchBoxFeature[] } = await res.json();
-    return (data.features ?? []).map((f) => ({
-      id: `poi-${f.properties.mapbox_id}`,
-      name: f.properties.name,
-      address: f.properties.full_address ?? f.properties.place_formatted ?? "",
-      coords: { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] },
-      city: f.properties.context?.place?.name ?? f.properties.place_formatted ?? "",
-    }));
+    const venueIds = mapboxConfig.venueCategoryIds as readonly string[];
+    return (data.features ?? [])
+      .filter((f) => (f.properties.poi_category_ids ?? []).some((id) => venueIds.includes(id)))
+      .slice(0, limit)
+      .map((f) => ({
+        id: `poi-${f.properties.mapbox_id}`,
+        name: f.properties.name,
+        address: f.properties.full_address ?? f.properties.place_formatted ?? "",
+        coords: { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] },
+        city: f.properties.context?.place?.name ?? f.properties.place_formatted ?? "",
+      }));
   }
 }

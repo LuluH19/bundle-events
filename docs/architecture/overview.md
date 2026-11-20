@@ -9,8 +9,9 @@ src/
 ├── adapters/   # mapping payload API externe → types internes
 ├── app/        # routing Next.js (pages + api/ route handlers)
 ├── components/ # présentation (UI)
-│   ├── views/  # écrans de chaque étape
-│   └── layout/ # Header, SideNav, MobileTabBar
+│   ├── views/  # écrans : HomeView, TripView, BookView
+│   ├── trip/   # briques des écrans voyage/réserver (panneaux, étapes, carte)
+│   └── layout/ # Header
 ├── config/     # configurations d'APIs + variables d'env
 ├── lib/        # clients tiers (supabase, email)
 ├── services/   # couche de récupération de données (appelée par le client)
@@ -18,7 +19,7 @@ src/
 ├── types/      # définitions TypeScript (barrel dans index.ts)
 └── utils/      # logique
     ├── algorithms/ # math/logique pure (routing, geodesic)
-    └── constants/  # datasets statiques (airports, venues, bus-stations)
+    └── constants/  # datasets statiques (airports, venues, bus-stations, bus-network)
 ```
 
 > ⚠️ `AGENTS.md` mentionne `src/hooks/` : **ce dossier n'existe pas**. Aucun hook personnalisé — toute la logique à état vit dans `src/components/BundleBuilder.tsx` avec les hooks React natifs.

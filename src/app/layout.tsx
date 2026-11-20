@@ -1,31 +1,37 @@
 import type { Metadata } from "next";
-import { Inter, Allan } from "next/font/google";
+import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "../styles/globals.css";
 
-const inter = Inter({
+const figtree = Figtree({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-figtree",
   display: "swap",
 });
 
-const allan = Allan({
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-allan",
+  variable: "--font-bricolage",
+  display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Bundle Events — Le trajet, l'hôtel, l'événement. Un bundle.",
+  title: "Bundle Events — Ton trajet, ton hôtel et ton retour, au même endroit",
   description:
-    "Planifiez votre transport et hébergement pour vos concerts et événements. Comparez train, avion, voiture, et trouvez l'hôtel à côté de la scène.",
+    "Ton trajet de porte à porte, ton hôtel près de la salle et ton retour, au même endroit. On te propose un voyage complet pour ton concert, ton match ou ton festival, tu modifies ce que tu veux.",
   icons: {
     icon: [
-      { url: "/favicon/favicon.ico", sizes: "any" },
-      { url: "/favicon/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon/favicon-96x96.png", type: "image/png", sizes: "96x96" },
-      { url: "/favicon/favicon-48x48.png", type: "image/png", sizes: "48x48" },
+      { url: "/favicon/logo-star.svg", type: "image/svg+xml" },
+      { url: "/favicon/logo-star-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon/logo-star-48.png", type: "image/png", sizes: "48x48" },
+      { url: "/favicon/logo-star-96.png", type: "image/png", sizes: "96x96" },
+      { url: "/favicon/logo-star.ico", sizes: "16x16 32x32 48x48" },
     ],
     apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180" }],
   },
@@ -38,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${inter.variable} ${allan.variable} h-full antialiased`}>
+    <html lang="fr" className={`${figtree.variable} ${bricolage.variable} ${jetbrains.variable} h-full antialiased`}>
       <body className="min-h-full">
         {children}
         <Analytics />
