@@ -1,31 +1,34 @@
 import type { LatLng, RouteSegment, TransportMode } from "@/src/types";
 import { haversineDistance } from "./geodesic";
+import { normalizeName } from "./venue-dedupe";
 
 /** Two stops closer than this are considered the same station. */
 export const SAME_STATION_RADIUS_KM = 0.15;
+/** Two stops with the same normalized name must be within this distance to be considered the same station. */
+export const SAME_STATION_NAME_MAX_KM = 2;
 /** A segment shorter than this, starting and ending on the same station, is noise. */
 const DEGENERATE_SEGMENT_KM = 0.3;
 
 const COUNTED_MODES: TransportMode[] = ["plane", "train", "bus"];
 
 export function normalizeStationName(name: string): string {
-  return (name || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
+  const stripped = (name || "")
+    .replace(/[\u2018\u2019`]/g, "'")
     .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
-    .replace(/^\s*gare\s+(de\s+|d')?/, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+    .replace(/^\s*gare\s+(de\s+|d')?/i, "");
+  return normalizeName(stripped);
 }
 
 type Stop = { name: string; coords: LatLng };
 
 export function isSameStation(a: Stop, b: Stop): boolean {
+  const dist = haversineDistance(a.coords, b.coords);
   const na = normalizeStationName(a.name);
   const nb = normalizeStationName(b.name);
-  if (na && na === nb) return true;
-  return haversineDistance(a.coords, b.coords) < SAME_STATION_RADIUS_KM;
+  if (na && na === nb) {
+    return dist < SAME_STATION_NAME_MAX_KM;
+  }
+  return dist < SAME_STATION_RADIUS_KM;
 }
 
 function sameLine(a: RouteSegment, b: RouteSegment): boolean {

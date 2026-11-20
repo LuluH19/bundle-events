@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import posthog from "posthog-js";
 import { saveBundleEmail } from "@/src/services/bundles";
 import { Button, IconCheck, IconClose, IconCopy, IconShare } from "@/src/components/ui";
@@ -12,20 +12,22 @@ interface SaveBundleModalProps {
 
 type Status = "idle" | "sending" | "sent" | "error";
 
+const emptySubscribe = () => () => { };
+
 export function SaveBundleModal({ bundleId, onClose }: SaveBundleModalProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
 
-  const [origin, setOrigin] = useState("");
-  const [canShare, setCanShare] = useState(false);
+  const origin = useSyncExternalStore(emptySubscribe, () => window.location.origin, () => "");
+  const canShare = useSyncExternalStore(
+    emptySubscribe,
+    () => typeof navigator !== "undefined" && typeof navigator.share === "function",
+    () => false
+  );
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
-  useEffect(() => {
-    setOrigin(window.location.origin);
-    setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
-  }, []);
   const link = origin ? `${origin}/${bundleId}/reserver` : "";
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { RouteSegment, TransportMode } from "@/src/types";
 import {
   normalizeStationName,
+  isSameStation,
   mergeSegments,
   countTransports,
   countTransfers,
@@ -13,14 +14,15 @@ function seg(
   mode: TransportMode,
   opts: { label?: string; km?: number; fromLat?: number; toLat?: number } = {}
 ): RouteSegment {
-  const fromLat = opts.fromLat ?? 48 + from.length / 100;
-  const toLat = opts.toLat ?? 48 + to.length / 100;
+  const km = opts.km ?? 10;
+  const fromLat = opts.fromLat ?? 48.89;
+  const toLat = opts.toLat ?? (fromLat + km / 111);
   return {
     from: { name: from, coords: { lat: fromLat, lng: 2 } },
     to: { name: to, coords: { lat: toLat, lng: 2 } },
     mode,
     coordinates: [[fromLat, 2], [toLat, 2]],
-    distanceKm: opts.km ?? 10,
+    distanceKm: km,
     durationMinutes: 10,
     label: opts.label,
   };
@@ -35,6 +37,41 @@ describe("normalizeStationName", () => {
       normalizeStationName("Bordeaux Saint-Jean (Bordeaux)")
     );
     expect(normalizeStationName("La Défense")).toBe("la defense");
+  });
+
+  it("normalizes diverse apostrophes and ligatures", () => {
+    expect(normalizeStationName("Gare d'Austerlitz")).toBe("austerlitz");
+    expect(normalizeStationName("Gare d’Austerlitz")).toBe("austerlitz");
+    expect(normalizeStationName("Gare d‘Austerlitz")).toBe("austerlitz");
+    expect(normalizeStationName("Gare d`Austerlitz")).toBe("austerlitz");
+    expect(normalizeStationName("Gare de Cœur")).toBe("coeur");
+    expect(normalizeStationName("Gare d’ædicule")).toBe("aedicule");
+  });
+});
+
+describe("isSameStation", () => {
+  it("returns true for same station name within max radius", () => {
+    const a = { name: "Paris Montparnasse", coords: { lat: 48.84, lng: 2.32 } };
+    const b = { name: "Paris Montparnasse (Hall 1 & 2)", coords: { lat: 48.841, lng: 2.321 } };
+    expect(isSameStation(a, b)).toBe(true);
+  });
+
+  it("returns false for identical station names when far apart", () => {
+    const a = { name: "Gare Centrale", coords: { lat: 48.85, lng: 2.35 } }; // Paris
+    const b = { name: "Gare Centrale", coords: { lat: 45.75, lng: 4.85 } }; // Lyon (~400km)
+    expect(isSameStation(a, b)).toBe(false);
+  });
+
+  it("returns true for different names within 150m radius", () => {
+    const a = { name: "Arrêt Métro A", coords: { lat: 48.8566, lng: 2.3522 } };
+    const b = { name: "Arrêt Bus B", coords: { lat: 48.8568, lng: 2.3523 } }; // ~25m
+    expect(isSameStation(a, b)).toBe(true);
+  });
+
+  it("returns false for different names beyond 150m radius", () => {
+    const a = { name: "Gare de Lyon", coords: { lat: 48.8443, lng: 2.3744 } };
+    const b = { name: "Gare d'Austerlitz", coords: { lat: 48.8422, lng: 2.3653 } }; // ~700m
+    expect(isSameStation(a, b)).toBe(false);
   });
 });
 
