@@ -20,9 +20,9 @@ import type {
   Venue,
 } from "@/src/types";
 import { STEPS } from "@/src/types";
-import { addDaysIso, dateOnly, formatDay, outboundSearch, returnSearch } from "@/src/utils/date";
+import { addDaysIso, dateOnly, formatDay, isSameDayTrip, outboundSearch, returnSearch } from "@/src/utils/date";
 import { pickHotel, pickOption } from "@/src/utils/algorithms/recommend";
-import { stayNights, tripTotal } from "@/src/utils/trip";
+import { restoredHotelOptIn, stayNights, tripTotal } from "@/src/utils/trip";
 import { searchLocation } from "@/src/services/geocoding";
 import { searchEvents } from "@/src/services/events";
 import { computeOptions, fetchFlightInfo, fetchTrainInfo } from "@/src/services/travel";
@@ -80,6 +80,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const [hotelFetching, setHotelFetching] = useState(false);
   const [hotelError, setHotelError] = useState("");
   const [selectedHotel, setSelectedHotel] = useState<HotelMapItem | null>(snap?.selectedHotel ?? null);
+  const [hotelOptIn, setHotelOptIn] = useState(() => (snap ? restoredHotelOptIn(snap) : false));
 
   const [panel, setPanel] = useState<Panel>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -94,11 +95,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     preferenceRef.current = preference;
   }, [preference]);
 
-  const sameDay = roundTrip && !!checkin && !!checkout && dateOnly(checkout) === dateOnly(checkin);
-  // TODO #137 : temporaire, un aller-retour dans la journée garde un hôtel (1 nuit, check-out J+1).
-  // Quand #137 sera validé, supprimer la ligne `const withHotel = true;` et décommenter la suivante.
-  // const withHotel = !sameDay;
-  const withHotel = true;
+  const sameDay = isSameDayTrip(roundTrip, checkin, checkout);
+  const withHotel = !sameDay || hotelOptIn;
   const stayCheckout = useMemo(() => {
     if (!checkin) return "";
     if (roundTrip && checkout && !sameDay) return dateOnly(checkout);
@@ -127,13 +125,14 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       roundTrip,
       outboundOption: outboundOptions.find((o) => o.id === selectedOutboundId) || null,
       returnOption: returnOptions.find((o) => o.id === selectedReturnId) || null,
-      selectedHotel,
+      selectedHotel: withHotel ? selectedHotel : null,
+      hotelOptIn: sameDay ? hotelOptIn : undefined,
       preference,
       arriveBy,
       leaveAfter,
       booked,
     }),
-    [departure, venue, checkin, checkout, roundTrip, outboundOptions, selectedOutboundId, returnOptions, selectedReturnId, selectedHotel, preference, arriveBy, leaveAfter, booked]
+    [departure, venue, checkin, checkout, roundTrip, outboundOptions, selectedOutboundId, returnOptions, selectedReturnId, selectedHotel, hotelOptIn, sameDay, withHotel, preference, arriveBy, leaveAfter, booked]
   );
 
   useEffect(() => {
@@ -162,9 +161,18 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         setReturnOptions(retOpt ? [retOpt] : []);
         setSelectedOutboundId(outOpt?.id ?? null);
         setSelectedReturnId(retOpt?.id ?? null);
-        setSelectedHotel(d.selectedHotel ?? null);
+        const optIn = restoredHotelOptIn({
+          roundTrip: d.roundTrip ?? true,
+          checkin: d.checkin ?? "",
+          checkout: d.checkout ?? "",
+          hotelOptIn: d.hotelOptIn,
+          selectedHotel: d.selectedHotel ?? null,
+        });
+        const keepHotel = !isSameDayTrip(d.roundTrip ?? true, d.checkin ?? "", d.checkout ?? "") || optIn;
+        setSelectedHotel(keepHotel ? (d.selectedHotel ?? null) : null);
+        setHotelOptIn(optIn);
         setOptionsLoading(!!(d.departure && d.venue));
-        setHotelFetching(!!(d.venue && d.checkin));
+        setHotelFetching(!!(d.venue && d.checkin && keepHotel));
         setHydrated(true);
       })
       .catch(() => {
@@ -290,7 +298,11 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   }, [onTripPages, departure, venue, ret, returnDate, leaveAfter, arriveBy, sameDay]);
 
   useEffect(() => {
-    if (!venue || !checkin || !stayCheckout || !withHotel) return;
+    if (!withHotel) {
+      setHotelFetching(false);
+      return;
+    }
+    if (!venue || !checkin || !stayCheckout) return;
     const key = `${venue.coords.lat},${venue.coords.lng}|${dateOnly(checkin)}|${dateOnly(stayCheckout)}`;
     if (hotelsKeyRef.current === key) return;
     let cancelled = false;
@@ -376,7 +388,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     resetRoutes();
     setHotelResults([]);
     setHotelError("");
-    setHotelFetching(true);
+    hotelsKeyRef.current = "";
+    setHotelFetching(withHotel);
     if (departure) setOptionsLoading(true);
   };
 
@@ -408,10 +421,13 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     setOutboundTrains([]);
     setReturnTrains([]);
     if (changed) {
+      const nextSameDay = isSameDayTrip(true, d.checkin, d.checkout);
       setSelectedHotel(null);
       setHotelResults([]);
       setHotelError("");
       setBooked({});
+      hotelsKeyRef.current = "";
+      if (nextSameDay) setHotelOptIn(false);
     }
   };
 
@@ -468,8 +484,29 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const handleChooseHotel = (h: HotelMapItem) => {
     posthog.capture("hotel_selected", { has_price: Boolean(h.pricePerNight), has_rating: Boolean(h.stars || h.rating) });
+    setHotelOptIn(true);
     setSelectedHotel(h);
     setPreference(null);
+    unbook(["hotel"]);
+  };
+
+  const handleAddHotel = () => {
+    posthog.capture("hotel_opt_in", { enabled: true });
+    setHotelOptIn(true);
+    if (selectedHotel) return;
+    const next = venue && hotelResults.length ? pickHotel(hotelResults, venue.coords, preferenceRef.current ?? "fast") : null;
+    if (next) {
+      setSelectedHotel(next);
+      return;
+    }
+    hotelsKeyRef.current = "";
+    setHotelFetching(true);
+  };
+
+  const handleRemoveHotel = () => {
+    posthog.capture("hotel_opt_in", { enabled: false });
+    setHotelOptIn(false);
+    setSelectedHotel(null);
     unbook(["hotel"]);
   };
 
@@ -560,6 +597,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     stayCheckout,
     returnDate,
     roundTrip,
+    sameDay,
     withHotel,
     nights,
     outbound,
@@ -628,7 +666,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         {step === "trip" && !missingSearch && optionsLoading && !outbound && <LoadingScreen embedded {...loadingCopy(roundTrip, withHotel)} />}
 
         {step === "trip" && !missingSearch && !(optionsLoading && !outbound) && (
-          <TripView trip={trip} onGo={go} onOpenPanel={openPanel} onPreference={handlePreference} />
+          <TripView trip={trip} onGo={go} onOpenPanel={openPanel} onPreference={handlePreference} onAddHotel={handleAddHotel} onRemoveHotel={handleRemoveHotel} />
         )}
 
         {step === "book" && !missingSearch && (
@@ -639,6 +677,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             onGo={go}
             onOpenPanel={openPanel}
             onShare={() => setShareOpen(true)}
+            onAddHotel={handleAddHotel}
+            onRemoveHotel={handleRemoveHotel}
           />
         )}
       </main>
@@ -649,6 +689,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
         roundTrip={roundTrip}
         onRoundTrip={step === "home" ? handleRoundTrip : undefined}
         dates={{ checkin, checkout, arriveBy, leaveAfter }}
+        stayCheckout={stayCheckout}
         onDates={handleDates}
         outboundOptions={outboundOptions}
         returnOptions={returnOptions}

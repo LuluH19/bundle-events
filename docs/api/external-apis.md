@@ -12,6 +12,8 @@
 | **Open Data Île-de-France** | Événements (3e choix) | `OpenDataEventAdapter` |
 | **LiteAPI** | Hôtels + prix (1er choix) | `adapters/hotels/liteapi.adapter.ts` |
 | **Overpass** | Hôtels OSM sans prix (dernier secours de LiteAPI) | `adapters/hotels/overpass.adapter.ts` |
+| **LiteAPI** | Hôtels + prix + conditions du tarif (annulation, formule) (1er choix) | `adapters/hotels/liteapi.adapter.ts` |
+| **Overpass** | Hôtels OSM sans prix (secours de LiteAPI) | `adapters/hotels/overpass.adapter.ts` |
 | **OSRM** | Itinéraires route/marche (secours de Mapbox Directions) | `services/road-routing.ts` |
 | **OpenRailRouting** | Géométrie rail | `algorithms/routing.ts`, `/api/trains/route-geometry` |
 | **SNCF** | Gares, trajets trains, sections/arrêts | `/api/stations`, `/api/trains/*` |
@@ -29,6 +31,8 @@
 
 Les configs (baseUrl, timeouts, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
 `liteapi, mapbox, map, geoplateforme, events, bus, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, nominatim, api-cache`. Les durées de cache et quotas sont dans `config/api-cache.ts`. Les flux GTFS sont dans `config/bus-gtfs.json` (lu aussi par le script de synchronisation).
+Les configs (baseUrl, timeouts, TTL, clés) sont dans `src/config/*` (barrel `config/index.ts`) :
+`liteapi, fare-conditions, mapbox, map, geoplateforme, events, bus, sncf, overpass, travelpayouts, osrm, openrailwayrouting, supabase, nominatim`. Les flux GTFS sont dans `config/bus-gtfs.json` (lu aussi par le script de synchronisation).
 
 ## Chaînes de secours
 

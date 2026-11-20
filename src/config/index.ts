@@ -12,3 +12,4 @@ export * from "./api-cache";
 export * from "./geoplateforme";
 export * from "./map";
 export * from "./bus";
+export * from "./fare-conditions";

@@ -29,6 +29,7 @@ Persistance via **Supabase** (PostgreSQL). Tables : **`bundles`**, plus **`api_c
   outboundOption: RouteOption | null
   returnOption: RouteOption | null
   selectedHotel: HotelMapItem | null
+  hotelOptIn?: boolean
 }
 ```
 

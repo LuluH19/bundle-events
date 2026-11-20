@@ -122,9 +122,8 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
       ? `${arriveBy} est déjà passé aujourd'hui : choisis une heure après ${nowTime}, ou « Peu importe ».`
       : `On cherche les trajets qui arrivent avant ${arriveBy}.${fromToday ? " S'il est trop tard, on te propose le premier départ possible." : ""}`;
 
-  // TODO #137 : remettre « Pas d'hôtel proposé. » à la fin du message même jour quand withHotel = !sameDay sera réactivé (BundleBuilder).
   const leaveHelp = sameDay
-    ? `Retour le même jour : il part au plus tôt après ton arrivée${arriveBy ? ` (${arriveBy})` : ""}.`
+    ? `Retour le même jour : il part au plus tôt après ton arrivée${arriveBy ? ` (${arriveBy})` : ""}. Pas d'hôtel proposé, tu pourras en ajouter un si tu veux.`
     : leaveAfter
       ? `On cherche les retours qui partent après ${leaveAfter}.`
       : "Sans heure : on propose le premier retour après 10:00, l'heure habituelle de départ des hôtels.";
