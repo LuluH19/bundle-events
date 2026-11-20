@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import type { FlightInfo, RouteOption, TrainJourney, TripPreference, TripViewProps } from "@/src/types";
 import { getHotelDistance } from "@/src/utils/hotel";
-import { formatDistance } from "@/src/utils/format";
-import { formatDay } from "@/src/utils/date";
+import { formatDistance, timeOf } from "@/src/utils/format";
+import { dateOnly, formatDay } from "@/src/utils/date";
+import { resolveTimedSegments } from "@/src/utils/trip";
 import { LegFacts, SegmentList, TrainTimes } from "@/src/components/trip/Leg";
 import { StepsColumn, StepsInline } from "@/src/components/trip/Steps";
 import { TripMap, TripMapDialog } from "@/src/components/trip/TripMap";
@@ -19,27 +20,56 @@ const PREFERENCES: TripPreference[] = ["fast", "cheap", "green"];
 function LegBlock({
   kind,
   date,
+  rawDate,
   option,
   loading,
   pricesLoading,
   journeys,
   flights,
+  arriveBy,
+  leaveAfter,
   onChange,
 }: {
   kind: string;
   date: string;
+  rawDate?: string;
   option: RouteOption | null;
   loading: boolean;
   pricesLoading?: boolean;
   journeys: TrainJourney[];
   flights: FlightInfo[];
+  arriveBy?: string;
+  leaveAfter?: string;
   onChange: () => void;
 }) {
+  const timedSegments = useMemo(() => {
+    if (!option) return [];
+    return resolveTimedSegments({
+      option,
+      journey: journeys[0],
+      flights,
+      date: rawDate,
+      arriveBy,
+      leaveAfter,
+      isReturn: kind === "Retour",
+    });
+  }, [option, journeys, flights, rawDate, arriveBy, leaveAfter, kind]);
+
+  const legDepartureTime = timedSegments[0]?.departureTime;
+  const legArrivalTime = timedSegments[timedSegments.length - 1]?.arrivalTime;
+  const legDepartureDate = timedSegments[0]?.departureTime ? dateOnly(timedSegments[0].departureTime) : rawDate;
+
   return (
     <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-line">
       <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
         <span className="eyebrow text-slate-500">
-          {kind} · {date}
+          {kind} · {formatDay(legDepartureDate || "") || date}
+          {legDepartureTime && (
+            <>
+              {" · "}
+              Départ à <span className="font-mono font-bold text-ink">{timeOf(legDepartureTime)}</span>
+            </>
+          )}
         </span>
         <button type="button" onClick={onChange} className="text-[14px] font-semibold text-ink underline underline-offset-4">
           Changer
@@ -49,7 +79,13 @@ function LegBlock({
         {loading ? (
           <div className="h-20 animate-pulse rounded-xl bg-mist" />
         ) : option ? (
-          <LegFacts option={option} journey={option.mode === "train" ? journeys[0] : undefined} />
+          <LegFacts
+            option={option}
+            journey={option.mode === "train" ? journeys[0] : undefined}
+            departureTime={legDepartureTime}
+            arrivalTime={legArrivalTime}
+            departureDate={legDepartureDate}
+          />
         ) : (
           <p className="text-[14px] text-slate-500">Aucun trajet trouvé. Touche « Changer » pour voir les options.</p>
         )}
@@ -61,8 +97,7 @@ function LegBlock({
             <span className="text-slate-400 transition-transform group-open:rotate-90">›</span>
           </summary>
           <div className="grid gap-3 px-4 pb-4">
-            <SegmentList option={option} flights={flights} />
-            {option.mode === "train" && <TrainTimes journeys={journeys} />}
+            <SegmentList option={option} flights={flights} segments={timedSegments} />
           </div>
         </details>
       )}
@@ -235,11 +270,13 @@ export function TripView({ trip, onGo, onOpenPanel, onPreference, onAddHotel, on
         <LegBlock
           kind="Aller"
           date={formatDay(trip.checkin)}
+          rawDate={trip.checkin}
           option={trip.outbound}
           loading={trip.optionsLoading}
           pricesLoading={trip.pricesLoading}
           journeys={trip.outboundTrains}
           flights={trip.outboundFlights}
+          arriveBy={trip.arriveBy}
           onChange={() => onOpenPanel("outbound")}
         />
 
@@ -253,11 +290,13 @@ export function TripView({ trip, onGo, onOpenPanel, onPreference, onAddHotel, on
           <LegBlock
             kind="Retour"
             date={formatDay(trip.returnDate)}
+            rawDate={trip.returnDate}
             option={trip.ret}
             loading={trip.optionsLoading}
             pricesLoading={trip.pricesLoading}
             journeys={trip.returnTrains}
             flights={trip.returnFlights}
+            leaveAfter={trip.leaveAfter}
             onChange={() => onOpenPanel("return")}
           />
         )}

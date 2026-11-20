@@ -74,6 +74,15 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 
 Affichage (`RoutesView`) : un seul mode → « 3 Trains » ; modes mélangés → « N transports » ; + « N correspondance(s) » si > 1 transport. L'API `/api/trains/route-geometry` ignore aussi les transferts à pied dans une même gare.
 
+## Horaires précis et correspondances (`timed-segments.ts`)
+
+Pour permettre au voyageur de savoir quand partir et de ne pas attendre inutilement en gare :
+- `resolveTimedSegments` et `getLegTiming` (`src/utils/algorithms/timed-segments.ts`) attribuent à chaque segment son **heure exacte de départ et d'arrivée** (`departureTime`, `arrivalTime` ISO) et calculent les **temps d'attente en correspondance** (`waitTimeMinutes`).
+- **Train SNCF** : aligne les segments avec les sections réelles de `TrainJourney.trains` (horaires et numéros de train SNCF), calcule le temps d'attente entre l'arrivée du premier train et le départ du suivant (`waitTimeAfterMinutes`). L'accès amont est calé à rebours pour arriver à temps en gare.
+- **Avion** : cale le vol sur `FlightInfo.departureAt`, intègre la marge aéroportuaire (90 min) et la récupération des bagages (20 min).
+- **Voiture, bus, repli** : horodatage séquentiel à partir de l'heure cible (départ calculé depuis `arriveBy` pour l'aller, ou à partir de `leaveAfter` pour le retour), avec temps de battement en correspondance inter-modes.
+- La date et l'heure de départ sont affichées sur chaque bloc aller et retour (`LegBlock`, `LegFacts`), sur chaque segment de transport (`SegmentList`), dans le détail des horaires SNCF (`TrainTimes`) et dans la feuille de route (`RoadmapLeg`).
+
 ## Datasets (`src/utils/constants/`)
 
 - `airports.ts` (10 aéroports FR), `bus-stations.ts` (gares routières de secours), `bus-network.json` (réseau de cars généré par `npm run gtfs:sync`, voir [APIs externes](../api/external-apis.md)), `transport.ts` (`MODE_META`).
