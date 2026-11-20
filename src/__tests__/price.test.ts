@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
-import type { PriceQuote, RouteOption, RouteSegment, TransportMode } from "@/src/types";
+import { describe, it, expect, vi } from "vitest";
+
+// sncf-tariffs -> sncf-stations -> api-cache imports "server-only".
+vi.mock("server-only", () => ({}));
+
+import type { RouteOption, RouteSegment, TransportMode } from "@/src/types";
 import {
   aggregateModeQuotes,
   bookableSpans,
