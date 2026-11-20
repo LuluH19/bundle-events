@@ -52,12 +52,12 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 | Mode | Source live | Repli |
 |---|---|---|
 | avion | Travelpayouts (`/api/flights/search`) | estimation km |
-| train | Trainline (`/api/prices/train`) | tarifs SNCF open data (min/max) → estimation |
+| train | tarifs SNCF open data min/max (`/api/prices/train`) ; Trainline seulement si `TRAINLINE_LIVE_PRICES=true` | estimation km (liaisons TER absentes des grilles) |
 | bus | FlixBus (`/api/prices/bus`) | estimation (BlaBlaCar Bus non coté) |
 | voiture | `/api/prices/fuel` × conso + péages | `pricesConfig.fallbackFuelPrice` |
 | marche | 0 | — |
 
-`bookableSpans` aligne le prix sur chaque bouton « Réserver sur … » : **le segment le plus long** par mode (ex. Rennes → Paris Montparnasse, pas toute la chaîne Mont-Saint-Michel → salle). Trainline live si l'API répond, sinon tarifs SNCF open data (min/max), sinon estimation. `combineQuotes` additionne ces billets + accès voiture. `modeQuotes` alimente le prix affiché sur chaque bouton.
+`bookableSpans` aligne le prix sur chaque bouton « Réserver sur … » : **le segment le plus long** par mode (ex. Rennes → Paris Montparnasse, pas toute la chaîne Mont-Saint-Michel → salle). Train : tarifs SNCF open data (min/max), sinon estimation (Trainline live en tête uniquement si `TRAINLINE_LIVE_PRICES=true`, l'API étant bloquée par DataDome depuis les serveurs). `combineQuotes` additionne ces billets + accès voiture. `modeQuotes` alimente le prix affiché sur chaque bouton.
 
 ## Empreinte carbone (état actuel)
 
