@@ -193,9 +193,8 @@ function extractAccessModes(modes: TransportMode[]): TransportMode[] {
 }
 
 function buildResult(rawSegments: RouteSegment[]): RouteResult {
-  const segments = mergeSegments(rawSegments);
-  const count = countTransports(segments);
   const segments = removeEmptySegments(rawSegments);
+  const count = countTransports(segments);
   return {
     segments,
     transports: count.total,
