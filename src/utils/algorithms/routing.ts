@@ -8,6 +8,7 @@ import {
 } from "./geodesic";
 import { openRailwayRoutingConfig } from "@/src/config";
 import { fetchRoadRoute } from "@/src/services/road-routing";
+import { removeEmptySegments } from "@/src/utils/algorithms/empty-segments";
 
 const stationCache = new Map<string, DynamicStation[]>();
 
@@ -188,7 +189,8 @@ function extractAccessModes(modes: TransportMode[]): TransportMode[] {
   return access;
 }
 
-function buildResult(segments: RouteSegment[]): RouteResult {
+function buildResult(rawSegments: RouteSegment[]): RouteResult {
+  const segments = removeEmptySegments(rawSegments);
   return {
     segments,
     totalDistanceKm: segments.reduce((s, seg) => s + seg.distanceKm, 0),
