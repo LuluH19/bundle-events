@@ -4,8 +4,8 @@ export async function searchEvents(query: string): Promise<Venue[]> {
   return fetchVenues({ q: query });
 }
 
-export async function searchEventIdeas(cities: string[]): Promise<Venue[]> {
-  return fetchVenues({ cities: cities.join(",") });
+export async function searchEventIdeas(cities: string[], category?: string): Promise<Venue[]> {
+  return fetchVenues(category ? { cities: cities.join(","), category } : { cities: cities.join(",") });
 }
 
 async function fetchVenues(params: Record<string, string>): Promise<Venue[]> {

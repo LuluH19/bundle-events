@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { searchEventIdeas, searchEventsAndVenues } from "@/src/services/event-search";
+import { findEventCategory, searchEventIdeas, searchEventsAndVenues } from "@/src/services/event-search";
 
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     .map((c) => c.trim())
     .filter(Boolean)
     .slice(0, 10);
-  if (cities.length > 0) return Response.json({ venues: await searchEventIdeas(cities), eventSource: null });
+  if (cities.length > 0) {
+    const category = findEventCategory(sp.get("category"));
+    return Response.json({ venues: await searchEventIdeas(cities, category), eventSource: null });
+  }
 
   const q = sp.get("q")?.trim() ?? "";
   if (!q) return Response.json({ venues: [], eventSource: null });
