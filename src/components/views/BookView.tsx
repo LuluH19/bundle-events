@@ -10,7 +10,8 @@ import { getHotelDistance } from "@/src/utils/hotel";
 import { formatDistance, formatDuration } from "@/src/utils/format";
 import { LegFacts, ModeChip } from "@/src/components/trip/Leg";
 import { PREFERENCE_LABEL } from "@/src/components/trip/OptionList";
-import { walkingMinutes } from "@/src/components/trip/HotelPicker";
+import { HotelConditionsLine, walkingMinutes } from "@/src/components/trip/HotelPicker";
+import { transportConditions } from "@/src/utils/fare-conditions";
 import { StepsColumn, StepsInline } from "@/src/components/trip/Steps";
 import { TripMap } from "@/src/components/trip/TripMap";
 import { IconBed, IconBus, IconCheck, IconChevron, IconExternal, IconShare, IconStar, IconTrain, MODE_ICON } from "@/src/components/ui";
@@ -75,6 +76,31 @@ function ActionLinks({
         );
       })}
     </>
+  );
+}
+
+function TransportConditions({ option, links }: { option: RouteOption; links: BookingLink[] }) {
+  const carriers = transportConditions(option);
+  const plane = links.find((l) => l.mode === "plane");
+  if (!carriers.length && !plane) return null;
+  return (
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-slate-500">
+      Échange et annulation :
+      {carriers.map((c, i) => (
+        <span key={c.mode} className="inline-flex items-center gap-1.5">
+          {i > 0 && "·"}
+          <a
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-semibold text-ink underline underline-offset-2"
+          >
+            conditions {c.carrier} <IconExternal size={12} />
+          </a>
+        </span>
+      ))}
+      {plane && <span>{carriers.length ? "· " : ""}selon la compagnie aérienne, affichées sur {plane.provider}</span>}
+    </p>
   );
 }
 
@@ -181,6 +207,7 @@ function LegCard({
           <span className="font-display text-[22px] font-extrabold text-ink">{option.price} €</span>
           <span className="text-[12px] text-slate-500">Prix estimé · vendu par {item.links[0]?.provider ?? "le transporteur"}</span>
         </div>
+        <TransportConditions option={option} links={item.links} />
         <div className="mt-auto grid gap-2 pt-2">
           {item.includedInRoundTrip ? (
             <p className="rounded-xl bg-page px-3 py-2.5 text-[13px] text-slate-500">
@@ -271,6 +298,14 @@ function HotelCard({
             ) : null}
           </span>
           <span className="text-[12px] text-slate-500">Vendu par {link.provider}</span>
+        </div>
+        <div className="grid gap-0.5">
+          <HotelConditionsLine hotel={hotel} />
+          <p className="text-[12px] text-slate-500">
+            {hotel.refundable === undefined
+              ? `Conditions d'annulation à vérifier sur ${link.provider}.`
+              : `Conditions du tarif trouvé, à confirmer sur ${link.provider} avant de payer.`}
+          </p>
         </div>
         <div className="mt-auto grid gap-2 pt-2">
           <ActionLinks
