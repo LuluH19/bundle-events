@@ -213,6 +213,15 @@ export function IconExternal({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+export function IconInstagram({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
 export function IconChevron({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
