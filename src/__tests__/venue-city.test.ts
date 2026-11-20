@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Venue } from "@/src/types";
 import { isInCity } from "@/src/utils/algorithms/venue-dedupe";
+
+// event-search goes through the server-only API cache.
+vi.mock("server-only", () => ({}));
 
 const venue = (city: string): Venue => ({ id: "x", name: "Lille Grand Palais", address: "", coords: { lat: 0, lng: 0 }, city });
 
