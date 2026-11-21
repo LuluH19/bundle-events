@@ -45,6 +45,7 @@ docs/
 - [Algorithme de transport](./features/transport-routing.md)
 - [Liens de réservation](./features/booking-links.md)
 - [Sauvegarde & email](./features/save-and-email.md)
+- [Analytics PostHog](./features/analytics.md)
 
 ### Contribution
 - [Conventions](./contributing/conventions.md)
