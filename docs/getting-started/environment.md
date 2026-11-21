@@ -13,7 +13,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | `config/supabase.ts` | Clé service-role **serveur uniquement** |
 | `NEXT_PUBLIC_SITE_URL` | `config/supabase.ts` | Base des liens de bundle (email). Défaut `http://localhost:3000` |
 | `POSTHOG_PROJECT_TOKEN` | `next.config.ts`, `instrumentation-client.ts`, `lib/posthog-logs.ts` | Token public du projet PostHog (pas une clé API personnelle) |
-| `POSTHOG_HOST` | `next.config.ts`, `instrumentation-client.ts`, `lib/posthog-logs.ts` | Hôte d'ingestion du projet PostHog : `https://eu.i.posthog.com` ou `https://us.i.posthog.com` selon la région |
+| `POSTHOG_HOST` | `next.config.ts`, `instrumentation-client.ts`, `lib/posthog-logs.ts` | Hôte d'ingestion du projet PostHog : `https://eu.i.posthog.com` ou `https://us.i.posthog.com` selon la région. Sert de destination au reverse proxy `/ingest` (`next.config.ts`) |
 | `TRAINLINE_LIVE_PRICES` | `config/prices.ts` | Optionnel. `true` pour interroger Trainline `journey-search` avant les grilles SNCF dans `/api/prices/train`. Désactivé par défaut : DataDome renvoie 403 aux IP serveur (Vercel) |
 | `BREVO_API_KEY` | `lib/email.ts` | Envoi email via Brevo |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME` | `lib/email.ts` | Expéditeur (`Nom <email>` ou email brut) |

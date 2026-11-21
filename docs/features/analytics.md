@@ -1,6 +1,6 @@
 # Analytics (PostHog)
 
-PostHog est initialisé côté navigateur dans `src/instrumentation-client.ts` (voir [Vue d'ensemble](../architecture/overview.md#mesure-daudience)). Cette page liste les événements métier envoyés par l'application et décrit le dashboard qui les exploite.
+PostHog est initialisé côté navigateur dans `src/instrumentation-client.ts` (voir [Vue d'ensemble](../architecture/overview.md#mesure-daudience)). Cette page liste les événements métier envoyés par l'application et décrit les dashboards qui les exploitent.
 
 Sans `POSTHOG_PROJECT_TOKEN` ou `POSTHOG_HOST`, PostHog n'est pas initialisé et les appels `posthog.capture` sont ignorés.
 
@@ -10,7 +10,7 @@ Aucun appel `posthog.identify` pour l'instant : l'application n'a pas encore de 
 
 ## Événements
 
-Les pages vues (`$pageview`), l'autocapture et les exceptions (`$exception`) sont gérées par le SDK. Les événements ci-dessous sont envoyés explicitement.
+Les événements automatiques du SDK sont décrits plus bas. Les événements ci-dessous sont envoyés explicitement.
 
 ### Recherche (page d'accueil)
 
@@ -53,18 +53,63 @@ Les pages vues (`$pageview`), l'autocapture et les exceptions (`$exception`) son
 
 Côté serveur, `src/lib/posthog-logs.ts` envoie des **logs** OpenTelemetry (pas des événements) pour la création d'un bundle et la demande d'email.
 
-## Dashboard « Bundle Events : parcours »
+## Collecte automatique du SDK
 
-Dashboard à épingler et à définir comme dashboard d'accueil du projet. Il remplace « Analytics basics (wizard) ».
+Configurée dans `src/instrumentation-client.ts` :
 
-| Insight | Type | Définition | Tag |
-|---|---|---|---|
-| Parcours de réservation | Funnel (fenêtre 1 jour, ordre strict) | `$pageview` (chemin `/`), `venue_selected`, `departure_selected`, `dates_selected`, `bundle_composed`, `transport_booking_opened` ou `hotel_booking_opened` | `funnel` |
-| Bundles composés | Trends, par jour | `bundle_composed`, ventilé par `round_trip` | `funnel` |
-| Origine des événements | Trends, total | `venue_selected`, ventilé par `source` puis `venue_provider` | `acquisition` |
-| Villes demandées | Trends, barres | `bundle_composed`, ventilé par `city` | `acquisition` |
-| Modes de transport | Trends, camembert | `bundle_composed`, ventilé par `outbound_mode` | `booking` |
-| Clics de réservation | Trends, barres | `transport_booking_opened` et `hotel_booking_opened`, ventilés par `provider` | `booking` |
-| Partage et sauvegarde | Trends, par semaine | `bundle_link_copied`, `bundle_shared`, `bundle_email_saved` | `retention` |
-| Retours sur un bundle | Trends, par semaine | `bundle_opened` | `retention` |
-| Erreurs | Trends, par jour | `$exception` | `quality` |
+- pages vues et pages quittées, autocapture des clics, exceptions ;
+- heatmaps (`capture_heatmaps`), dead clicks (`capture_dead_clicks`) ;
+- web vitals et timings réseau (`capture_performance`).
+
+Le replay de session s'active dans les réglages du projet PostHog (Settings, Session replay), pas dans le code.
+
+### Reverse proxy `/ingest`
+
+Le SDK envoie ses requêtes à `/ingest` sur le domaine du site, et `next.config.ts` les réécrit vers `POSTHOG_HOST` (et vers l'hôte `-assets` pour `/ingest/static` et `/ingest/array`). Les bloqueurs de publicité ne voient donc pas `posthog.com`, ce qui évite de perdre une partie du trafic. `skipTrailingSlashRedirect` est activé car l'API PostHog utilise des slashs finaux.
+
+## Dashboards PostHog
+
+Les deux dashboards sont épinglés dans le projet. Tous les insights excluent `localhost` et les IP locales (filtre `$host`). Les définitions complètes ont été créées via l'API PostHog.
+
+### « Bundle Events : Trafic »
+
+D'où viennent les visiteurs.
+
+| Insight | Définition |
+|---|---|
+| Visiteurs et sessions par jour | `$pageview` : visiteurs uniques et sessions uniques |
+| Canaux d'acquisition | Sessions ventilées par `$channel_type` (Direct, Organic Social, Referral, Email, Search...) |
+| Sites référents | Visiteurs ventilés par `$referring_domain` |
+| Campagnes UTM | Sessions ventilées par `$entry_utm_source` |
+| Pays des visiteurs | Carte, `$geoip_country_code` |
+| Villes des visiteurs | `$geoip_city_name` |
+| Appareils | `$device_type` |
+| Navigateurs | `$browser` |
+| Pages d'entrée | Sessions ventilées par `$entry_pathname` |
+| Durée moyenne de session | Moyenne de `$session_duration` |
+| Nouveaux et récurrents | Lifecycle hebdomadaire sur `$pageview` |
+
+Pour suivre une campagne, ajouter `?utm_source=<réseau>&utm_campaign=<nom>` aux liens partagés (LinkedIn, Instagram, emails).
+
+### « Bundle Events : Comportement »
+
+Ce que font les visiteurs sur le site.
+
+| Insight | Définition |
+|---|---|
+| Parcours de réservation | Funnel sur 1 jour : `$pageview` sur `/`, `venue_selected`, `departure_selected`, `bundle_composed`, `transport_booking_opened` |
+| Conversion par source | Funnel `$pageview` sur `/` puis `bundle_composed`, ventilé par `$referring_domain` |
+| Bundles composés | `bundle_composed` par jour, ventilé par `round_trip` |
+| Événements choisis par ville | `venue_selected` ventilé par `city` |
+| Origine du choix d'événement | `venue_selected` ventilé par `source` |
+| Préférences de voyage | `preference_selected` ventilé par `preference` |
+| Clics de réservation transport | `transport_booking_opened` ventilé par `transport_mode` |
+| Clics de réservation par fournisseur | `transport_booking_opened` et `hotel_booking_opened` ventilés par `provider` |
+| Partage et sauvegarde | `bundle_link_copied`, `bundle_shared`, `bundle_email_saved` par semaine |
+| Rétention des créateurs de bundle | Rétention hebdomadaire : premier `bundle_composed`, puis retour (`$pageview`) |
+| Chemins de navigation | Paths sur `$pageview`, identifiants de bundle regroupés sous `/:bundle` |
+| Frustration | `$rageclick` et `$dead_click` ventilés par `$pathname` |
+| Erreurs JavaScript | `$exception` par jour |
+| Web vitals (p75) | LCP et INP, 75e percentile de `$web_vitals` |
+
+Les propriétés ajoutées par l'issue #185 (`city`, `source`, `venue_provider`...) n'apparaissent qu'après le déploiement : les données plus anciennes tombent dans la valeur vide.
