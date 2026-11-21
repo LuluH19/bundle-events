@@ -19,7 +19,7 @@
 | **SNCF** | Gares, trajets trains, sections/arrêts | `/api/stations`, `/api/trains/*` |
 | **GTFS FlixBus / BlaBlaCar Bus** (transport.data.gouv.fr) | Arrêts et horaires des cars longue distance | `scripts/sync-bus-gtfs.mjs`, `/api/buses/search` |
 | **Travelpayouts** (Aviasales) | Prix des vols | `/api/flights/search`, `services/prices.ts` |
-| **Trainline** | Deep-link + prix train (1er choix) | `/api/booking/train`, `/api/prices/train`, `adapters/prices/trainline.adapter.ts` |
+| **Trainline** | Deep-link de réservation. Prix du jour via `journey-search` seulement avec `TRAINLINE_LIVE_PRICES=true` : l'endpoint est protégé par DataDome (403 depuis les IP serveur, dont Vercel). Les appels serveur utilisent `User-Agent: Mozilla/5.0`, sans se faire passer pour un navigateur | `/api/booking/train`, `/api/prices/train`, `adapters/prices/trainline.adapter.ts` |
 | **SNCF open data** (ressources.data.sncf.com) | Tarifs min/max TGV / OUIGO / Intercités (repli train) | `adapters/prices/sncf-tariffs.adapter.ts` |
 | **FlixBus** | Deep-link + prix car | `/api/booking/bus`, `/api/prices/bus`, `adapters/prices/flixbus.adapter.ts` |
 | **prix-carburants** (data.economie.gouv.fr) | Prix moyen carburant (voiture) | `/api/prices/fuel`, `adapters/prices/fuel.adapter.ts` |
@@ -50,7 +50,7 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 | Itinéraire route/marche | Mapbox Directions → OSRM | `services/road-routing.ts` |
 | Carte | Mapbox GL (style `outdoors-v12` : relief, forêts, bâtiments) → MapLibre + OpenFreeMap (sans token, ou si l'API de style Mapbox ne répond pas) | `lib/map-engine.ts` |
 | Cars | Horaires GTFS → estimation (gares routières `bus-stations.ts`, 55 km/h) | `algorithms/routing.ts` |
-| Prix train | Trainline journey-search → tarifs SNCF open data | `/api/prices/train` |
+| Prix train | Fourchette officielle SNCF open data (TGV INOUI / OUIGO / Intercités) → estimation au km côté client. Trainline journey-search en premier seulement si `TRAINLINE_LIVE_PRICES=true` | `/api/prices/train` |
 
 **Lien avec le [cache des APIs](../architecture/api-cache.md)** : chaque maillon serveur d'une chaîne passe par `cached()` (clé par fournisseur). Le cache évite de rappeler une API pour une même requête et sert la dernière copie connue en cas de panne ; la chaîne de secours ne passe au fournisseur suivant que si le précédent n'a ni réponse ni copie. Couvert : événements, lieux (Mapbox POI, Nominatim), hôtels, SNCF, Travelpayouts. Non couvert : ce qui s'exécute dans le navigateur (adresse de départ, itinéraires `road-routing.ts`, carte), et les cars (fichier GTFS local, aucun appel).
 

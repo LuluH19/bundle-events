@@ -27,7 +27,7 @@ Toutes ces routes, sauf les cars, passent par le [cache partagé](../architectur
 
 Paramètres communs des legs : `fromName, fromLat, fromLng, toName, toLat, toLng, datetime` (`YYYY-MM-DD` ou `YYYY-MM-DDTHH:mm`). Cache mémoire via `lib/memo-cache.ts` (`pricesConfig.quoteCacheTtl` / `fuelCacheTtl`). En-tête `X-Data-Source`.
 
-- **`api/prices/train/route.ts`** — `GET`. → **Trainline** `journey-search` (prix live), repli **SNCF open data** tarifs TGV INOUI / OUIGO / Intercités (fourchette min/max, `source: "tariff"`). → `{ quote: PriceQuote | null }`.
+- **`api/prices/train/route.ts`** — `GET`. → **SNCF open data** : fourchette officielle TGV INOUI / OUIGO / Intercités (min/max, `source: "tariff"`). Les gares candidates (5 au plus, 15 km autour de chaque extrémité) sont limitées à celles présentes dans les grilles (liste mise en cache 24 h) : sinon les haltes RER / TER les plus proches d'un lieu (Stade de France, La Défense) masquaient la gare grandes lignes. Les liaisons TER n'existent dans aucune grille : `{ quote: null }` et le client garde son estimation au km (« ≈ X € · Prix estimé »). **Trainline** `journey-search` n'est appelé qu'avec `TRAINLINE_LIVE_PRICES=true` : DataDome renvoie 403 aux IP serveur (Vercel, curl), l'appel est donc coupé par défaut. → `{ quote: PriceQuote | null }`, en-tête `X-Data-Source: trainline | sncf-tariffs | none`.
 - **`api/prices/bus/route.ts`** — `GET`. → **FlixBus** `search/service/v4/search` (prix live du départ le plus proche). → `{ quote }`.
 - **`api/prices/fuel/route.ts`** — `GET`. → API **prix-carburants** (moyenne nationale gazole + SP95). Repli `pricesConfig.fallbackFuelPrice`. → `{ pricePerLitre, gazole, sp95, e10, source }`.
 
@@ -35,7 +35,7 @@ Côté client : `services/prices.ts` (`quoteOptions`) cotise chaque option aprè
 
 ## Deep-links de réservation (redirections 302)
 
-- **`api/booking/train/route.ts`** — `GET`. Résout les noms de gare → URNs **Trainline**, redirige vers `book/results` (A/R via `journeySearchType=return` + `inwardDate`). Repli : Google Maps transit.
+- **`api/booking/train/route.ts`** — `GET`. Résout les noms de gare → URNs **Trainline**, redirige vers `book/results` avec un adulte (`passengers[]=1995-01-01`, requis par Trainline) (A/R via `journeySearchType=return` + `inwardDate`). Repli : Google Maps transit.
 - **`api/booking/bus/route.ts`** — `GET`. Résout les villes → UUIDs **FlixBus**, redirige vers `shop.flixbus.com/search` (A/R via `returnDate`). Repli : Google Maps transit.
 
 Détails : [../features/booking-links.md](../features/booking-links.md).

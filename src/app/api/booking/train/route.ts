@@ -36,6 +36,8 @@ export async function GET(request: NextRequest) {
     selectedTab: "train",
     lang: "fr",
   });
+  // Trainline drops the search when passengers[] is missing or empty -> one adult.
+  params.append("passengers[]", "1995-01-01");
   if (returnDate) {
     params.set("inwardDate", `${returnDate}T08:00:00`);
     params.set("inwardDateType", "departAfter");
