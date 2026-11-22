@@ -72,10 +72,12 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 - `GET https://api.mapbox.com/search/searchbox/v1/forward?q={query}&types=poi&country=fr`
 - Utilisé par `MapboxVenueAdapter` pour trouver stades, parcs, salles (ex. Stade de France) en France entière. Requiert `NEXT_PUBLIC_MAPBOX_TOKEN`.
 - Mapbox renvoie tous les commerces qui portent le nom cherché (ex. « Céline » : boutiques, avocat, coiffeur). On ne garde que les lieux dont `poi_category_ids` contient une catégorie de `mapboxConfig.venueCategoryIds` (salle de concert, théâtre, stade, parc d'attractions…).
+- Délai d'expiration : `eventsConfig.venueTimeoutMs` (4 s).
 
 ## OpenStreetMap Nominatim — lieux et secours du geocoding
 - `GET https://nominatim.openstreetmap.org/search?q={query}&format=jsonv2&countrycodes=fr`
 - Utilisé par `OsmVenueAdapter` (côté serveur, avec `User-Agent: bundle-events`) et en dernier recours par `searchLocation`. Seuls les lieux dont le `type` OSM est dans `nominatimConfig.venueTypes` sont gardés (stade, théâtre, salle de concert, parc d'attractions, parc…), pas les commerces ni les hameaux homonymes. Aucune clé ; politique d'usage : ~1 requête/s max, pas d'usage intensif.
+- Délai d'expiration de `OsmVenueAdapter` : `eventsConfig.venueTimeoutMs` (4 s).
 
 ## API Adresse (Géoplateforme) — adresses
 - `GET https://data.geopf.fr/geocodage/search?q={q}&index=address&limit=5&autocomplete=1` et `/geocodage/reverse?lon=&lat=`
