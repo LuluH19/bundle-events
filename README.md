@@ -168,10 +168,19 @@ Liste complète et endpoints : [docs/api/external-apis.md](./docs/api/external-a
 npm run lint
 npm run typecheck
 npm run test
+npm run test:coverage
 npm run test:e2e
 ```
 
-La CI GitHub Actions (`.github/workflows/ci.yml`) s'exécute sur les push et pull requests vers `main` et `dev` et enchaîne : lint des commits, ESLint, vérification TypeScript, `npm audit` (échec sur vulnérabilités hautes ou critiques), build Next.js, démarrage du serveur de dev et validation du titre de PR.
+La CI GitHub Actions (`.github/workflows/ci.yml`) s'exécute sur chaque push et pull request vers `main` et `dev`. Un job `changes` détecte les PR qui ne touchent que la doc (`docs/`, `*.md`) : les jobs de build et de test sont alors ignorés, sans bloquer les checks obligatoires. Sinon, en parallèle :
+
+- lint des commits et validation du titre de PR (Conventional Commits) ;
+- ESLint, vérification TypeScript, tests unitaires Vitest avec couverture ;
+- `npm audit` (échec sur vulnérabilités hautes ou critiques) et scan de secrets (gitleaks) ;
+- build Next.js, réutilisé ensuite par les tests E2E Playwright (`next start`) et par Lighthouse CI (informatif, non bloquant) ;
+- démarrage du serveur de dev (`npm run dev`).
+
+Le job `CI OK` agrège tous les jobs bloquants : c'est le seul check à rendre obligatoire dans la protection de branche. Sur les PR, un commentaire unique récapitule les résultats, la couverture, la taille du bundle client (comparée à la dernière valeur de la branche cible) et les scores Lighthouse. Sur les PR venant d'un fork, ce récapitulatif est écrit dans le résumé du job (token en lecture seule). L'installation des dépendances est factorisée dans `.github/actions/setup`.
 
 ## Déploiement
 

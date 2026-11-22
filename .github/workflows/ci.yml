@@ -1,42 +1,16 @@
 name: CI
 
+# No `paths:` filter on purpose: a filtered-out PR never reports its checks, so a
+# required check would hang forever. The `changes` job decides instead, and the
+# heavy jobs are skipped (which counts as passing) when only docs changed.
 on:
   push:
     branches: [main, dev]
-    paths:
-      - "src/**"
-      - "public/**"
-      - "e2e/**"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - "next.config.ts"
-      - "eslint.config.mjs"
-      - "postcss.config.mjs"
-      - "vitest.config.ts"
-      - "playwright.config.ts"
-      - ".commitlintrc.json"
-      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main, dev]
-    paths:
-      - "src/**"
-      - "public/**"
-      - "e2e/**"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - "next.config.ts"
-      - "eslint.config.mjs"
-      - "postcss.config.mjs"
-      - "vitest.config.ts"
-      - "playwright.config.ts"
-      - ".commitlintrc.json"
-      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -44,14 +18,53 @@ concurrency:
 
 env:
   NODE_VERSION: 24
+  # NEXT_PUBLIC_* values are inlined at build time. E2E intercepts every Mapbox
+  # call, but the token must be truthy for the geocoding path to run.
+  NEXT_PUBLIC_MAPBOX_TOKEN: e2e-test-token
 
 defaults:
   run:
     shell: bash
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Is anything other than docs changed?
+        id: filter
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if ! changed=$(git diff --name-only "$BASE...$HEAD" 2>/dev/null); then
+            echo "Could not diff $BASE...$HEAD, running everything."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files:"
+          echo "$changed"
+          # Docs-only = every changed file is under docs/ or is a Markdown file.
+          if echo "$changed" | grep -qvE '^docs/|\.md$|^LICENSE$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Docs-only change: skipping build and test jobs."
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint-commits:
-    if: github.event_name == 'pull_request' && github.base_ref != 'main'
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.base_ref != 'main' &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
     name: Commit Lint
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -71,111 +84,6 @@ jobs:
         with:
           configFile: .commitlintrc.json
 
-  lint:
-    name: ESLint
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - run: npm ci
-
-      - name: Run ESLint
-        run: npm run lint
-
-  typecheck:
-    name: TypeScript Check
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - run: npm ci
-
-      - name: Run typecheck
-        run: npm run typecheck
-
-  security:
-    name: NPM Audit
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - run: npm ci
-
-      - name: Run npm audit (critical/high only)
-        run: |
-          npm audit --audit-level=high --json > audit.json || true
-
-          node <<'EOF'
-          const report = require('./audit.json');
-          const v = report.metadata?.vulnerabilities || {};
-          console.log(v);
-
-          if (v.critical > 0) {
-            console.error("❌ Critical vulnerabilities detected");
-            process.exit(1);
-          }
-
-          if (v.high > 0) {
-            console.error("❌ High vulnerabilities detected");
-            process.exit(1);
-          }
-
-          console.log("✅ No critical/high vulnerabilities");
-          EOF
-
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: npm-audit
-          path: audit.json
-          retention-days: 14
-
-  build:
-    name: Build (Next.js)
-    runs-on: ubuntu-26.04
-    needs: [lint, typecheck, security]
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - run: npm ci
-
-      - name: Build app
-        run: npm run build
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: next-build
-          path: |
-            .next
-            !.next/cache
-          retention-days: 7
-
-  # --- PR checklist automation (mirrors .github/PULL_REQUEST_TEMPLATE.md) ---
-
   title:
     name: PR title (Conventional Commits)
     if: github.event_name == 'pull_request'
@@ -192,19 +100,218 @@ jobs:
             core.notice(`PR title: "${title}" -> ${ok ? "valid" : "invalid"}`);
             if (!ok) core.setFailed("PR title does not follow Conventional Commits");
 
-  dev:
-    name: Dev server boot (npm run dev)
+  lint:
+    name: ESLint
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run ESLint
+        run: npm run lint
+
+  typecheck:
+    name: TypeScript Check
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+  test:
+    name: Unit tests (Vitest)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    outputs:
+      lines: ${{ steps.coverage.outputs.lines }}
+      statements: ${{ steps.coverage.outputs.statements }}
+      functions: ${{ steps.coverage.outputs.functions }}
+      branches: ${{ steps.coverage.outputs.branches }}
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run unit tests with coverage
+        run: npm run test:coverage -- --reporter=default --reporter=github-actions
+
+      - name: Read coverage summary
+        id: coverage
+        if: always() && hashFiles('coverage/coverage-summary.json') != ''
+        run: |
+          node -e '
+            const t = require("./coverage/coverage-summary.json").total;
+            for (const k of ["lines", "statements", "functions", "branches"]) console.log(`${k}=${t[k].pct}`);
+          ' >> "$GITHUB_OUTPUT"
+
+  security:
+    name: NPM Audit
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
 
-      - run: npm ci
+      # npm audit reads package-lock.json directly: no install needed.
+      # Exits non-zero on high or critical vulnerabilities.
+      - name: Run npm audit (high/critical)
+        run: npm audit --audit-level=high
+
+  build:
+    name: Build (Next.js)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    outputs:
+      bundle-report: ${{ steps.bundle.outputs.report }}
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v6
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'public/**', 'next.config.ts') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Build app
+        run: npm run build
+
+      # Shared with the e2e and lighthouse jobs so they test this exact build.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: next-build
+          path: |
+            .next
+            !.next/cache
+          include-hidden-files: true
+          retention-days: 3
+
+      # --- Bundle size: baseline cached on push, compared on PR ---
+
+      - name: Restore bundle size baseline
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: bundle-size-base.json
+          key: bundle-size-${{ github.base_ref }}-${{ github.event.pull_request.base.sha }}
+          restore-keys: |
+            bundle-size-${{ github.base_ref }}-
+
+      - name: Measure bundle size
+        id: bundle
+        run: |
+          base_arg=()
+          [ -f bundle-size-base.json ] && base_arg=(--base bundle-size-base.json)
+          node scripts/ci/bundle-size.mjs --out bundle-size.json --md bundle-size.md "${base_arg[@]}"
+          cat bundle-size.md >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "report<<EOF_BUNDLE_REPORT"
+            cat bundle-size.md
+            echo "EOF_BUNDLE_REPORT"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prepare bundle size baseline
+        if: github.event_name == 'push'
+        run: cp bundle-size.json bundle-size-base.json
+
+      - name: Save bundle size baseline
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v6
+        with:
+          path: bundle-size-base.json
+          key: bundle-size-${{ github.ref_name }}-${{ github.sha }}
+
+  e2e:
+    name: E2E tests (Playwright, production build)
+    needs: [changes, build]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: next-build
+          path: .next
+
+      - name: Get Playwright version
+        id: pw
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Playwright browser
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run E2E tests against `next start`
+        env:
+          E2E_PROD: "1"
+        run: npx playwright test --reporter=list,github
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
+
+  dev:
+    name: Dev server boot (npm run dev)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Start dev server and wait for it to respond
         run: |
@@ -212,19 +319,63 @@ jobs:
           PID=$!
           for i in $(seq 1 60); do
             if curl -sf http://localhost:3000 >/dev/null; then
-              echo "✅ dev server responded"
+              echo "dev server responded"
               kill "$PID" 2>/dev/null || true
               exit 0
             fi
             if ! kill -0 "$PID" 2>/dev/null; then
-              echo "❌ dev server exited before it was ready"
+              echo "::error::dev server exited before it was ready"
               exit 1
             fi
             sleep 2
           done
-          echo "❌ dev server did not respond within timeout"
+          echo "::error::dev server did not respond within timeout"
           kill "$PID" 2>/dev/null || true
           exit 1
+
+  lighthouse:
+    name: Lighthouse (informational)
+    needs: [changes, build]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    # Scores are noisy on shared runners: report them, never block a merge.
+    continue-on-error: true
+    outputs:
+      scores: ${{ steps.scores.outputs.scores }}
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: next-build
+          path: .next
+
+      - name: Run Lighthouse CI
+        run: npx --yes @lhci/cli@0.16.0 autorun
+
+      - name: Extract scores
+        id: scores
+        if: always() && hashFiles('.lighthouseci/reports/manifest.json') != ''
+        run: |
+          node -e '
+            const runs = require("./.lighthouseci/reports/manifest.json");
+            const out = {};
+            for (const r of runs.filter((r) => r.isRepresentativeRun)) out[new URL(r.url).pathname] = r.summary;
+            console.log("scores=" + JSON.stringify(out));
+          ' >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/reports/
+          include-hidden-files: true
+          retention-days: 7
 
   secrets:
     name: Secret Scan
@@ -241,67 +392,119 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Single required check for branch protection: green only if every blocking job
+  # succeeded or was intentionally skipped. Lighthouse is informational only.
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs: [changes, lint-commits, title, lint, typecheck, test, security, build, e2e, dev, secrets]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+
+    steps:
+      - name: Check job results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "::error::At least one CI job did not succeed ($r)"
+              exit 1
+            fi
+          done
+
+  # --- PR checklist automation (mirrors .github/PULL_REQUEST_TEMPLATE.md) ---
+
   pr-summary:
     name: PR Summary
     if: always() && github.event_name == 'pull_request'
-    needs: [lint-commits, lint, typecheck, security, build, title, dev, secrets]
+    needs: [changes, lint-commits, title, lint, typecheck, test, security, build, e2e, dev, lighthouse, secrets]
     runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
 
     steps:
       - uses: actions/github-script@v9
+        env:
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          COVERAGE: ${{ toJSON(needs.test.outputs) }}
+          BUNDLE_REPORT: ${{ needs.build.outputs.bundle-report }}
+          LIGHTHOUSE: ${{ needs.lighthouse.outputs.scores }}
+          LIGHTHOUSE_RESULT: ${{ needs.lighthouse.result }}
         with:
           script: |
             const res = {
               commits: "${{ needs.lint-commits.result }}",
+              title: "${{ needs.title.result }}",
               lint: "${{ needs.lint.result }}",
               typecheck: "${{ needs.typecheck.result }}",
+              test: "${{ needs.test.result }}",
               security: "${{ needs.security.result }}",
               build: "${{ needs.build.result }}",
-              title: "${{ needs.title.result }}",
+              e2e: "${{ needs.e2e.result }}",
               dev: "${{ needs.dev.result }}",
               secrets: "${{ needs.secrets.result }}",
             };
-            const ok = v => v === "success";
-            const icon = v => (ok(v) ? "✅" : "❌");
+            const docsOnly = process.env.CODE_CHANGED === "false";
+            const ok = v => v === "success" || (docsOnly && v === "skipped");
+            const icon = v => (v === "success" ? "✅" : v === "skipped" ? "⏭️" : "❌");
 
-            // 1) Tick the deterministic checklist boxes in the PR body.
-            const items = [
-              { match: "Conventional Commits", pass: ok(res.title) },
-              { match: "npm run dev", pass: ok(res.dev) },
-              { match: "npm run build", pass: ok(res.build) },
-              { match: "secret committed", pass: ok(res.secrets) },
-            ];
             const pr = context.payload.pull_request;
-            const body = pr.body || "";
-            const boxRe = /- \[[ xX]\]/;
-            const newBody = body
-              .split("\n")
-              .map(line => {
-                const item = items.find(i => line.includes(i.match) && boxRe.test(line));
-                return item ? line.replace(boxRe, item.pass ? "- [x]" : "- [ ]") : line;
-              })
-              .join("\n");
-            if (newBody !== body) {
-              await github.rest.pulls.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number,
-                body: newBody,
-              });
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            // --- Extra reports (coverage, bundle size, Lighthouse) ---
+            const extra = [];
+
+            const cov = JSON.parse(process.env.COVERAGE || "null") || {};
+            if (cov.lines) {
+              extra.push(
+                "### Test coverage",
+                "| Lines | Statements | Functions | Branches |",
+                "| --- | --- | --- | --- |",
+                `| ${cov.lines}% | ${cov.statements}% | ${cov.functions}% | ${cov.branches}% |`,
+                "",
+              );
             }
 
-            // 2) Post / refresh a single summary comment.
+            if (process.env.BUNDLE_REPORT) {
+              extra.push("### Client bundle size", process.env.BUNDLE_REPORT, "");
+            }
+
+            let lh = {};
+            try { lh = JSON.parse(process.env.LIGHTHOUSE || "{}"); } catch {}
+            const pct = v => (typeof v === "number" ? Math.round(v * 100) : "-");
+            if (Object.keys(lh).length) {
+              extra.push(
+                "### Lighthouse (informational)",
+                "| Page | Performance | Accessibility | Best practices | SEO |",
+                "| --- | --- | --- | --- | --- |",
+                ...Object.entries(lh).map(([page, s]) =>
+                  `| \`${page}\` | ${pct(s.performance)} | ${pct(s.accessibility)} | ${pct(s["best-practices"])} | ${pct(s.seo)} |`),
+                "",
+              );
+            } else if (process.env.LIGHTHOUSE_RESULT && process.env.LIGHTHOUSE_RESULT !== "skipped") {
+              extra.push("### Lighthouse (informational)", "_No scores collected, see the run logs._", "");
+            }
+
             const marker = "<!-- ci-summary -->";
             const commentBody = [
               marker,
               "## CI Results",
+              docsOnly ? "\n_Docs-only change: build and test jobs were skipped._\n" : "",
+              "| Check | Result |",
+              "| --- | --- |",
+              `| Commit lint | ${icon(res.commits)} |`,
+              `| ESLint | ${icon(res.lint)} |`,
+              `| TypeScript | ${icon(res.typecheck)} |`,
+              `| Unit tests (Vitest) | ${icon(res.test)} |`,
+              `| E2E tests (Playwright) | ${icon(res.e2e)} |`,
+              `| Security audit | ${icon(res.security)} |`,
+              `| Build | ${icon(res.build)} |`,
               "",
-              `- Commit lint: ${icon(res.commits)}`,
-              `- ESLint: ${icon(res.lint)}`,
-              `- TypeScript: ${icon(res.typecheck)}`,
-              `- Security audit: ${icon(res.security)}`,
-              `- Build: ${icon(res.build)}`,
-              "",
+              ...extra,
               "### Checklist",
               `- ${icon(res.title)} PR title follows Conventional Commits`,
               `- ${icon(res.dev)} \`npm run dev\` runs without errors`,
@@ -309,26 +512,55 @@ jobs:
               `- ${icon(res.secrets)} No API key / secret committed`,
               "",
               "> Architecture and documentation items require manual review.",
+              "",
+              `[Run details](${runUrl}) · commit ${pr.head.sha.slice(0, 7)}`,
             ].join("\n");
 
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-            });
-            const existing = comments.find(c => c.body && c.body.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body: commentBody,
+            // Always available, even with a read-only token.
+            await core.summary.addRaw(commentBody).write();
+
+            // Fork PRs get a read-only GITHUB_TOKEN: the job summary is all we can do.
+            const isFork = pr.head.repo?.full_name !== `${owner}/${repo}`;
+            if (isFork) {
+              core.notice("PR from a fork: results are in the job summary (no write access to the PR).");
+              return;
+            }
+
+            try {
+              // 1) Tick the deterministic checklist boxes in the PR body.
+              const items = [
+                { match: "Conventional Commits", pass: ok(res.title) },
+                { match: "npm run dev", pass: ok(res.dev) },
+                { match: "npm run build", pass: ok(res.build) },
+                { match: "secret committed", pass: ok(res.secrets) },
+              ];
+              const body = pr.body || "";
+              const boxRe = /- \[[ xX]\]/;
+              const newBody = body
+                .split("\n")
+                .map(line => {
+                  const item = items.find(i => line.includes(i.match) && boxRe.test(line));
+                  return item ? line.replace(boxRe, item.pass ? "- [x]" : "- [ ]") : line;
+                })
+                .join("\n");
+              if (newBody !== body) {
+                await github.rest.pulls.update({ owner, repo, pull_number: pr.number, body: newBody });
+              }
+
+              // 2) Post / refresh a single summary comment.
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: pr.number, per_page: 100,
               });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body: commentBody,
-              });
+              const existing = comments.find(c => c.body && c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body: commentBody });
+              } else {
+                await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body: commentBody });
+              }
+            } catch (e) {
+              if (e.status === 403) {
+                core.warning("No write access to the PR (read-only token): results are in the job summary.");
+              } else {
+                throw e;
+              }
             }
