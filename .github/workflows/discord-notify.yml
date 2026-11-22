@@ -35,12 +35,24 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PR }}
         with:
           script: |
-            const webhook = process.env.DISCORD_WEBHOOK;
-            if (!webhook) { core.setFailed("Secret DISCORD_WEBHOOK_PR manquant"); return; }
-
-            const C = { green: 0x2ecc71, red: 0xe74c3c, blue: 0x3498db, orange: 0xe67e22, grey: 0x95a5a6, purple: 0x9b59b6 };
             const p = context.payload;
             const pr = p.pull_request;
+
+            const webhook = process.env.DISCORD_WEBHOOK;
+            if (!webhook) {
+              // GitHub does not expose repo secrets to fork PRs, and Dependabot PRs only
+              // see Dependabot secrets: skip instead of failing in those cases.
+              const isFork = pr.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}`;
+              const isDependabot = context.actor === "dependabot[bot]";
+              if (isFork || isDependabot) {
+                core.notice(`Secret DISCORD_WEBHOOK_PR indisponible (${isFork ? "fork" : "Dependabot"}) : notification ignorée.`);
+                return;
+              }
+              core.setFailed("Secret DISCORD_WEBHOOK_PR manquant");
+              return;
+            }
+
+            const C = { green: 0x2ecc71, red: 0xe74c3c, blue: 0x3498db, orange: 0xe67e22, grey: 0x95a5a6, purple: 0x9b59b6 };
             const author = (u) => u && { name: u.login, url: u.html_url, icon_url: u.avatar_url };
             let title, color, who = pr.user;
 
