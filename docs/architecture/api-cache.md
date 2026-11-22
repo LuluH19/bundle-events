@@ -11,7 +11,7 @@ Un **cache partagé entre tous les utilisateurs**, côté serveur. Le premier ut
 `src/lib/api-cache.ts` → `cached({ provider, key, ttlMs, staleMs, fetcher, shouldStore? })` :
 
 1. **Mémoire** (par instance, 500 entrées max, la plus ancienne sort en premier).
-2. **Supabase `api_cache`** (partagé entre instances, survit aux démarrages à froid). Lecture limitée à 1,5 s.
+2. **Supabase `api_cache`** (partagé entre instances, survit aux démarrages à froid). Lecture et compteur limités à 1,5 s (`storeTimeoutMs`), écriture à 3 s.
 3. **Appel au fournisseur** (`fetcher`). Les requêtes identiques simultanées partagent un seul appel.
 
 Règles :
@@ -21,7 +21,9 @@ Règles :
 - **Repli périmé** : si le fournisseur échoue, dépasse son quota ou a son disjoncteur ouvert, la dernière entrée connue est servie même expirée, tant qu'elle a moins de `staleMs` de retard. Sinon `UpstreamUnavailableError`.
 - **Disjoncteur** par fournisseur : 3 échecs consécutifs → plus d'appel pendant 60 s.
 - **Quota journalier** optionnel par fournisseur (`API_DAILY_LIMIT_*`, voir [environnement](../getting-started/environment.md)). Chaque appel réel est compté dans `api_usage`, même sans limite.
-- Si Supabase est absent ou la table pas encore créée, le cache passe en **mémoire seule** (un avertissement `[api-cache]` dans les logs, nouvel essai toutes les 5 min).
+- Si Supabase est absent ou la table pas encore créée, le cache passe en **mémoire seule** (un avertissement `[api-cache] Supabase store unavailable` dans les logs, nouvel essai après 5 min, `storeRetryMs`).
+- Un **délai dépassé** (Supabase lent, démarrage à froid) ne coupe le store que 30 s (`storeTimeoutRetryMs`, #180) : avertissement `[api-cache] Supabase store timed out (read|write|usage, N ms)`. Avant, un seul timeout privait l'instance du cache partagé pendant 5 min, et les appels aux API externes se multipliaient.
+- Pour mesurer la latence réelle depuis Vercel : chaque appel au store plus lent que 800 ms (`storeSlowLogMs`) est journalisé `[api-cache] Supabase store slow (op, N ms)`, au plus une fois par minute et par instance. Si ces durées dépassent souvent 1,5 s, vérifier la région du projet Supabase par rapport à celle des fonctions Vercel, que le projet n'est pas en pause, et l'index sur `api_cache.key` (clé primaire), avant d'augmenter `storeTimeoutMs`.
 - `prime()` écrit une valeur calculée ailleurs, `peek()` lit sans jamais appeler le fournisseur (utilisés par le repli hôtels).
 
 Chaque route renvoie l'en-tête `X-Cache: hit | miss | stale`. Les dégradations (`error`, `quota`, `circuit_open`) sont envoyées à PostHog Logs (`logApiDegraded`, au plus une par fournisseur et par raison chaque minute).

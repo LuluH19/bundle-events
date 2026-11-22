@@ -51,6 +51,7 @@ const inflight = new Map<string, Promise<CachedResult<unknown>>>();
 const breakers = new Map<ApiProvider, { failures: number; openUntil: number }>();
 const lastDegradedLog = new Map<string, number>();
 let storeDisabledUntil = 0;
+let lastSlowStoreLog = 0;
 
 export function cached<T>(opts: CachedOptions<T>): Promise<CachedResult<T>> {
   const key = `${opts.provider}:${opts.key}`;
@@ -193,16 +194,46 @@ function store() {
   }
 }
 
-function disableStore(error: unknown) {
-  if (Date.now() >= storeDisabledUntil) {
-    console.warn("[api-cache] Supabase store unavailable, using memory only:", error);
+type StoreOp = "read" | "write" | "usage";
+
+/** supabase-js returns aborted requests as `{ message: "TimeoutError: ..." }`, other calls throw. */
+export function isStoreTimeout(error: unknown): boolean {
+  if (error instanceof Error || (typeof error === "object" && error !== null)) {
+    const { name, message } = error as { name?: unknown; message?: unknown };
+    if (name === "TimeoutError" || name === "AbortError") return true;
+    return typeof message === "string" && /TimeoutError|AbortError|aborted/i.test(message);
   }
-  storeDisabledUntil = Date.now() + apiCacheConfig.storeRetryMs;
+  return false;
+}
+
+function disableStore(op: StoreOp, error: unknown, startedAt: number) {
+  const timeout = isStoreTimeout(error);
+  const retryMs = timeout ? apiCacheConfig.storeTimeoutRetryMs : apiCacheConfig.storeRetryMs;
+  const now = Date.now();
+  if (now >= storeDisabledUntil) {
+    console.warn(
+      timeout
+        ? `[api-cache] Supabase store timed out (${op}, ${now - startedAt} ms), memory only for ${retryMs / 1000} s:`
+        : `[api-cache] Supabase store unavailable (${op}), memory only for ${retryMs / 1000} s:`,
+      error
+    );
+  }
+  // Never shorten a longer pause already set by a real error.
+  storeDisabledUntil = Math.max(storeDisabledUntil, now + retryMs);
+}
+
+function logSlowStore(op: StoreOp, startedAt: number) {
+  const now = Date.now();
+  const elapsed = now - startedAt;
+  if (elapsed < apiCacheConfig.storeSlowLogMs || now - lastSlowStoreLog < apiCacheConfig.degradedLogIntervalMs) return;
+  lastSlowStoreLog = now;
+  console.warn(`[api-cache] Supabase store slow (${op}, ${elapsed} ms)`);
 }
 
 async function readStore(key: string): Promise<Entry | null> {
   const db = store();
   if (!db) return null;
+  const startedAt = Date.now();
   try {
     const { data, error } = await db
       .from("api_cache")
@@ -211,13 +242,14 @@ async function readStore(key: string): Promise<Entry | null> {
       .abortSignal(AbortSignal.timeout(apiCacheConfig.storeTimeoutMs))
       .maybeSingle();
     if (error) {
-      disableStore(error);
+      disableStore("read", error, startedAt);
       return null;
     }
+    logSlowStore("read", startedAt);
     if (!data) return null;
     return { data: data.payload, expiresAt: Date.parse(data.expires_at) };
   } catch (err) {
-    disableStore(err);
+    disableStore("read", err, startedAt);
     return null;
   }
 }
@@ -225,34 +257,41 @@ async function readStore(key: string): Promise<Entry | null> {
 async function writeStore(key: string, provider: ApiProvider, entry: Entry) {
   const db = store();
   if (!db) return;
+  const startedAt = Date.now();
   try {
-    const { error } = await db.from("api_cache").upsert({
-      key,
-      provider,
-      payload: entry.data,
-      expires_at: new Date(entry.expiresAt).toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    if (error) disableStore(error);
+    const { error } = await db
+      .from("api_cache")
+      .upsert({
+        key,
+        provider,
+        payload: entry.data,
+        expires_at: new Date(entry.expiresAt).toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .abortSignal(AbortSignal.timeout(apiCacheConfig.storeTimeoutMs * 2));
+    if (error) disableStore("write", error, startedAt);
+    else logSlowStore("write", startedAt);
   } catch (err) {
-    disableStore(err);
+    disableStore("write", err, startedAt);
   }
 }
 
 async function countUsage(provider: ApiProvider): Promise<number | null> {
   const db = store();
   if (!db) return null;
+  const startedAt = Date.now();
   try {
     const { data, error } = await db
       .rpc("increment_api_usage", { p_provider: provider })
       .abortSignal(AbortSignal.timeout(apiCacheConfig.storeTimeoutMs));
     if (error) {
-      disableStore(error);
+      disableStore("usage", error, startedAt);
       return null;
     }
+    logSlowStore("usage", startedAt);
     return typeof data === "number" ? data : null;
   } catch (err) {
-    disableStore(err);
+    disableStore("usage", err, startedAt);
     return null;
   }
 }
@@ -264,4 +303,5 @@ export function resetApiCache() {
   breakers.clear();
   lastDegradedLog.clear();
   storeDisabledUntil = 0;
+  lastSlowStoreLog = 0;
 }
