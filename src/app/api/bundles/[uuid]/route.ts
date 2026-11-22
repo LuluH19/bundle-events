@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/src/lib/supabase/server";
-import type { BundleSnapshot } from "@/src/types";
+import { bundlesConfig } from "@/src/config";
+import { validateBundleData } from "@/src/utils/bundle-validation";
+import { readJsonBody } from "@/src/utils/request-body";
 import { isUuid } from "@/src/utils/uuid";
 
 type Ctx = { params: Promise<{ uuid: string }> };
@@ -35,20 +37,18 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     return Response.json({ error: "Bundle not found" }, { status: 404 });
   }
 
-  let body: { data?: Partial<BundleSnapshot> };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const read = await readJsonBody(request, bundlesConfig.maxBodyBytes);
+  if (!read.ok) return Response.json({ error: read.error }, { status: read.status });
 
-  const data = body?.data;
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
-    return Response.json({ error: "data is required" }, { status: 400 });
-  }
+  const valid = validateBundleData((read.body as { data?: unknown } | null)?.data);
+  if (!valid.ok) return Response.json({ error: valid.error }, { status: 400 });
 
   const supabase = getSupabaseAdmin();
-  const { data: updated, error } = await supabase.from("bundles").update({ data }).eq("uuid", uuid).select("uuid");
+  const { data: updated, error } = await supabase
+    .from("bundles")
+    .update({ data: valid.data })
+    .eq("uuid", uuid)
+    .select("uuid");
 
   if (error) {
     console.error("[bundles] update failed:", error.message);
