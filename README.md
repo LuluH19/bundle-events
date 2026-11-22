@@ -218,3 +218,24 @@ La documentation détaillée se trouve dans [`docs/`](./docs/README.md) :
 - [Design system](./docs/design/design-system.md)
 - [Fonctionnalités](./docs/features/)
 - [Conventions de contribution](./docs/contributing/conventions.md)
+
+## Skills pour l’équipe
+
+Ouvrez ce dépôt dans une nouvelle session. Dans Claude Code ou Cursor, tapez `/bundle-` pour choisir un skill. Dans Codex, tapez `$bundle-`. Vous pouvez aussi décrire directement le problème.
+
+| Besoin | Skill |
+| --- | --- |
+| Retrouver le fichier qui décide d’un comportement | `bundle-walkthrough` |
+| Évaluer les conséquences d’un changement de contrat | `bundle-change-impact` |
+| Transformer un bug en test reproductible | `bundle-regression-test` |
+| Diagnostiquer un résultat absent chez un fournisseur | `bundle-provider-triage` |
+| Expliquer un écart dans le prix du voyage | `bundle-fare-check` |
+| Reproduire une sélection perdue après partage ou rechargement | `bundle-replay` |
+| Préparer ou ouvrir une pull request | `bundle-file-pr` |
+| Relire une branche et identifier les régressions | `bundle-review` |
+| Réparer un check en échec sur une PR | `bundle-fix-ci` |
+| Améliorer la couverture ou la fiabilité de GitHub Actions | `bundle-improve-ci` |
+
+Exemple : « Utilise bundle-change-impact pour vérifier si les anciens liens partagés fonctionneront après ce changement. »
+
+Les instructions communes sont dans `.claude/skills/`. Codex y accède via les liens relatifs de `.agents/skills/`. Conservez les liens symboliques lors du clonage. Les workflows de découverte du code, d’analyse d’impact, de test de régression et de diagnostic CI s’inspirent de [pstack](https://github.com/michael-denyer/pstack-claude).
