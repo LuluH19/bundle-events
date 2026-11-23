@@ -52,12 +52,12 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 | Mode | Source live | Repli |
 |---|---|---|
 | avion | Travelpayouts (`/api/flights/search`) | estimation km |
-| train | Trainline (`/api/prices/train`) | tarifs SNCF open data (min/max) → estimation |
+| train | tarifs SNCF open data min/max (`/api/prices/train`) ; Trainline seulement si `TRAINLINE_LIVE_PRICES=true` | estimation km (liaisons TER absentes des grilles) |
 | bus | FlixBus (`/api/prices/bus`) | estimation (BlaBlaCar Bus non coté) |
 | voiture | `/api/prices/fuel` × conso + péages | `pricesConfig.fallbackFuelPrice` |
 | marche | 0 | — |
 
-`bookableSpans` aligne le prix sur chaque bouton « Réserver sur … » : **le segment le plus long** par mode (ex. Rennes → Paris Montparnasse, pas toute la chaîne Mont-Saint-Michel → salle). Trainline live si l'API répond, sinon tarifs SNCF open data (min/max), sinon estimation. `combineQuotes` additionne ces billets + accès voiture. `modeQuotes` alimente le prix affiché sur chaque bouton.
+`bookableSpans` aligne le prix sur chaque bouton « Réserver sur … » : **le segment le plus long** par mode (ex. Rennes → Paris Montparnasse, pas toute la chaîne Mont-Saint-Michel → salle). Train : tarifs SNCF open data (min/max), sinon estimation (Trainline live en tête uniquement si `TRAINLINE_LIVE_PRICES=true`, l'API étant bloquée par DataDome depuis les serveurs). `combineQuotes` additionne ces billets + accès voiture. `modeQuotes` alimente le prix affiché sur chaque bouton.
 
 ## Empreinte carbone (état actuel)
 
@@ -73,6 +73,15 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 `countTransports` compte les véhicules réels (`train`, `bus`, `plane` ; la marche jamais ; la voiture seulement si c'est tout le trajet) → `RouteResult.transports` / `transportsByMode`. Correspondances = `transports − 1`.
 
 Affichage (`RoutesView`) : un seul mode → « 3 Trains » ; modes mélangés → « N transports » ; + « N correspondance(s) » si > 1 transport. L'API `/api/trains/route-geometry` ignore aussi les transferts à pied dans une même gare.
+
+## Horaires précis et correspondances (`timed-segments.ts`)
+
+Pour permettre au voyageur de savoir quand partir et de ne pas attendre inutilement en gare :
+- `resolveTimedSegments` et `getLegTiming` (`src/utils/algorithms/timed-segments.ts`) attribuent à chaque segment son **heure exacte de départ et d'arrivée** (`departureTime`, `arrivalTime` ISO) et calculent les **temps d'attente en correspondance** (`waitTimeMinutes`).
+- **Train SNCF** : aligne les segments avec les sections réelles de `TrainJourney.trains` (horaires et numéros de train SNCF), calcule le temps d'attente entre l'arrivée du premier train et le départ du suivant (`waitTimeAfterMinutes`). L'accès amont est calé à rebours pour arriver à temps en gare.
+- **Avion** : cale le vol sur `FlightInfo.departureAt`, intègre la marge aéroportuaire (90 min) et la récupération des bagages (20 min).
+- **Voiture, bus, repli** : horodatage séquentiel à partir de l'heure cible (départ calculé depuis `arriveBy` pour l'aller, ou à partir de `leaveAfter` pour le retour), avec temps de battement en correspondance inter-modes.
+- La date et l'heure de départ sont affichées sur chaque bloc aller et retour (`LegBlock`, `LegFacts`), sur chaque segment de transport (`SegmentList`), dans le détail des horaires SNCF (`TrainTimes`) et dans la feuille de route (`RoadmapLeg`).
 
 ## Datasets (`src/utils/constants/`)
 

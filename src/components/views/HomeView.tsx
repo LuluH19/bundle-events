@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
+import posthog from "posthog-js";
 import type { HomeViewProps, Venue } from "@/src/types";
 import { searchEventIdeas } from "@/src/services/events";
 import { EVENT_CATEGORIES } from "@/src/utils/constants/event-categories";
@@ -154,7 +155,16 @@ function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
       <h2 className="font-display text-[26px] font-extrabold text-ink md:text-[32px]">Des idées de sortie</h2>
       <div role="group" aria-label="Type d'événement" className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
         {[ALL_CATEGORIES, ...EVENT_CATEGORIES].map((c) => (
-          <Chip key={c.id || "all"} active={c.id === category} label={c.label} onClick={() => setCategory(c.id === category ? "" : c.id)} />
+          <Chip
+            key={c.id || "all"}
+            active={c.id === category}
+            label={c.label}
+            onClick={() => {
+              const next = c.id === category ? "" : c.id;
+              posthog.capture("event_ideas_filtered", { city: city ?? ALL_CITIES, category: next || ALL_CATEGORIES.label });
+              setCategory(next);
+            }}
+          />
         ))}
       </div>
       <div role="group" aria-label="Ville" className="no-scrollbar mt-2 flex gap-2 overflow-x-auto">
@@ -163,7 +173,11 @@ function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
             key={c}
             active={c === (city ?? ALL_CITIES)}
             label={c}
-            onClick={() => setCity(c === ALL_CITIES || c === city ? null : c)}
+            onClick={() => {
+              const next = c === ALL_CITIES || c === city ? null : c;
+              posthog.capture("event_ideas_filtered", { city: next ?? ALL_CITIES, category: category || ALL_CATEGORIES.label });
+              setCity(next);
+            }}
           />
         ))}
       </div>
@@ -276,7 +290,7 @@ export function HomeView(props: HomeViewProps) {
               }))}
               onPick={(k) => {
                 const v = venueResults.find((x) => x.id === k);
-                if (v) onPickVenue(v);
+                if (v) onPickVenue(v, "search");
               }}
               onClear={onClearVenue}
             />
@@ -321,7 +335,7 @@ export function HomeView(props: HomeViewProps) {
         </div>
       </section>
 
-      <CityIdeas onPick={onPickVenue} />
+      <CityIdeas onPick={(v) => onPickVenue(v, "home_ideas")} />
 
       <footer className="border-t border-line py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-[13px] text-slate-500 sm:flex-row md:px-8">
