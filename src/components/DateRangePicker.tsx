@@ -52,32 +52,30 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
   const today = localIsoDate(now);
   const nowTime = localHourMinute(now);
 
+  const canSwitch = !!onRoundTripChange;
+  const picksReturn = canSwitch || initialRoundTrip;
   const [from, setFrom] = useState(dateOnly(value.checkin));
-  const [to, setTo] = useState(dateOnly(value.checkout));
-  const [roundTrip, setRoundTrip] = useState(initialRoundTrip);
-  const [pickingReturn, setPickingReturn] = useState(initialRoundTrip && !!value.checkin && !value.checkout);
+  const [to, setTo] = useState(picksReturn ? dateOnly(value.checkout) : "");
+  const roundTrip = canSwitch ? !!to : initialRoundTrip;
+  const pickingReturn = picksReturn && !!from && !to;
   const [hovered, setHovered] = useState("");
   const [arriveBy, setArriveBy] = useState(value.arriveBy);
   const [leaveAfter, setLeaveAfter] = useState(value.leaveAfter);
   const [month, setMonth] = useState(monthKey(from || today));
 
-  const sameDay = roundTrip && !!from && from === to;
+  const sameDay = !!from && from === to;
   const arrivePast = !!from && !!arriveBy && isPastTime(from, arriveBy, now);
   const leaveMin = sameDay && arriveBy ? arriveBy : "";
   const leaveInvalid = !!leaveAfter && !!leaveMin && leaveAfter <= leaveMin;
   const fromToday = from === today;
 
   const pick = (iso: string) => {
-    if (!roundTrip) {
-      setFrom(iso);
-      setTo("");
-    } else if (pickingReturn && from && iso >= from) {
+    if (pickingReturn && iso >= from) {
       setTo(iso);
-      setPickingReturn(false);
     } else {
       setFrom(iso);
       setTo("");
-      setPickingReturn(true);
+      setLeaveAfter("");
     }
     if (iso === today && arriveBy && arriveBy <= nowTime) setArriveBy("");
   };
@@ -89,7 +87,7 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
   const cells: (string | null)[] = [...Array(offset).fill(null)];
   for (let d = 1; d <= daysInMonth; d++) cells.push(localIsoDate(new Date(y, m - 1, d)));
 
-  const missingReturn = roundTrip && (!to || pickingReturn);
+  const missingReturn = !canSwitch && initialRoundTrip && !to;
   const canApply = !!from && !missingReturn && !arrivePast && !leaveInvalid;
 
   const apply = () => {
@@ -104,14 +102,7 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
     onClose();
   };
 
-  const switchRoundTrip = (v: boolean) => {
-    setRoundTrip(v);
-    setTo("");
-    setLeaveAfter("");
-    setPickingReturn(v && !!from);
-  };
-
-  const previewEnd = roundTrip && pickingReturn && from && hovered && hovered >= from ? hovered : "";
+  const previewEnd = pickingReturn && hovered && hovered >= from ? hovered : "";
   const rangeEnd = to || previewEnd;
 
   const arriveHelp = !arriveBy
@@ -136,7 +127,7 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
   return (
     <Sheet
       open
-      title={roundTrip ? "Tes dates" : "Ta date"}
+      title={picksReturn ? "Tes dates" : "Ta date"}
       onClose={onClose}
       footer={
         <button
@@ -145,56 +136,41 @@ function DateRangePickerPanel({ onClose, roundTrip: initialRoundTrip, onRoundTri
           disabled={!canApply}
           className="flex h-12 w-full items-center justify-center rounded-xl bg-billet text-[16px] font-bold text-white transition-colors hover:bg-billet-600 disabled:opacity-45"
         >
-          {missingReturn && from ? "Choisis le jour du retour" : "Valider les dates"}
+          {!from
+            ? picksReturn
+              ? "Choisis tes dates"
+              : "Choisis ta date"
+            : missingReturn
+              ? "Choisis le jour du retour"
+              : canSwitch && !to
+                ? "Valider · aller simple"
+                : "Valider les dates"}
         </button>
       }
     >
-      {onRoundTripChange && (
-        <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-page p-1" role="radiogroup" aria-label="Type de trajet">
-          {[
-            { value: true, label: "Aller-retour" },
-            { value: false, label: "Aller simple" },
-          ].map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              role="radio"
-              aria-checked={roundTrip === opt.value}
-              onClick={() => switchRoundTrip(opt.value)}
-              className={`rounded-lg py-2 text-[14px] font-semibold transition-colors ${
-                roundTrip === opt.value ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-slate-500 hover:text-ink"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className={`grid gap-2 ${roundTrip ? "grid-cols-2" : "grid-cols-1"}`}>
-        <button
-          type="button"
-          onClick={() => setPickingReturn(false)}
-          className={`rounded-xl bg-white px-3 py-2 text-left ring-inset ${roundTrip && !pickingReturn ? "ring-2 ring-billet" : "ring-1 ring-line"}`}
-        >
-          <span className="block text-[12px] font-semibold text-slate-500">Aller</span>
-          <span className={`block text-[15px] font-bold ${from ? "text-ink" : "text-slate-400"}`}>{from ? formatDay(from) : "Choisir"}</span>
-        </button>
-        {roundTrip && (
-          <button
-            type="button"
-            onClick={() => from && setPickingReturn(true)}
-            disabled={!from}
-            className={`rounded-xl bg-white px-3 py-2 text-left ring-inset ${pickingReturn && from ? "ring-2 ring-billet" : "ring-1 ring-line"}`}
-          >
-            <span className="block text-[12px] font-semibold text-slate-500">Retour</span>
-            <span className={`block text-[15px] font-bold ${rangeEnd ? "text-ink" : "text-slate-400"}`}>
-              {rangeEnd ? formatDay(rangeEnd) : "Choisir"}
-            </span>
-          </button>
+      <p className="text-[14px] text-slate-600" aria-live="polite">
+        {!from ? (
+          picksReturn ? (
+            <>Touche le jour de l&apos;aller, puis celui du retour.</>
+          ) : (
+            <>Touche le jour de l&apos;aller.</>
+          )
+        ) : pickingReturn ? (
+          <>
+            Aller <strong className="text-ink">{formatDay(from)}</strong> · touche le jour du retour
+            {canSwitch ? ", ou valide pour un aller simple" : ""}
+          </>
+        ) : to ? (
+          <>
+            Aller <strong className="text-ink">{formatDay(from)}</strong> · retour <strong className="text-ink">{formatDay(to)}</strong>
+            {sameDay ? " (dans la journée)" : ""} · touche une autre date pour recommencer
+          </>
+        ) : (
+          <>
+            Aller <strong className="text-ink">{formatDay(from)}</strong>
+          </>
         )}
-      </div>
-
+      </p>
 
       <div className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-line">
         <div className="mb-2 flex items-center justify-between">
