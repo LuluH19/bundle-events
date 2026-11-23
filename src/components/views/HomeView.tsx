@@ -27,12 +27,13 @@ interface SearchFieldProps {
   suggestions: Suggestion[];
   onPick: (key: string) => void;
   onClear: () => void;
+  loading?: boolean;
 }
 
-function SearchField({ id, label, icon, placeholder, selected, query, onQuery, suggestions, onPick, onClear, divided }: SearchFieldProps) {
+function SearchField({ id, label, icon, placeholder, selected, query, onQuery, suggestions, onPick, onClear, divided, loading = false }: SearchFieldProps) {
   const [focus, setFocus] = useState(false);
   const [active, setActive] = useState(0);
-  const open = focus && !selected && suggestions.length > 0;
+  const open = focus && !selected && (suggestions.length > 0 || loading);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open) return;
@@ -87,7 +88,18 @@ function SearchField({ id, label, icon, placeholder, selected, query, onQuery, s
         </div>
       </div>
       {open && (
-        <ul id={`${id}-list`} role="listbox" className="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line">
+        <ul
+          id={`${id}-list`}
+          role="listbox"
+          aria-busy={loading}
+          className="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-auto rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-line"
+        >
+          {loading && (
+            <li role="presentation" className="flex items-center gap-2 px-3 py-2 text-[13px] text-slate-500">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-line border-t-billet" aria-hidden />
+              Recherche…
+            </li>
+          )}
           {suggestions.map((s, i) => (
             <li key={s.key} role="option" aria-selected={i === active}>
               <button
@@ -229,6 +241,7 @@ export function HomeView(props: HomeViewProps) {
     venueSearch,
     setVenueSearch,
     venueResults,
+    venueSearching,
     onPickVenue,
     onClearVenue,
     dateLabel,
@@ -279,20 +292,21 @@ export function HomeView(props: HomeViewProps) {
               id="venue"
               label="Pour quel événement ?"
               icon={<IconTicket size={18} />}
-              placeholder="Salle, stade, festival…"
+              placeholder="Salle, festival, adresse…"
               selected={venue?.name ?? null}
               query={venueSearch}
               onQuery={setVenueSearch}
               suggestions={venueResults.map((v) => ({
                 key: v.id,
                 title: v.name,
-                subtitle: [v.city, v.dateLabel].filter(Boolean).join(" · "),
+                subtitle: [v.city, v.dateLabel].filter(Boolean).join(" · ") || v.address,
               }))}
               onPick={(k) => {
                 const v = venueResults.find((x) => x.id === k);
                 if (v) onPickVenue(v, "search");
               }}
               onClear={onClearVenue}
+              loading={venueSearching}
             />
             <button
               type="button"

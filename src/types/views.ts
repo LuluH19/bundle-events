@@ -72,6 +72,7 @@ export interface HomeViewProps {
   venueSearch: string;
   setVenueSearch: (v: string) => void;
   venueResults: Venue[];
+  venueSearching: boolean;
   onPickVenue: (v: Venue, source: VenuePickSource) => void;
   onClearVenue: () => void;
   dateLabel: string;

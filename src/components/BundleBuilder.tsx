@@ -26,7 +26,8 @@ import { pickHotel, pickOption } from "@/src/utils/algorithms/recommend";
 import { restoredHotelOptIn, stayNights, tripTotal } from "@/src/utils/trip";
 import { venueProvider } from "@/src/utils/analytics";
 import { searchLocation } from "@/src/services/geocoding";
-import { searchEvents } from "@/src/services/events";
+import { cachedAddressSearch, cachedEventSearch, searchAddresses, searchEvents } from "@/src/services/events";
+import { mergeVenueSuggestions } from "@/src/utils/venue-suggestions";
 import { computeOptions, fetchFlightInfo, fetchTrainInfo } from "@/src/services/travel";
 import { quoteOptions } from "@/src/services/prices";
 import { createBundle, updateBundle, fetchBundle } from "@/src/services/bundles";
@@ -48,6 +49,9 @@ interface BundleBuilderProps {
 
 const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
+const VENUE_SEARCH_MIN_CHARS = 2;
+const VENUE_SEARCH_DEBOUNCE_MS = 150;
+
 export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const router = useRouter();
   const [cached] = useState(() => readTripCache(uuid));
@@ -68,7 +72,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const [depSearch, setDepSearch] = useState("");
   const [depResults, setDepResults] = useState<DepartureSuggestion[]>([]);
   const [venueSearch, setVenueSearch] = useState("");
-  const [venueResults, setVenueResults] = useState<Venue[]>([]);
+  const [venueEvents, setVenueEvents] = useState<Venue[]>([]);
+  const [venueAddresses, setVenueAddresses] = useState<Venue[]>([]);
+  const [venueSearching, setVenueSearching] = useState(false);
 
   const [outboundOptions, setOutboundOptions] = useState<RouteOption[]>(cached?.outboundOptions ?? []);
   const [returnOptions, setReturnOptions] = useState<RouteOption[]>(cached?.returnOptions ?? []);
@@ -225,18 +231,33 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   }, [depSearch, departure]);
 
   useEffect(() => {
-    if (!venueSearch.trim()) return;
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      try {
-        const r = await searchEvents(venueSearch);
-        if (!cancelled) setVenueResults(r);
-      } catch {
-        if (!cancelled) setVenueResults([]);
+    const q = venueSearch.trim();
+    if (q.length < VENUE_SEARCH_MIN_CHARS) return;
+    const needEvents = !cachedEventSearch(q);
+    const needAddresses = !cachedAddressSearch(q);
+    if (!needEvents && !needAddresses) return;
+    const controller = new AbortController();
+    const live = () => !controller.signal.aborted;
+    const t = setTimeout(() => {
+      if (needAddresses) {
+        searchAddresses(q)
+          .catch(() => [] as Venue[])
+          .then((r) => {
+            if (live()) setVenueAddresses(r);
+          });
       }
-    }, 400);
+      if (needEvents) {
+        searchEvents(q, controller.signal)
+          .catch(() => [] as Venue[])
+          .then((r) => {
+            if (!live()) return;
+            setVenueEvents(r);
+            setVenueSearching(false);
+          });
+      }
+    }, VENUE_SEARCH_DEBOUNCE_MS);
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(t);
     };
   }, [venueSearch]);
@@ -450,7 +471,18 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   const handleVenueSearchChange = (val: string) => {
     setVenueSearch(val);
-    if (!val.trim()) setVenueResults([]);
+    const q = val.trim();
+    if (q.length < VENUE_SEARCH_MIN_CHARS) {
+      setVenueEvents([]);
+      setVenueAddresses([]);
+      setVenueSearching(false);
+      return;
+    }
+    const events = cachedEventSearch(q);
+    const addresses = cachedAddressSearch(q);
+    if (events) setVenueEvents(events);
+    if (addresses) setVenueAddresses(addresses);
+    setVenueSearching(!events);
   };
 
   const handlePickVenue = (v: Venue, source: VenuePickSource) => {
@@ -459,7 +491,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     posthog.capture("venue_selected", { source, venue_provider: provider, city: v.city, has_date: Boolean(v.dateLabel) });
     setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
     setVenueSearch("");
-    setVenueResults([]);
+    setVenueSearching(false);
+    setVenueEvents([]);
+    setVenueAddresses([]);
     setSelectedHotel(null);
     resetRoutes();
     setHotelResults([]);
@@ -473,7 +507,9 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     venueMetaRef.current = null;
     setVenue(null);
     setVenueSearch("");
-    setVenueResults([]);
+    setVenueSearching(false);
+    setVenueEvents([]);
+    setVenueAddresses([]);
     setSelectedHotel(null);
     resetRoutes();
     setHotelResults([]);
@@ -751,7 +787,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
             onClearDeparture={handleClearDeparture}
             venueSearch={venueSearch}
             setVenueSearch={handleVenueSearchChange}
-            venueResults={venueResults}
+            venueResults={mergeVenueSuggestions(venueEvents, venueAddresses)}
+            venueSearching={venueSearching}
             onPickVenue={handlePickVenue}
             onClearVenue={handleClearVenue}
             dateLabel={dateLabel}
