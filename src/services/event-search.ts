@@ -43,7 +43,7 @@ const normalise = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 /** Shared cache per provider (issue #153): a failure still throws, so the chain moves on. */
 async function searchSource({ name, adapter, policy, enabled }: Source, criteria: EventSearchCriteria): Promise<Venue[]> {
   if (enabled && !enabled()) return [];
-  const key = `events:${normalise(criteria.query)}:${normalise(criteria.city ?? "")}:${criteria.limit ?? ""}`;
+  const key = `events:${normalise(criteria.query)}:${normalise(criteria.city ?? "")}:${criteria.limit ?? ""}:${(criteria.keywords ?? []).join("+")}`;
   // These adapters throw on failure, so an empty list is a real answer: cache it too,
   // otherwise every query without results (e.g. a venue name used as a city) calls again.
   const { data } = await cached({
@@ -78,11 +78,24 @@ export async function searchEventsAndVenues(query: string): Promise<EventSearchR
   };
 }
 
-async function eventsInCity(city: string, limit: number): Promise<Venue[]> {
+export type EventCategory = (typeof eventsConfig.ideaCategories)[number];
+
+export function findEventCategory(id: string | null | undefined): EventCategory | undefined {
+  return eventsConfig.ideaCategories.find((c) => c.id === id);
+}
+
+async function eventsInCity(city: string, limit: number, category?: EventCategory): Promise<Venue[]> {
+  const criteria: EventSearchCriteria = {
+    query: city,
+    city,
+    limit,
+    keywords: category?.keywords,
+    ticketmasterClassification: category && "ticketmaster" in category ? category.ticketmaster : undefined,
+  };
   const { value } = await firstNonEmpty(
     eventChain.map((source) => ({
       name: source.name,
-      run: async () => (await searchSource(source, { query: city, city, limit })).filter((v) => isInCity(v, city)),
+      run: async () => (await searchSource(source, criteria)).filter((v) => isInCity(v, city)),
     }))
   );
   return value;
@@ -98,9 +111,9 @@ export function interleave<T>(lists: T[][], max: number): T[] {
   return out;
 }
 
-export async function searchEventIdeas(cities: string[]): Promise<Venue[]> {
+export async function searchEventIdeas(cities: string[], category?: EventCategory): Promise<Venue[]> {
   const max = eventsConfig.ideasLimit;
   const perCity = cities.length > 1 ? Math.max(2, Math.ceil(max / cities.length)) : max;
-  const lists = await Promise.all(cities.map((c) => eventsInCity(c, perCity).catch(() => [])));
+  const lists = await Promise.all(cities.map((c) => eventsInCity(c, perCity, category).catch(() => [])));
   return withTitle(dedupeVenues(interleave(lists, max)));
 }

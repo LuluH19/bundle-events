@@ -32,13 +32,13 @@ export class OpenDataEventAdapter implements EventProvider {
     private readonly idPrefix = ""
   ) {}
 
-  async searchEvents({ query, city, limit = eventsConfig.defaultLimit }: EventSearchCriteria): Promise<Venue[]> {
+  async searchEvents({ query, city, limit = eventsConfig.defaultLimit, keywords }: EventSearchCriteria): Promise<Venue[]> {
     const q = query.trim().replace(/["\\]/g, "");
     if (!q) return [];
     const c = city?.trim().replace(/["\\]/g, "");
 
     const recent = `firstdate_begin >= now(days=-${eventsConfig.maxEventSpanDays})`;
-    const ideas = eventsConfig.ideaKeywords.map((k) => `search(keywords_fr, "${k}") OR search(title_fr, "${k}")`).join(" OR ");
+    const ideas = (keywords?.length ? keywords : eventsConfig.ideaKeywords).map((k) => `search(keywords_fr, "${k}") OR search(title_fr, "${k}")`).join(" OR ");
     const filters = c
       ? [`search(location_city, "${c}")`, `(${ideas})`, "location_coordinates IS NOT NULL", "firstdate_begin >= now()", this.source.extraFilter]
       : [

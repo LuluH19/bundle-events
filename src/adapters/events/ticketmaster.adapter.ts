@@ -56,11 +56,15 @@ export class TicketmasterEventAdapter implements EventProvider {
     return data._embedded?.events ?? [];
   }
 
-  async searchEvents({ query, city, limit = eventsConfig.defaultLimit }: EventSearchCriteria): Promise<Venue[]> {
+  async searchEvents({ query, city, limit = eventsConfig.defaultLimit, ticketmasterClassification }: EventSearchCriteria): Promise<Venue[]> {
     const q = query.trim();
     if (!q || !eventsConfig.ticketmaster.apiKey) return [];
     const size = String(limit);
-    if (city) return mapTicketmasterEvents(await this.fetchEvents({ city, size }));
+    if (city) {
+      const params: Record<string, string> = { city, size };
+      if (ticketmasterClassification) params.classificationName = ticketmasterClassification;
+      return mapTicketmasterEvents(await this.fetchEvents(params));
+    }
     const byKeyword = await this.fetchEvents({ keyword: q, size });
     const events = byKeyword.length > 0 ? byKeyword : await this.fetchEvents({ city: q, size });
     return mapTicketmasterEvents(events);

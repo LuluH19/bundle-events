@@ -5,6 +5,7 @@ import Image from "next/image";
 import posthog from "posthog-js";
 import type { HomeViewProps, Venue } from "@/src/types";
 import { searchEventIdeas } from "@/src/services/events";
+import { EVENT_CATEGORIES } from "@/src/utils/constants/event-categories";
 import { socialConfig } from "@/src/config";
 import { IconCalendar, IconClose, IconInstagram, IconPin, IconSearch, IconShare, IconSliders, IconTicket } from "@/src/components/ui";
 
@@ -110,18 +111,36 @@ function SearchField({ id, label, icon, placeholder, selected, query, onQuery, s
 
 const CITIES = ["Paris", "Lyon", "Marseille", "Bordeaux", "Lille", "Toulouse", "Nantes"];
 const ALL_CITIES = "Toutes";
+const ALL_CATEGORIES = { id: "", label: "Tout" };
+
+function Chip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold ring-1 ring-inset ${
+        active ? "bg-nuit text-white ring-nuit" : "bg-white text-ink ring-line hover:bg-mist"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
 
 function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
   const [city, setCity] = useState<string | null>(null);
+  const [category, setCategory] = useState("");
   const [ideas, setIdeas] = useState<Record<string, Venue[]>>({});
-  const key = city ?? ALL_CITIES;
+  const key = `${category}|${city ?? ALL_CITIES}`;
   const results = ideas[key];
   const loading = results === undefined;
+  const categoryLabel = EVENT_CATEGORIES.find((c) => c.id === category)?.label.toLowerCase();
 
   useEffect(() => {
     if (ideas[key] !== undefined) return;
     let cancelled = false;
-    searchEventIdeas(city ? [city] : CITIES)
+    searchEventIdeas(city ? [city] : CITIES, category || undefined)
       .catch(() => [] as Venue[])
       .then((r) => {
         if (!cancelled) setIdeas((prev) => ({ ...prev, [key]: r }));
@@ -129,40 +148,44 @@ function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
     return () => {
       cancelled = true;
     };
-  }, [city, key, ideas]);
-
-  const chips = [ALL_CITIES, ...CITIES];
+  }, [city, category, key, ideas]);
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-8">
       <h2 className="font-display text-[26px] font-extrabold text-ink md:text-[32px]">Des idées de sortie</h2>
-      <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
-        {chips.map((c) => {
-          const active = c === key;
-          return (
-            <button
-              key={c}
-              type="button"
-              onClick={() => {
-                const next = c === ALL_CITIES || c === city ? null : c;
-                posthog.capture("event_ideas_filtered", { city: next ?? ALL_CITIES });
-                setCity(next);
-              }}
-              aria-pressed={active}
-              className={`shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold ring-1 ring-inset ${
-                active ? "bg-nuit text-white ring-nuit" : "bg-white text-ink ring-line hover:bg-mist"
-              }`}
-            >
-              {c}
-            </button>
-          );
-        })}
+      <div role="group" aria-label="Type d'événement" className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
+        {[ALL_CATEGORIES, ...EVENT_CATEGORIES].map((c) => (
+          <Chip
+            key={c.id || "all"}
+            active={c.id === category}
+            label={c.label}
+            onClick={() => {
+              const next = c.id === category ? "" : c.id;
+              posthog.capture("event_ideas_filtered", { city: city ?? ALL_CITIES, category: next || ALL_CATEGORIES.label });
+              setCategory(next);
+            }}
+          />
+        ))}
+      </div>
+      <div role="group" aria-label="Ville" className="no-scrollbar mt-2 flex gap-2 overflow-x-auto">
+        {[ALL_CITIES, ...CITIES].map((c) => (
+          <Chip
+            key={c}
+            active={c === (city ?? ALL_CITIES)}
+            label={c}
+            onClick={() => {
+              const next = c === ALL_CITIES || c === city ? null : c;
+              posthog.capture("event_ideas_filtered", { city: next ?? ALL_CITIES, category: category || ALL_CATEGORIES.label });
+              setCity(next);
+            }}
+          />
+        ))}
       </div>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {loading && [0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-mist" />)}
         {!loading && results.length === 0 && (
           <p className="text-[14px] text-slate-500">
-            {city ? `Rien trouvé à ${city} pour l'instant.` : "Rien trouvé pour l'instant."} Tape directement le nom de la salle plus haut.
+            {`Rien trouvé${categoryLabel ? ` en ${categoryLabel}` : ""}${city ? ` à ${city}` : ""} pour l'instant.`} Tape directement le nom de la salle plus haut.
           </p>
         )}
         {!loading &&

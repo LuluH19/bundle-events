@@ -4,6 +4,8 @@ export interface EventSearchCriteria {
   query: string;
   city?: string;
   limit?: number;
+  keywords?: readonly string[];
+  ticketmasterClassification?: string;
 }
 
 export interface EventProvider {

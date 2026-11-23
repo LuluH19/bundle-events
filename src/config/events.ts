@@ -1,3 +1,5 @@
+import { EVENT_CATEGORIES } from "@/src/utils/constants/event-categories";
+
 export const eventsConfig = {
   ticketmaster: {
     apiKey: process.env.TICKETMASTER_API_KEY || "",
@@ -16,6 +18,7 @@ export const eventsConfig = {
   timeoutMs: 6000,
   defaultLimit: 6,
   ideaKeywords: ["concert", "festival", "spectacle", "match"],
+  ideaCategories: EVENT_CATEGORIES,
   ideasLimit: 8,
   maxEventSpanDays: 31,
 } as const;
