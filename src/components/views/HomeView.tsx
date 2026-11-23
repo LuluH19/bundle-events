@@ -292,14 +292,14 @@ export function HomeView(props: HomeViewProps) {
               id="venue"
               label="Pour quel événement ?"
               icon={<IconTicket size={18} />}
-              placeholder="Salle, stade, festival…"
+              placeholder="Salle, festival, adresse…"
               selected={venue?.name ?? null}
               query={venueSearch}
               onQuery={setVenueSearch}
               suggestions={venueResults.map((v) => ({
                 key: v.id,
                 title: v.name,
-                subtitle: [v.city, v.dateLabel].filter(Boolean).join(" · "),
+                subtitle: [v.city, v.dateLabel].filter(Boolean).join(" · ") || v.address,
               }))}
               onPick={(k) => {
                 const v = venueResults.find((x) => x.id === k);

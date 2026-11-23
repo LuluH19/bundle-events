@@ -1,9 +1,10 @@
-export type VenueProvider = "ticketmaster" | "mapbox" | "osm" | "opendata";
+export type VenueProvider = "ticketmaster" | "mapbox" | "osm" | "address" | "opendata";
 
 const PREFIXES: [string, VenueProvider][] = [
   ["tm-", "ticketmaster"],
   ["poi-", "mapbox"],
   ["osm-", "osm"],
+  ["addr-", "address"],
 ];
 
 /** Infers the event provider from the id prefix set by `src/adapters/events`. */
