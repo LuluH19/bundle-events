@@ -84,8 +84,20 @@ describe("pickHotel", () => {
     expect(pickHotel(hotels, VENUE, "fast")?.id).toBe("walk-good");
   });
 
-  it("prefers the cheapest walkable hotel", () => {
+  it("prefers the cheapest walkable hotel when nothing cheaper is nearby", () => {
     expect(pickHotel(hotels, VENUE, "cheap")?.id).toBe("walk-cheap");
+  });
+
+  it("picks a cheaper hotel beyond walking distance for the cheap preference (issue #178)", () => {
+    const withRide = [...hotels, hotel("ride-cheaper", 3.5, 55, 7)];
+    expect(pickHotel(withRide, VENUE, "cheap")?.id).toBe("ride-cheaper");
+    // The other preferences still stay within walking distance.
+    expect(pickHotel(withRide, VENUE, "fast")?.id).toBe("walk-good");
+    expect(pickHotel(withRide, VENUE, "green")?.id).toBe("walk-closest");
+  });
+
+  it("keeps the cheap pick within 5 km when such hotels exist", () => {
+    expect(pickHotel([hotel("near", 4, 90), hotel("far", 8, 40)], VENUE, "cheap")?.id).toBe("near");
   });
 
   it("prefers the closest hotel for the green preference", () => {

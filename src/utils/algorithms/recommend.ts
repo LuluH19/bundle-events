@@ -57,11 +57,15 @@ export function pickHotel(
   const dist = (h: HotelMapItem) => (venue ? haversineDistance(h.coords, venue) : 0);
   const walkable = pool.filter((h) => dist(h) <= WALKABLE_HOTEL_KM);
   const nearby = pool.filter((h) => dist(h) <= NEARBY_HOTEL_KM);
-  const candidates = walkable.length ? walkable : nearby.length ? nearby : pool;
+  const reachable = nearby.length ? nearby : pool;
 
+  // "Cheap" looks past walking distance (issue #178): limited to walkable hotels, it often
+  // kept the same pick while cheaper rooms were a short ride away.
   if (preference === "cheap") {
-    return minBy(candidates, (h) => (h.pricePerNight ?? Infinity) * 1000 + dist(h));
+    return minBy(reachable, (h) => (h.pricePerNight ?? Infinity) * 1000 + dist(h));
   }
+
+  const candidates = walkable.length ? walkable : reachable;
   if (preference === "green") {
     return minBy(candidates, (h) => dist(h) * 1000 - hotelScore(h));
   }
