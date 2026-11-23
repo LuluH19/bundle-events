@@ -4,6 +4,7 @@ import { apiCacheConfig, sncfConfig, openRailwayRoutingConfig } from "@/src/conf
 import { cached } from "@/src/lib/api-cache";
 import { fetchRoadRoute } from "@/src/services/road-routing";
 import { normalizeStationName } from "@/src/utils/algorithms/segments";
+import { geometrySearchDatetime, representativeJourneyIndex } from "@/src/utils/algorithms/representative-journey";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data, status } = await cached({
       provider: "sncf",
-      key: `geometry:${fromId}:${toId}`,
+      key: `geometry:v5:${fromId}:${toId}`,
       ...apiCacheConfig.policies.routeGeometry,
       fetcher: () => buildGeometry(fromId, toId, apiKey),
       shouldStore: (g) => g.sections.length > 0,
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
 async function buildGeometry(fromId: string, toId: string, apiKey: string): Promise<Geometry> {
   // 1. Find a journey to get the vehicle_journey/line
   const journeyRes = await fetch(
-    `${sncfConfig.baseUrl}/coverage/sncf/journeys?${new URLSearchParams({ from: fromId, to: toId, count: "1", disable_geojson: "false" })}`,
+    `${sncfConfig.baseUrl}/coverage/sncf/journeys?${new URLSearchParams({ from: fromId, to: toId, datetime: geometrySearchDatetime(new Date()), count: "5", disable_geojson: "false" })}`,
     { headers: { Authorization: `Basic ${btoa(apiKey + ":")}` } }
   );
 
@@ -49,7 +50,7 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
     throw new Error(`SNCF journeys error: ${journeyRes.status}`);
   }
   const journeyData = await journeyRes.json();
-  const journey = journeyData.journeys?.[0];
+  const journey = journeyData.journeys?.[representativeJourneyIndex(journeyData.journeys)];
   if (!journey) {
     return { coordinates: [], sections: [], stops: [] };
   }
@@ -69,7 +70,7 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
 
     // Drop zero-length transfers inside the same station (e.g. "Paris Gare de Lyon" -> "Paris Gare de Lyon").
     if (
-      (section.type === "transfer" || section.type === "street_network") &&
+      section.type !== "public_transport" && section.type !== "on_demand_transport" &&
       normalizeStationName(fromName) !== "" &&
       normalizeStationName(fromName) === normalizeStationName(toName)
     ) {
@@ -88,7 +89,7 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
       label = commMode ? `${commMode} ${code}`.trim() : (di.name || "");
     }
 
-    if (section.type === "transfer" || section.type === "street_network" || section.type === "crow_fly") {
+    if (section.type !== "public_transport" && section.type !== "on_demand_transport") {
       mode = "walking";
       color = "#94a3b8";
       label = "Transfert à pied";
@@ -227,6 +228,7 @@ async function buildGeometry(fromId: string, toId: string, apiKey: string): Prom
         fromName,
         toName,
         coordinates: sectionCoords,
+        durationMinutes: typeof section.duration === "number" ? section.duration / 60 : undefined,
       });
     }
   }

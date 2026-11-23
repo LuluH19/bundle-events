@@ -8,7 +8,7 @@ Construits dans **`src/utils/booking.ts`**. `getBookingLinks(option, dep, arr, d
 
 | Mode | Cible | Détail |
 |---|---|---|
-| `plane` | **Kayak** (`/flights/{IATA}-{IATA}/{date}[/{retour}]`) | IATA via aéroport le plus proche (`constants/airports.ts`, < 80 km). Repli : Google Flights (recherche texte). |
+| `plane` | **Kayak** (`kayak.fr/flights/{IATA}-{IATA}/{date}[/{retour}]`, site français en euros) | IATA via aéroport le plus proche (`constants/airports.ts`, < 80 km). Repli : Google Flights (recherche texte). |
 | `train` | `/api/booking/train` → **Trainline** | Résout la gare → URN Trainline (serveur), redirige vers `/book/results` avec un passager adulte (`passengers[]=1995-01-01`, obligatoire sinon Trainline affiche une erreur). Repli : Google Maps transit. |
 | `bus` | `/api/booking/bus` → **FlixBus** | Résout la ville → UUID FlixBus, redirige vers `shop.flixbus.com/search` (date `DD.MM.YYYY`). Repli : Google Maps transit. |
 | `car` / `walking` | **Google Maps** directions | Lien direct client (coords). |

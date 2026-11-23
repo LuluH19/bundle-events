@@ -31,6 +31,7 @@ import { computeOptions, fetchFlightInfo, fetchTrainInfo } from "@/src/services/
 import { quoteOptions } from "@/src/services/prices";
 import { createBundle, updateBundle, fetchBundle } from "@/src/services/bundles";
 import { Header } from "@/src/components/layout/Header";
+import { Footer } from "@/src/components/layout/Footer";
 import { HomeView } from "@/src/components/views/HomeView";
 import { TripView } from "@/src/components/views/TripView";
 import { BookView } from "@/src/components/views/BookView";
@@ -116,15 +117,16 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     if (roundTrip && checkout && !sameDay) return dateOnly(checkout);
     return addDaysIso(checkin, 1);
   }, [checkin, checkout, roundTrip, sameDay]);
-  const returnDate = roundTrip ? dateOnly(checkout) : "";
+  const dayTrip = sameDay && !hotelOptIn;
+  const returnDate = roundTrip ? (sameDay && hotelOptIn ? stayCheckout : dateOnly(checkout)) : "";
   const nights = stayNights(checkin, stayCheckout);
 
   const dateLabel = useMemo(() => {
     if (!checkin) return "";
     if (!roundTrip || !checkout) return capitalize(formatDay(checkin));
-    if (sameDay) return `${capitalize(formatDay(checkin))}, aller-retour dans la journée`;
-    return `${capitalize(formatDay(checkin))} → ${formatDay(checkout)}`;
-  }, [checkin, checkout, roundTrip, sameDay]);
+    if (dayTrip) return `${capitalize(formatDay(checkin))}, aller-retour dans la journée`;
+    return `${capitalize(formatDay(checkin))} → ${formatDay(sameDay ? stayCheckout : checkout)}`;
+  }, [checkin, checkout, roundTrip, sameDay, dayTrip, stayCheckout]);
 
   const outbound = outboundOptions.find((o) => o.id === selectedOutboundId) || null;
   const ret = returnOptions.find((o) => o.id === selectedReturnId) || null;
@@ -292,10 +294,10 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   useEffect(() => {
     if (!onTripPages || !departure || !venue || !ret || !returnDate) return;
-    const key = `${ret.id}|${returnDate}|${leaveAfter}|${sameDay ? arriveBy : ""}`;
+    const key = `${ret.id}|${returnDate}|${leaveAfter}|${dayTrip ? arriveBy : ""}`;
     if (retTimesKeyRef.current === key) return;
     let cancelled = false;
-    const search = returnSearch(returnDate, leaveAfter || undefined, new Date(), sameDay ? arriveBy || undefined : undefined);
+    const search = returnSearch(returnDate, leaveAfter || undefined, new Date(), dayTrip ? arriveBy || undefined : undefined, dayTrip);
     const jobs: Promise<unknown>[] = [];
     if (ret.route.segments.some((s) => s.mode === "train") && search) {
       jobs.push(fetchTrainInfo(venue.coords, departure.coords, search.iso, search.represents).then((j) => !cancelled && setReturnTrains(j)));
@@ -311,7 +313,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     return () => {
       cancelled = true;
     };
-  }, [onTripPages, departure, venue, ret, returnDate, leaveAfter, arriveBy, sameDay]);
+  }, [onTripPages, departure, venue, ret, returnDate, leaveAfter, arriveBy, dayTrip]);
 
   useEffect(() => {
     if (!onTripPages || !outboundOptions.length || !checkin) return;
@@ -339,7 +341,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
 
   useEffect(() => {
     if (!onTripPages || !roundTrip || !returnOptions.length || !returnDate) return;
-    const search = returnSearch(returnDate, leaveAfter || undefined, new Date(), sameDay ? arriveBy || undefined : undefined);
+    const search = returnSearch(returnDate, leaveAfter || undefined, new Date(), dayTrip ? arriveBy || undefined : undefined, dayTrip);
     if (!search) return;
     const key = `${optionsKeyRef.current}|${search.iso}|${search.represents}`;
     if (retPricesKeyRef.current === key && returnOptions.every((o) => o.quote)) return;
@@ -359,7 +361,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- quote once per optionsKey + search window; options identity updates after quote
-  }, [onTripPages, roundTrip, returnDate, leaveAfter, arriveBy, sameDay, returnOptions.length, optionsLoading]);
+  }, [onTripPages, roundTrip, returnDate, leaveAfter, arriveBy, dayTrip, returnOptions.length, optionsLoading]);
 
   useEffect(() => {
     if (!venue || !checkin || !stayCheckout || !withHotel) return;
@@ -457,7 +459,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     const provider = venueProvider(v.id);
     venueMetaRef.current = { city: v.city, provider };
     posthog.capture("venue_selected", { source, venue_provider: provider, city: v.city, has_date: Boolean(v.dateLabel) });
-    setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address });
+    setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address, startDate: v.startDate, endDate: v.endDate });
     setVenueSearch("");
     setVenueResults([]);
     setSelectedHotel(null);
@@ -795,6 +797,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
           />
         )}
       </main>
+
+      <Footer bottomSpace={step === "trip" ? "mobile" : step === "book" ? "always" : "none"} />
 
       <TripPanels
         panel={panel}

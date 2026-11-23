@@ -63,6 +63,7 @@ Chaque besoin a une source principale et des sources de secours. On passe à la 
 - `GET https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/evenements-publics-openagenda/records`
 - Même schéma que le jeu Île-de-France, filtré sur `location_countrycode = "FR"`. Aucune clé requise. Ids préfixés `oa-`.
 - Les deux jeux OpenData contiennent aussi des activités permanentes publiées comme un seul événement sur plusieurs années (« 2021 - 2027 »). On les écarte : début il y a au plus `eventsConfig.maxEventSpanDays` (31) jours (`firstdate_begin >= now(days=-31)`) et durée totale de 31 jours au plus (`isShortEvent`).
+- Chaque événement porte aussi `startDate` / `endDate` (`YYYY-MM-DD`, jour à Paris via `parisIsoDate`) : `firstdate_begin` / `lastdate_end` pour OpenData, `dates.start.localDate` pour Ticketmaster. Le lieu choisi les garde (`Location.startDate` / `endDate`) pour marquer ces jours dans le calendrier. Clé de cache des recherches : `events:v4:…` (les anciennes réponses n'avaient pas ces dates). La requête envoyée à OpenData remplace traits d'union et apostrophes par des espaces : « Tout-petit festival » trouve l'événement.
 
 ## Open Data Île-de-France — événements (Cibul)
 - `GET https://opendata.iledefrance.fr/api/explore/v2.1/catalog/datasets/evenements-publics-cibul/records`

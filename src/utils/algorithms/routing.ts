@@ -1,4 +1,5 @@
 import type { BusConnection, LatLng, RouteResult, RouteSegment, TransportMode, DynamicStation } from "@/src/types";
+import { pickStationPair } from "@/src/utils/algorithms/stations";
 import { airports } from "@/src/utils/constants/airports";
 import { busStations } from "@/src/utils/constants/bus-stations";
 import {
@@ -13,7 +14,7 @@ import { removeEmptySegments } from "@/src/utils/algorithms/empty-segments";
 
 const stationCache = new Map<string, DynamicStation[]>();
 
-async function fetchNearbyStations(point: LatLng, radiusKm: number = 80): Promise<DynamicStation[]> {
+export async function fetchNearbyStations(point: LatLng, radiusKm: number = 80): Promise<DynamicStation[]> {
   const cacheKey = `${point.lat.toFixed(2)},${point.lng.toFixed(2)},${radiusKm}`;
   const cached = stationCache.get(cacheKey);
   if (cached) return cached;
@@ -88,7 +89,7 @@ async function trainSegments(
       if (res.ok) {
         const data = await res.json();
         if (data.sections && data.sections.length > 0) {
-          return data.sections.map((sect: { fromName?: string; toName?: string; mode: string; coordinates: [number, number][]; color?: string; label?: string }) => {
+          return data.sections.map((sect: { fromName?: string; toName?: string; mode: string; coordinates: [number, number][]; color?: string; label?: string; durationMinutes?: number }) => {
             let distanceKm = 0;
             for (let i = 1; i < sect.coordinates.length; i++) {
               distanceKm += haversineDistance(
@@ -97,7 +98,7 @@ async function trainSegments(
               );
             }
             const speed = sect.mode === "walking" ? 5 : 120;
-            const durationMinutes = (distanceKm / speed) * 60;
+            const durationMinutes = sect.durationMinutes ?? (distanceKm / speed) * 60;
             return {
               from: { name: sect.fromName || from.name, coords: sect.coordinates[0] ? { lat: sect.coordinates[0][0], lng: sect.coordinates[0][1] } : from.coords },
               to: { name: sect.toName || to.name, coords: sect.coordinates[sect.coordinates.length - 1] ? { lat: sect.coordinates[sect.coordinates.length - 1][0], lng: sect.coordinates[sect.coordinates.length - 1][1] } : to.coords },
@@ -143,25 +144,35 @@ async function busLongSegment(
   return { from, to, mode: "bus", coordinates: road.coordinates, distanceKm: road.distanceKm, durationMinutes };
 }
 
+type AccessHub = "station" | "airport" | "busStop";
+
+const ACCESS_LABELS: Record<AccessHub, { to: string; from: string }> = {
+  station: { to: "Accès à la gare", from: "Depuis la gare" },
+  airport: { to: "Accès à l'aéroport", from: "Depuis l'aéroport" },
+  busStop: { to: "Accès à l'arrêt de bus", from: "Depuis l'arrêt de bus" },
+};
+
 async function accessSegment(
   from: { name: string; coords: LatLng },
   to: { name: string; coords: LatLng },
-  allowedAccessModes: TransportMode[]
+  allowedAccessModes: TransportMode[],
+  hub: AccessHub,
+  direction: "to" | "from"
 ): Promise<RouteSegment> {
   const dist = haversineDistance(from.coords, to.coords);
   const viable = allowedAccessModes.filter((m) => !(m === "walking" && dist > 8));
 
+  const labelled = (seg: RouteSegment): RouteSegment => ({ ...seg, label: ACCESS_LABELS[hub][direction], access: true });
+
   if (viable.length === 0) {
-    return fetchRoadSegment(from, to, (allowedAccessModes[0] === "train" ? "car" : allowedAccessModes[0]) as "walking" | "car" || "walking");
+    return labelled(await fetchRoadSegment(from, to, (allowedAccessModes[0] === "train" ? "car" : allowedAccessModes[0]) as "walking" | "car" || "walking"));
   }
 
   const results = await Promise.all(
     viable.map(async (m) => {
       if (m === "train") {
         const seg = await fetchRoadSegment(from, to, "car").catch(() => null);
-        // Local access estimate only: not a real train leg, so it must not be
-        // merged with / counted as the main SNCF train.
-        if (seg) return { ...seg, mode: "car", label: "Accès à la gare", durationMinutes: seg.durationMinutes * 0.8 } as RouteSegment;
+        if (seg) return { ...seg, mode: "car", durationMinutes: seg.durationMinutes * 0.8 } as RouteSegment;
       }
       if (m === "bus") {
         const seg = await fetchRoadSegment(from, to, "car").catch(() => null);
@@ -174,12 +185,10 @@ async function accessSegment(
 
   if (valid.length === 0) {
     const fallback = await fetchRoadSegment(from, to, "walking").catch(() => null);
-    return fallback || { from, to, mode: "walking", coordinates: [[from.coords.lat, from.coords.lng], [to.coords.lat, to.coords.lng]], distanceKm: 0, durationMinutes: 0 } as RouteSegment;
+    return labelled(fallback || ({ from, to, mode: "walking", coordinates: [[from.coords.lat, from.coords.lng], [to.coords.lat, to.coords.lng]], distanceKm: 0, durationMinutes: 0 } as RouteSegment));
   }
 
-  return valid.reduce((best, seg) =>
-    seg.durationMinutes < best.durationMinutes ? seg : best
-  );
+  return labelled(valid.reduce((a, seg) => (seg.durationMinutes < a.durationMinutes ? seg : a)));
 }
 
 function extractAccessModes(modes: TransportMode[]): TransportMode[] {
@@ -249,9 +258,9 @@ async function timetableBusRoute(
     durationMinutes: connection.durationMinutes,
   };
   const [toStop, line, fromStop] = await Promise.all([
-    accessSegment(from, connection.from, accessModes),
+    accessSegment(from, connection.from, accessModes, "busStop", "to"),
     fetchRoadSegment(connection.from, connection.to, "bus").catch(() => straight),
-    accessSegment(connection.to, to, accessModes),
+    accessSegment(connection.to, to, accessModes, "busStop", "from"),
   ]);
   return buildResult([
     toStop,
@@ -287,14 +296,18 @@ export async function computeBusRoute(
 
   const accessOnly = allowedAccessModes.filter((m) => m !== "bus");
   const [toStation, fromStation] = await Promise.all([
-    accessSegment(from, { name: dep.name, coords: dep.coords }, accessOnly.length > 0 ? accessOnly : ["walking"]),
-    accessSegment({ name: arr.name, coords: arr.coords }, to, accessOnly.length > 0 ? accessOnly : ["walking"]),
+    accessSegment(from, { name: dep.name, coords: dep.coords }, accessOnly.length > 0 ? accessOnly : ["walking"], "busStop", "to"),
+    accessSegment({ name: arr.name, coords: arr.coords }, to, accessOnly.length > 0 ? accessOnly : ["walking"], "busStop", "from"),
   ]);
 
   return buildResult([toStation, await busLongSegment({ name: dep.name, coords: dep.coords }, { name: arr.name, coords: arr.coords }), fromStation]);
 }
 
 export const SHORT_HAUL_RAIL_THRESHOLD_MIN = 150; // 2h30
+
+export const AIRPORT_CHECKIN_MIN = 90;
+export const AIRPORT_EXIT_MIN = 20;
+export const AIRPORT_TIME_MIN = AIRPORT_CHECKIN_MIN + AIRPORT_EXIT_MIN;
 
 function isInMetropolitanFrance(p: LatLng): boolean {
   return p.lat >= 41.2 && p.lat <= 51.2 && p.lng >= -5.4 && p.lng <= 9.8;
@@ -404,11 +417,12 @@ export async function computePlaneRoute(
   }
 
   const [toAirport, fromAirport] = await Promise.all([
-    accessSegment(from, { name: dep.name, coords: dep.coords }, allowedAccessModes),
-    accessSegment({ name: arr.name, coords: arr.coords }, to, allowedAccessModes),
+    accessSegment(from, { name: dep.name, coords: dep.coords }, allowedAccessModes, "airport", "to"),
+    accessSegment({ name: arr.name, coords: arr.coords }, to, allowedAccessModes, "airport", "from"),
   ]);
 
-  return buildResult([toAirport, planeSegment({ name: dep.name, coords: dep.coords }, { name: arr.name, coords: arr.coords }), fromAirport]);
+  const result = buildResult([toAirport, planeSegment({ name: dep.name, coords: dep.coords }, { name: arr.name, coords: arr.coords }), fromAirport]);
+  return { ...result, totalDurationMinutes: result.totalDurationMinutes + AIRPORT_TIME_MIN };
 }
 
 export async function computeTrainRoute(
@@ -425,19 +439,16 @@ export async function computeTrainRoute(
     throw new Error("Aucune gare trouvee a proximite");
   }
 
-  let dep = depStations[0], arr = arrStations[0];
-  if (dep.id === arr.id) {
-    if (arrStations.length > 1) arr = arrStations[1];
-    if (dep.id === arr.id && depStations.length > 1) { dep = depStations[1]; arr = arrStations[0]; }
-    if (dep.id === arr.id) throw new Error("Pas de gares differentes trouvees");
-  }
+  const pair = pickStationPair(from.coords, to.coords, depStations, arrStations);
+  if (!pair) throw new Error("Pas de gares differentes trouvees");
+  const [dep, arr] = pair;
 
   const depPoint = { name: dep.name, coords: dep.coords, sncfId: dep.sncfId };
   const arrPoint = { name: arr.name, coords: arr.coords, sncfId: arr.sncfId };
 
   const [toStation, fromStation] = await Promise.all([
-    accessSegment(from, depPoint, allowedAccessModes),
-    accessSegment(arrPoint, to, allowedAccessModes),
+    accessSegment(from, depPoint, allowedAccessModes, "station", "to"),
+    accessSegment(arrPoint, to, allowedAccessModes, "station", "from"),
   ]);
 
   const midSegments = await trainSegments(depPoint, arrPoint);

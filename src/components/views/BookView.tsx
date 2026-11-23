@@ -205,7 +205,7 @@ function LegCard({
   const Icon = option.mode === "bus" ? IconBus : option.mode === "train" ? IconTrain : MODE_ICON[option.mode];
   const color = MODE_COLOR[option.mode];
   return (
-    <article className={`flex flex-col overflow-hidden rounded-2xl bg-white ${booked ? "ring-2 ring-ok" : "ring-1 ring-line"}`}>
+    <article className={`flex flex-1 flex-col overflow-hidden rounded-2xl bg-white ${booked ? "ring-2 ring-ok" : "ring-1 ring-line"}`}>
       {option.mode === "train" && (
         <div className="relative h-28 w-full">
           <Image src="/images/tgv.jpg" alt="TGV en circulation" fill sizes="(min-width: 1024px) 320px, 100vw" className="object-cover" />
@@ -285,7 +285,7 @@ function HotelCard({
   const d = getHotelDistance(hotel, trip.venue);
   const link = getHotelBookingLink(hotel, trip.checkin, trip.stayCheckout, { adults: 1 });
   return (
-    <article className={`flex flex-col overflow-hidden rounded-2xl bg-white ${booked ? "ring-2 ring-ok" : "ring-1 ring-line"}`}>
+    <article className={`flex flex-1 flex-col overflow-hidden rounded-2xl bg-white ${booked ? "ring-2 ring-ok" : "ring-1 ring-line"}`}>
       <div className="relative h-28 w-full bg-gradient-to-br from-navy to-ink">
         {hotel.photo ? (
           <Image src={hotel.photo} alt={hotel.name} fill sizes="(min-width: 1024px) 320px, 100vw" unoptimized className="object-cover" />
@@ -592,7 +592,7 @@ export function BookView({ trip, booked, onToggleBooked, onGo, onOpenPanel, onSh
 
   const legCard = (l: LegItem | undefined, wide = false) =>
     l ? (
-      <div className={wide ? "md:col-span-2" : ""}>
+      <div className={`flex flex-col ${wide ? "md:col-span-2" : ""}`}>
         <LegCard
           item={l}
           trip={trip}
@@ -604,7 +604,7 @@ export function BookView({ trip, booked, onToggleBooked, onGo, onOpenPanel, onSh
     ) : null;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 md:px-8 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:pt-8">
+    <div className="mx-auto w-full max-w-6xl px-4 pb-8 pt-5 md:px-8 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:pt-8">
       <div className="grid content-start gap-4">
         <div className="lg:hidden">
           <StepsInline current="book" onGo={onGo} />
@@ -612,7 +612,7 @@ export function BookView({ trip, booked, onToggleBooked, onGo, onOpenPanel, onSh
         <div className="grid gap-4 md:grid-cols-2">
           <EventCard trip={trip} onEditDates={() => onOpenPanel("dates")} wide={!hasHotel} />
           {hasHotel && trip.hotel && (
-            <div className="order-3 md:order-none">
+            <div className="order-3 flex flex-col md:order-none">
               <HotelCard
                 hotel={trip.hotel}
                 trip={trip}

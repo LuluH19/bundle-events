@@ -43,7 +43,7 @@ const normalise = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 /** Shared cache per provider (issue #153): a failure still throws, so the chain moves on. */
 async function searchSource({ name, adapter, policy, enabled }: Source, criteria: EventSearchCriteria): Promise<Venue[]> {
   if (enabled && !enabled()) return [];
-  const key = `events:${normalise(criteria.query)}:${normalise(criteria.city ?? "")}:${criteria.limit ?? ""}`;
+  const key = `events:v4:${normalise(criteria.query)}:${normalise(criteria.city ?? "")}:${criteria.limit ?? ""}`;
   // These adapters throw on failure, so an empty list is a real answer: cache it too,
   // otherwise every query without results (e.g. a venue name used as a city) calls again.
   const { data } = await cached({

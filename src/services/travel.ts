@@ -1,5 +1,6 @@
 import { LatLng, RouteOption, TrainJourney, FlightInfo, TransportMode } from "@/src/types";
-import { computeDirectRoute, computeBusRoute, computePlaneRoute, computeTrainRoute, isShortHaulFlightBanned } from "@/src/utils/algorithms/routing";
+import { computeDirectRoute, computeBusRoute, computePlaneRoute, computeTrainRoute, fetchNearbyStations, isShortHaulFlightBanned } from "@/src/utils/algorithms/routing";
+import { pickStationPair } from "@/src/utils/algorithms/stations";
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 import { airports } from "@/src/utils/constants/airports";
 import { priceEstimate, findNearest } from "@/src/utils/travel";
@@ -92,18 +93,10 @@ export async function fetchTrainInfo(
   represents: "departure" | "arrival" = "departure"
 ): Promise<TrainJourney[]> {
   try {
-    const [d, a] = await Promise.all([
-      fetch(`/api/stations?lat=${from.lat}&lng=${from.lng}&radius=50`),
-      fetch(`/api/stations?lat=${to.lat}&lng=${to.lng}&radius=50`),
-    ]);
-    if (!d.ok || !a.ok) return [];
-    const ds = (await d.json()).stations || [];
-    const as = (await a.json()).stations || [];
-    if (!ds.length || !as.length) return [];
-    const dep = ds[0];
-    let arr = as[0];
-    if (dep.id === arr.id && as.length > 1) arr = as[1];
-    if (dep.id === arr.id) return [];
+    const [ds, as] = await Promise.all([fetchNearbyStations(from), fetchNearbyStations(to)]);
+    const pair = pickStationPair(from, to, ds, as);
+    if (!pair) return [];
+    const [dep, arr] = pair;
     const params = new URLSearchParams({ from: dep.sncfId, to: arr.sncfId });
     if (dateTimeISO) {
       params.set("datetime", dateTimeISO);

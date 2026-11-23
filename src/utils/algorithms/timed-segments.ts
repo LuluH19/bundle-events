@@ -1,5 +1,6 @@
 import type { FlightInfo, RouteOption, RouteSegment, TrainJourney } from "@/src/types";
 import { dateOnly, DEFAULT_OUTBOUND_TIME, DEFAULT_RETURN_TIME } from "@/src/utils/date";
+import { AIRPORT_CHECKIN_MIN, AIRPORT_EXIT_MIN } from "@/src/utils/algorithms/routing";
 
 export function addMinutesToIso(iso: string, minutes: number): string {
   if (!iso) return "";
@@ -123,7 +124,7 @@ export function resolveTimedSegments(params: TimedSegmentsParams): RouteSegment[
     const beforeAccess = flightIndex > 0 ? rawSegments.slice(0, flightIndex) : [];
     const afterAccess = flightIndex >= 0 && flightIndex < rawSegments.length - 1 ? rawSegments.slice(flightIndex + 1) : [];
 
-    const airportWait = 90; // Recommended 1h30 airport buffer
+    const airportWait = AIRPORT_CHECKIN_MIN;
     const beforeDuration = beforeAccess.reduce((s, seg) => s + seg.durationMinutes, 0) + airportWait;
 
     let current = addMinutesToIso(flight.departureAt, -beforeDuration);
@@ -155,10 +156,10 @@ export function resolveTimedSegments(params: TimedSegmentsParams): RouteSegment[
       departureTime: flight.departureAt,
       arrivalTime: flightArr,
       label: `${flight.airline} ${flight.flightNumber}`.trim() || planeSeg.label,
-      waitTimeMinutes: afterAccess.length > 0 ? 20 : undefined, // 20 min baggage wait
+      waitTimeMinutes: afterAccess.length > 0 ? AIRPORT_EXIT_MIN : undefined,
     };
 
-    current = addMinutesToIso(flightArr, afterAccess.length > 0 ? 20 : 0);
+    current = addMinutesToIso(flightArr, afterAccess.length > 0 ? AIRPORT_EXIT_MIN : 0);
     const timedAfter: RouteSegment[] = afterAccess.map((seg) => {
       const dep = current;
       const arr = addMinutesToIso(current, seg.durationMinutes);

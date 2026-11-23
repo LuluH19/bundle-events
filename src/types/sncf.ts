@@ -45,4 +45,5 @@ export interface RouteSection {
   fromName: string;
   toName: string;
   coordinates: [number, number][];
+  durationMinutes?: number;
 }

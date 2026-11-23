@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { outboundSearch, returnSearch, isPastTime, formatDay, isSameDayTrip } from "@/src/utils/date";
+import { outboundSearch, returnSearch, isPastTime, formatDay, isSameDayTrip, parisIsoDate, eventDays, MAX_EVENT_DAYS } from "@/src/utils/date";
 
 const NOW = new Date(2026, 10, 11, 14, 20);
 
@@ -56,6 +56,10 @@ describe("returnSearch", () => {
   it("never leaves before the outbound arrival on a day trip", () => {
     expect(returnSearch("2026-12-12", "10:00", NOW, "18:00")?.iso).toBe("2026-12-12T18:00");
   });
+  it("leaves in the evening by default on a day trip", () => {
+    expect(returnSearch("2026-12-12", undefined, NOW, undefined, true)?.iso).toBe("2026-12-12T18:00");
+    expect(returnSearch("2026-12-12", undefined, NOW, "19:30", true)?.iso).toBe("2026-12-12T19:30");
+  });
   it("moves a past hour today to now", () => {
     expect(returnSearch("2026-11-11", "10:00", NOW)?.iso).toBe("2026-11-11T14:20");
   });
@@ -64,5 +68,33 @@ describe("returnSearch", () => {
 describe("formatDay", () => {
   it("formats a French short day", () => {
     expect(formatDay("2026-12-12")).toBe("sam. 12 déc.");
+  });
+});
+
+describe("parisIsoDate", () => {
+  it("donne le jour à Paris, même tard le soir en UTC", () => {
+    expect(parisIsoDate("2026-12-09T23:30:00+00:00")).toBe("2026-12-10");
+    expect(parisIsoDate("2026-12-09T10:00:00+00:00")).toBe("2026-12-09");
+  });
+
+  it("ignore une date vide ou invalide", () => {
+    expect(parisIsoDate(null)).toBeUndefined();
+    expect(parisIsoDate("pas une date")).toBeUndefined();
+  });
+});
+
+describe("eventDays", () => {
+  it("liste chaque jour de l'événement", () => {
+    expect(eventDays("2026-12-09", "2026-12-13")).toEqual(["2026-12-09", "2026-12-10", "2026-12-11", "2026-12-12", "2026-12-13"]);
+  });
+
+  it("garde un seul jour sans date de fin valide", () => {
+    expect(eventDays("2026-12-09")).toEqual(["2026-12-09"]);
+    expect(eventDays("2026-12-09", "2026-12-01")).toEqual(["2026-12-09"]);
+    expect(eventDays(undefined, "2026-12-09")).toEqual([]);
+  });
+
+  it("plafonne les longues périodes", () => {
+    expect(eventDays("2026-01-01", "2026-12-31")).toHaveLength(MAX_EVENT_DAYS);
   });
 });

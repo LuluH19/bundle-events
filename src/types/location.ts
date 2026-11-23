@@ -10,4 +10,6 @@ export interface Location {
   address?: string;
   iataCode?: string;
   sncfId?: string;
+  startDate?: string;
+  endDate?: string;
 }

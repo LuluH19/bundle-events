@@ -101,7 +101,7 @@ export function SegmentList({
         const next = segments[i + 1];
         const isChange =
           (seg.waitTimeMinutes != null && seg.waitTimeMinutes > 0) ||
-          (!!next && seg.mode !== "walking" && next.mode !== "walking" && seg.mode !== "car" && next.mode !== "car");
+          (!!next && !seg.access && !next.access && seg.mode !== "walking" && next.mode !== "walking" && seg.mode !== "car" && next.mode !== "car");
         const label =
           seg.label ||
           (seg.mode === "plane" && flights?.[0] ? `${flights[0].airline} ${flights[0].flightNumber}` : undefined);

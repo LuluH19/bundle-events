@@ -11,6 +11,7 @@ export interface RouteSegment {
   durationMinutes: number;
   color?: string;
   label?: string;
+  access?: boolean;
   departureTime?: string;
   arrivalTime?: string;
   waitTimeMinutes?: number;

@@ -237,7 +237,7 @@ export function TripView({ trip, onGo, onOpenPanel, onPreference, onAddHotel, on
   const closeMap = useCallback(() => setMapOpen(false), []);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-32 pt-5 md:px-8 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-8 lg:pb-12 lg:pt-8">
+    <div className="mx-auto w-full max-w-6xl px-4 pb-8 pt-5 md:px-8 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-8 lg:pb-12 lg:pt-8">
       <div className="grid content-start gap-4">
         <div className="lg:hidden">
           <StepsInline current="trip" onGo={onGo} />

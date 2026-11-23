@@ -67,6 +67,24 @@ export interface SearchDateTime {
 
 export const DEFAULT_OUTBOUND_TIME = "08:00";
 export const DEFAULT_RETURN_TIME = "10:00";
+export const DEFAULT_DAY_TRIP_RETURN_TIME = "18:00";
+
+export function parisIsoDate(iso: string | null | undefined): string | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
+export const MAX_EVENT_DAYS = 31;
+
+export function eventDays(start?: string, end?: string): string[] {
+  if (!start) return [];
+  const last = end && end >= start ? end : start;
+  const days: string[] = [];
+  for (let day = start; day <= last && days.length < MAX_EVENT_DAYS; day = addDaysIso(day, 1)) days.push(day);
+  return days;
+}
 
 export function localIsoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -97,11 +115,12 @@ export function returnSearch(
   returnDay: string,
   leaveAfter: string | undefined,
   now: Date,
-  minTime?: string
+  minTime?: string,
+  dayTrip = false
 ): SearchDateTime | null {
   const day = dateOnly(returnDay);
   if (!day) return null;
-  let time = leaveAfter || minTime || DEFAULT_RETURN_TIME;
+  let time = leaveAfter || (dayTrip ? DEFAULT_DAY_TRIP_RETURN_TIME : DEFAULT_RETURN_TIME);
   if (minTime && time < minTime) time = minTime;
   if (isPastTime(day, time, now)) time = localHourMinute(now);
   return { iso: `${day}T${time}`, represents: "departure" };
