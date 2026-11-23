@@ -2,6 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
 
+// E2E_PROD=1 runs the suite against an existing `next build` output (`next start`)
+// instead of the dev server. CI uses it to test what actually ships.
+const PROD = !!process.env.E2E_PROD;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -18,7 +22,9 @@ export default defineConfig({
   webServer: {
     // Un token factice suffit : les appels Mapbox sont interceptes dans les tests,
     // mais le token doit etre "truthy" pour que le chemin de geocodage s'execute.
-    command: "next dev -p " + PORT,
+    // Le token doit aussi etre present au moment du `next build` en mode PROD
+    // (NEXT_PUBLIC_* est inline au build).
+    command: (PROD ? "next start -p " : "next dev -p ") + PORT,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

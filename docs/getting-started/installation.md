@@ -20,11 +20,13 @@ npm run dev               # http://localhost:3000
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` / `test:watch` | Vitest |
-| `npm run test:e2e` | Playwright |
+| `npm run test:coverage` | Vitest + couverture (`coverage/`) |
+| `npm run test:e2e` | Playwright (`E2E_PROD=1` : contre `next start`, après un `next build`) |
 
 ## Maintenance des dépendances
 
 - Versions corrigées : Next.js `16.4.6` (avec `eslint-config-next` aligné ; 16.0.0 à 16.4.4 sont touchées par plusieurs avis de sécurité et `next build` refuse de finir) et Vitest `4.1.12` (Vite `8.3.5`). Le lockfile inclut les correctifs des dépendances transitives signalées par `npm audit`.
+- Dependabot (`.github/dependabot.yml`) propose chaque lundi une PR groupée vers `dev` pour les mises à jour mineures/patch npm et une pour les GitHub Actions, avec un délai de 14 jours après publication.
 - Utiliser `npm ci` pour reproduire les versions du lockfile, puis `npm audit` pour vérifier les vulnérabilités connues.
 - Si npm 10 échoue avec `Cannot read properties of null (reading 'edgesOut')`, lancer `npx --yes npm@11 audit fix` (ou `npx --yes npm@11 install`), puis vérifier le build, les tests et le lint.
 - Toujours régénérer le lockfile avec npm 11 : npm 10 supprime les champs `libc` des paquets natifs (sharp, tailwind, next-swc).

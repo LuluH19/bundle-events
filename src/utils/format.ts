@@ -11,7 +11,13 @@ export function formatDistance(km: number) {
 }
 
 export function timeOf(s: string) {
-  return new Date(s).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  if (!s) return "";
+  if (/^\d{2}:\d{2}$/.test(s)) return s;
+  const m = s.match(/T(\d{2}:\d{2})/);
+  if (m) return m[1];
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function capitalizeFirst(text: string): string {
