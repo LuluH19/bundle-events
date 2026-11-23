@@ -25,6 +25,13 @@ export const apiCacheConfig = {
   storeTimeoutMs: 1500,
   /** After a Supabase error (e.g. table not created yet), skip the store for this long. */
   storeRetryMs: 5 * MIN,
+  /**
+   * After a Supabase timeout, skip the store only this long (issue #180): a slow first
+   * request after a cold start must not cost five minutes of shared cache.
+   */
+  storeTimeoutRetryMs: 30 * 1000,
+  /** Store calls slower than this are logged with their duration, to measure real latency. */
+  storeSlowLogMs: 800,
   /** Consecutive upstream failures that open the circuit, and how long it stays open. */
   breaker: { failureThreshold: 3, cooldownMs: MIN },
   /** Minimum gap between two identical "degraded" logs (provider + reason). */
