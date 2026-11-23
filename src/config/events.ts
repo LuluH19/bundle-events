@@ -14,6 +14,8 @@ export const eventsConfig = {
     extraFilter: "",
   },
   timeoutMs: 6000,
+  /** Secondary venue sources (Mapbox Search Box, Nominatim): a stuck one must not hold the whole search. */
+  venueTimeoutMs: 4000,
   defaultLimit: 6,
   ideaKeywords: ["concert", "festival", "spectacle", "match"],
   ideasLimit: 8,
