@@ -26,8 +26,8 @@
 - `src/__tests__/fallback.test.ts`, `providers.test.ts`, `bus-connection.test.ts`, `bus-network.test.ts` — chaînes de secours, mapping Ticketmaster / API Adresse, liaison en car, construction du réseau GTFS.
 - Données : `npm run gtfs:sync` régénère `src/utils/constants/bus-network.json` (horaires des cars).
 - `e2e/home-flow.spec.ts` — parcours home (Playwright).
-- Runners : Vitest (`vitest.config.ts`), Playwright (`playwright.config.ts`).
+- Runners : Vitest (`vitest.config.ts`, couverture v8), Playwright (`playwright.config.ts`, `E2E_PROD=1` pour tester le build de production).
 
 ## Config racine
 
-`package.json`, `tsconfig.json` (ES2017, strict, alias `@/*`), `next.config.ts` (images `static.cupid.travel/hotels/**`), `postcss.config.mjs` (Tailwind v4), `eslint.config.mjs` (flat, extends next), `vitest.config.ts`, `playwright.config.ts`, `.commitlintrc.json`.
+`package.json`, `tsconfig.json` (ES2017, strict, alias `@/*`), `next.config.ts` (images `static.cupid.travel/hotels/**`), `postcss.config.mjs` (Tailwind v4), `eslint.config.mjs` (flat, extends next), `vitest.config.ts`, `playwright.config.ts`, `lighthouserc.json` (Lighthouse CI), `.commitlintrc.json`.

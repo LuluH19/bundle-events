@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
+import posthog from "posthog-js";
 import type { HomeViewProps, Venue } from "@/src/types";
 import { searchEventIdeas } from "@/src/services/events";
 import { socialConfig } from "@/src/config";
@@ -144,7 +145,11 @@ function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
             <button
               key={c}
               type="button"
-              onClick={() => setCity(c === ALL_CITIES || c === city ? null : c)}
+              onClick={() => {
+                const next = c === ALL_CITIES || c === city ? null : c;
+                posthog.capture("event_ideas_filtered", { city: next ?? ALL_CITIES });
+                setCity(next);
+              }}
               aria-pressed={active}
               className={`shrink-0 rounded-full px-4 py-2 text-[14px] font-semibold ring-1 ring-inset ${
                 active ? "bg-nuit text-white ring-nuit" : "bg-white text-ink ring-line hover:bg-mist"
@@ -278,7 +283,7 @@ export function HomeView(props: HomeViewProps) {
               }))}
               onPick={(k) => {
                 const v = venueResults.find((x) => x.id === k);
-                if (v) onPickVenue(v);
+                if (v) onPickVenue(v, "search");
               }}
               onClear={onClearVenue}
             />
@@ -327,7 +332,7 @@ export function HomeView(props: HomeViewProps) {
         </div>
       </section>
 
-      <CityIdeas onPick={onPickVenue} />
+      <CityIdeas onPick={(v) => onPickVenue(v, "home_ideas")} />
 
       <footer className="border-t border-line py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-[13px] text-slate-500 sm:flex-row md:px-8">

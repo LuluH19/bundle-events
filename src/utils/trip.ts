@@ -74,3 +74,6 @@ export function tripTotal(params: {
   const allLive = legs.length > 0 && legs.every((o) => o.quote?.source === "live");
   return { outbound, hotel, ret, total: outbound + hotel + ret, allLive };
 }
+
+export { resolveTimedSegments, getLegTiming } from "@/src/utils/algorithms/timed-segments";
+export type { TimedSegmentsParams, LegTiming } from "@/src/utils/algorithms/timed-segments";
