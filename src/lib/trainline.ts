@@ -1,10 +1,8 @@
 import { haversineDistance } from "@/src/utils/algorithms/geodesic";
 
 export const TRAINLINE_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "User-Agent": "Mozilla/5.0",
   Accept: "application/json",
-  "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
 };
 
 /**

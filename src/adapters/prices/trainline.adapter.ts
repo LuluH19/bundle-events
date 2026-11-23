@@ -59,8 +59,6 @@ export async function trainlineQuote(leg: PriceLeg): Promise<PriceQuote> {
     headers: {
       ...TRAINLINE_HEADERS,
       "Content-Type": "application/json",
-      Origin: "https://www.thetrainline.com",
-      Referer: "https://www.thetrainline.com/book/results",
     },
     signal: AbortSignal.timeout(pricesConfig.timeoutMs),
     body: JSON.stringify({

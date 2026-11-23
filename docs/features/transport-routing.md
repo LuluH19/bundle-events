@@ -19,7 +19,7 @@ Exports de `routing.ts` : `computeDirectRoute`, `computeBusRoute`, `computeTrain
 - `/api/trains/route-geometry` cherche les trajets du lendemain à 8 h (`geometrySearchDatetime`) et en demande 5 ; il garde celui qui a le moins de changements, puis le plus court (`representativeJourneyIndex`, `utils/algorithms/representative-journey.ts`). Avant, il prenait le premier trajet « à partir de maintenant », parfois un détour par Paris (ex. Rennes → Lyon en 6 trains), gardé une semaine en cache. Clé de cache : `geometry:v5:{from}:{to}`.
 - Les étapes d'accès (à pied, en voiture, en bus) sont étiquetées selon le point de correspondance et le sens : « Accès à la gare / Depuis la gare », « Accès à l'aéroport / Depuis l'aéroport », « Accès à l'arrêt de bus / Depuis l'arrêt de bus ». Elles portent `access: true` : elles ne comptent ni comme transport (`countTransports`) ni comme « Changement à … » (`SegmentList`).
 - Durée de chaque étape de train : la vraie durée de la section SNCF (`durationMinutes` renvoyé par `/api/trains/route-geometry`, depuis `section.duration`). L'estimation par la distance (120 km/h, 5 km/h à pied) ne sert plus que de repli. Toute section qui n'est pas un transport public (`public_transport`, `on_demand_transport`) est de la marche, ignorée si elle relie une gare à elle-même.
-- Avion : la durée totale du trajet ajoute `AIRPORT_TIME_MIN` (80 min : 1 h d'avance à l'aéroport + 20 min de sortie) aux étapes, pour comparer honnêtement avec le train porte à porte. Les étapes affichées gardent leur durée propre.
+- Avion : la durée totale du trajet ajoute `AIRPORT_TIME_MIN` (110 min : `AIRPORT_CHECKIN_MIN` 90 min d'avance à l'aéroport + `AIRPORT_EXIT_MIN` 20 min de sortie, les mêmes marges que la frise horaire) aux étapes, pour comparer honnêtement avec le train porte à porte. Les étapes affichées gardent leur durée propre.
 - Choix des gares (`pickStationPair`, `utils/algorithms/stations.ts`), partagé par `computeTrainRoute` et `fetchTrainInfo` pour que le trajet et les horaires du jour partent des mêmes gares : la plus proche, sauf si une grande gare (`MAIN_STATION_UICS`, `utils/constants/main-stations.ts`, codes UIC vérifiés contre `/api/stations`) est à moins de 4 km de plus (`MAIN_STATION_DETOUR_KM`). Ex. à Lyon, Perrache plutôt que Saint-Paul, mal desservie.
 - `computeBusRoute` — interroge d'abord `/api/buses/search` (horaires GTFS FlixBus / BlaBlaCar Bus) : vrais arrêts, durée réelle du car, opérateur dans `segment.label`. Sans liaison directe, repli sur l'estimation : gares routières de `bus-stations.ts` et `busLongSegment` (route, 55 km/h).
 - `accessSegment` — premier/dernier km vers gares/aéroports ; mode d'accès le plus rapide (marche ≤ 8 km ; train/bus approximés depuis le driving).
@@ -57,12 +57,12 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 | Mode | Source live | Repli |
 |---|---|---|
 | avion | Travelpayouts (`/api/flights/search`) | estimation km |
-| train | Trainline (`/api/prices/train`) | tarifs SNCF open data (min/max) → estimation |
+| train | tarifs SNCF open data min/max (`/api/prices/train`) ; Trainline seulement si `TRAINLINE_LIVE_PRICES=true` | estimation km (liaisons TER absentes des grilles) |
 | bus | FlixBus (`/api/prices/bus`) | estimation (BlaBlaCar Bus non coté) |
 | voiture | `/api/prices/fuel` × conso + péages | `pricesConfig.fallbackFuelPrice` |
 | marche | 0 | — |
 
-`bookableSpans` aligne le prix sur chaque bouton « Réserver sur … » : **le segment le plus long** par mode (ex. Rennes → Paris Montparnasse, pas toute la chaîne Mont-Saint-Michel → salle). Trainline live si l'API répond, sinon tarifs SNCF open data (min/max), sinon estimation. `combineQuotes` additionne ces billets + accès voiture. `modeQuotes` alimente le prix affiché sur chaque bouton.
+`bookableSpans` aligne le prix sur chaque bouton « Réserver sur … » : **le segment le plus long** par mode (ex. Rennes → Paris Montparnasse, pas toute la chaîne Mont-Saint-Michel → salle). Train : tarifs SNCF open data (min/max), sinon estimation (Trainline live en tête uniquement si `TRAINLINE_LIVE_PRICES=true`, l'API étant bloquée par DataDome depuis les serveurs). `combineQuotes` additionne ces billets + accès voiture. `modeQuotes` alimente le prix affiché sur chaque bouton.
 
 ## Empreinte carbone (état actuel)
 
@@ -78,6 +78,15 @@ La loi vit **uniquement dans le routing** ; aucun garde-fou dans `booking.ts`.
 `countTransports` compte les véhicules réels (`train`, `bus`, `plane` ; la marche jamais ; la voiture seulement si c'est tout le trajet) → `RouteResult.transports` / `transportsByMode`. Correspondances = `transports − 1`.
 
 Affichage (`RoutesView`) : un seul mode → « 3 Trains » ; modes mélangés → « N transports » ; + « N correspondance(s) » si > 1 transport. L'API `/api/trains/route-geometry` ignore aussi les transferts à pied dans une même gare.
+
+## Horaires précis et correspondances (`timed-segments.ts`)
+
+Pour permettre au voyageur de savoir quand partir et de ne pas attendre inutilement en gare :
+- `resolveTimedSegments` et `getLegTiming` (`src/utils/algorithms/timed-segments.ts`) attribuent à chaque segment son **heure exacte de départ et d'arrivée** (`departureTime`, `arrivalTime` ISO) et calculent les **temps d'attente en correspondance** (`waitTimeMinutes`).
+- **Train SNCF** : aligne les segments avec les sections réelles de `TrainJourney.trains` (horaires et numéros de train SNCF), calcule le temps d'attente entre l'arrivée du premier train et le départ du suivant (`waitTimeAfterMinutes`). L'accès amont est calé à rebours pour arriver à temps en gare.
+- **Avion** : cale le vol sur `FlightInfo.departureAt`, intègre la marge aéroportuaire (`AIRPORT_CHECKIN_MIN`, 90 min) et la récupération des bagages (`AIRPORT_EXIT_MIN`, 20 min), définies dans `routing.ts`.
+- **Voiture, bus, repli** : horodatage séquentiel à partir de l'heure cible (départ calculé depuis `arriveBy` pour l'aller, ou à partir de `leaveAfter` pour le retour), avec temps de battement en correspondance inter-modes.
+- La date et l'heure de départ sont affichées sur chaque bloc aller et retour (`LegBlock`, `LegFacts`), sur chaque segment de transport (`SegmentList`), dans le détail des horaires SNCF (`TrainTimes`) et dans la feuille de route (`RoadmapLeg`).
 
 ## Datasets (`src/utils/constants/`)
 

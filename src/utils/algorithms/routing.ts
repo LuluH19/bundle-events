@@ -305,7 +305,9 @@ export async function computeBusRoute(
 
 export const SHORT_HAUL_RAIL_THRESHOLD_MIN = 150; // 2h30
 
-export const AIRPORT_TIME_MIN = 80;
+export const AIRPORT_CHECKIN_MIN = 90;
+export const AIRPORT_EXIT_MIN = 20;
+export const AIRPORT_TIME_MIN = AIRPORT_CHECKIN_MIN + AIRPORT_EXIT_MIN;
 
 function isInMetropolitanFrance(p: LatLng): boolean {
   return p.lat >= 41.2 && p.lat <= 51.2 && p.lng >= -5.4 && p.lng <= 9.8;

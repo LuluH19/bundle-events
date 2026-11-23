@@ -7,7 +7,9 @@ import { getBookingLinks, getHotelBookingLink, type BookingLink } from "@/src/ut
 import { formatDay } from "@/src/utils/date";
 import { MODE_COLOR } from "@/src/utils/constants/transport";
 import { getHotelDistance } from "@/src/utils/hotel";
-import { formatDistance, formatDuration } from "@/src/utils/format";
+import { formatDistance, formatDuration, timeOf } from "@/src/utils/format";
+import { resolveTimedSegments } from "@/src/utils/trip";
+import type { FlightInfo, TrainJourney } from "@/src/types";
 import { LegFacts, ModeChip } from "@/src/components/trip/Leg";
 import { PREFERENCE_LABEL } from "@/src/components/trip/OptionList";
 import { PriceTag } from "@/src/components/trip/PriceTag";
@@ -219,7 +221,11 @@ function LegCard({
       />
       <div className="flex flex-1 flex-col gap-2 px-4 pb-4 pt-2">
         <Badge>{trip.preference ? PREFERENCE_LABEL[trip.preference] : "Ton choix"}</Badge>
-        <LegFacts option={option} journey={option.mode === "train" ? journeys[0] : undefined} />
+        <LegFacts
+          option={option}
+          journey={option.mode === "train" ? journeys[0] : undefined}
+          departureDate={item.key === "outbound" ? trip.checkin : trip.returnDate}
+        />
         <div className="mt-1 flex flex-wrap items-end justify-between gap-x-2 gap-y-0.5">
           {item.includedInRoundTrip ? (
             <span className="grid gap-0.5">
@@ -415,7 +421,34 @@ function compactModes(option: RouteOption): RouteOption["mode"][] {
   return modes;
 }
 
-function RoadmapLeg({ option, from, to }: { option: RouteOption; from: string; to: string }) {
+function RoadmapLeg({
+  option,
+  from,
+  to,
+  journey,
+  flights,
+  date,
+  isReturn,
+}: {
+  option: RouteOption;
+  from: string;
+  to: string;
+  journey?: TrainJourney;
+  flights?: FlightInfo[];
+  date?: string;
+  isReturn?: boolean;
+}) {
+  const timedSegments = resolveTimedSegments({
+    option,
+    journey,
+    flights,
+    date,
+    isReturn,
+  });
+  const segments = timedSegments.length > 0 ? timedSegments : option.route.segments;
+  const depTime = segments[0]?.departureTime;
+  const arrTime = segments[segments.length - 1]?.arrivalTime;
+
   return (
     <details className="group rounded-xl bg-page">
       <summary className="flex cursor-pointer list-none items-center gap-2 p-3 [&::-webkit-details-marker]:hidden">
@@ -435,6 +468,11 @@ function RoadmapLeg({ option, from, to }: { option: RouteOption; from: string; t
           <span className="text-slate-400">→</span>
           <span className="break-words">{to}</span>
           <span className="w-full text-[12px] font-normal text-slate-500">
+            {depTime && arrTime ? (
+              <span className="font-mono font-bold text-ink mr-1">
+                {timeOf(depTime)} → {timeOf(arrTime)} ·{" "}
+              </span>
+            ) : null}
             {formatDuration(option.durationMin)} · <span className="group-open:hidden">voir les étapes</span>
             <span className="hidden group-open:inline">masquer les étapes</span>
           </span>
@@ -442,12 +480,24 @@ function RoadmapLeg({ option, from, to }: { option: RouteOption; from: string; t
         <IconChevron size={16} className="shrink-0 rotate-90 text-slate-500 transition-transform group-open:-rotate-90" />
       </summary>
       <ol className="grid gap-2 px-3 pb-3">
-        {option.route.segments.map((seg, i) => (
+        {segments.map((seg, i) => (
           <li key={i} className="flex min-w-0 flex-col items-start gap-1 text-[13px]">
             <ModeChip mode={seg.mode} label={seg.label} />
             <span className="min-w-0 max-w-full break-words text-ink">
               {seg.from.name} → {seg.to.name}
-              <span className="block text-[12px] text-slate-500">{formatDuration(seg.durationMinutes)}</span>
+              <span className="block text-[12px] text-slate-500">
+                {seg.departureTime && seg.arrivalTime && (
+                  <span className="font-mono font-bold text-ink mr-1.5">
+                    {timeOf(seg.departureTime)} → {timeOf(seg.arrivalTime)} ·
+                  </span>
+                )}
+                {formatDuration(seg.durationMinutes)}
+              </span>
+              {seg.waitTimeMinutes != null && seg.waitTimeMinutes > 0 && (
+                <span className="mt-0.5 inline-block rounded bg-billet-soft px-1.5 py-0.5 text-[11px] font-semibold text-ink">
+                  Correspondance · {formatDuration(seg.waitTimeMinutes)} d&apos;attente
+                </span>
+              )}
             </span>
           </li>
         ))}
@@ -463,7 +513,17 @@ function Roadmap({ trip }: { trip: TripSummary }) {
     <div className="grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-line">
       <h3 className="text-[17px] font-bold text-ink">Ta feuille de route</h3>
       <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-slate-500">{formatDay(trip.checkin)}</span>
-      {trip.outbound && <RoadmapLeg option={trip.outbound} from={home} to={venue} />}
+      {trip.outbound && (
+        <RoadmapLeg
+          option={trip.outbound}
+          from={home}
+          to={venue}
+          journey={trip.outboundTrains[0]}
+          flights={trip.outboundFlights}
+          date={trip.checkin}
+          isReturn={false}
+        />
+      )}
       {trip.withHotel && trip.hotel && (
         <div className="flex items-start gap-2 text-[13px]">
           <span className="rounded-md bg-walk px-1.5 py-0.5 font-mono text-[11px] font-bold text-white">Hôtel</span>
@@ -473,7 +533,15 @@ function Roadmap({ trip }: { trip: TripSummary }) {
       {trip.roundTrip && trip.ret && (
         <>
           <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-slate-500">{formatDay(trip.returnDate)}</span>
-          <RoadmapLeg option={trip.ret} from={venue} to={home} />
+          <RoadmapLeg
+            option={trip.ret}
+            from={venue}
+            to={home}
+            journey={trip.returnTrains[0]}
+            flights={trip.returnFlights}
+            date={trip.returnDate}
+            isReturn={true}
+          />
         </>
       )}
     </div>

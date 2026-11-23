@@ -29,6 +29,7 @@ export interface TrainDetail {
   arrivalStation: string;
   departureTime: string;
   arrivalTime: string;
+  waitTimeAfterMinutes?: number;
 }
 
 export interface StopCoord {

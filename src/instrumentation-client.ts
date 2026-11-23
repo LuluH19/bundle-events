@@ -15,9 +15,14 @@ if (!projectToken || !apiHost) {
   }
 } else {
   posthog.init(projectToken, {
-    api_host: apiHost,
+    // Same-origin proxy declared in next.config.ts, so ad blockers do not drop events.
+    api_host: "/ingest",
+    ui_host: apiHost.replace(".i.posthog.com", ".posthog.com"),
     defaults: "2026-05-30",
     capture_pageview: "history_change",
     capture_exceptions: true,
+    capture_heatmaps: true,
+    capture_dead_clicks: true,
+    capture_performance: { web_vitals: true, network_timing: true },
   });
 }

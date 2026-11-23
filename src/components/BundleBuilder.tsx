@@ -18,11 +18,13 @@ import type {
   TripPreference,
   TripSummary,
   Venue,
+  VenuePickSource,
 } from "@/src/types";
 import { STEPS } from "@/src/types";
 import { addDaysIso, dateOnly, formatDay, isSameDayTrip, outboundSearch, returnSearch } from "@/src/utils/date";
 import { pickHotel, pickOption } from "@/src/utils/algorithms/recommend";
 import { restoredHotelOptIn, stayNights, tripTotal } from "@/src/utils/trip";
+import { venueProvider } from "@/src/utils/analytics";
 import { searchLocation } from "@/src/services/geocoding";
 import { searchEvents } from "@/src/services/events";
 import { computeOptions, fetchFlightInfo, fetchTrainInfo } from "@/src/services/travel";
@@ -98,10 +100,15 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   const retTimesKeyRef = useRef(cached?.retTimesKey ?? "");
   const outPricesKeyRef = useRef(cached?.outPricesKey ?? "");
   const retPricesKeyRef = useRef(cached?.retPricesKey ?? "");
+  const venueMetaRef = useRef<{ city: string; provider: string } | null>(null);
+  const stepRef = useRef(step);
   const preferenceRef = useRef(preference);
   useEffect(() => {
     preferenceRef.current = preference;
   }, [preference]);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
 
   const sameDay = isSameDayTrip(roundTrip, checkin, checkout);
   const withHotel = !sameDay || hotelOptIn;
@@ -155,6 +162,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
           return;
         }
         const d = record.data || ({} as BundleSnapshot);
+        posthog.capture("bundle_opened", { step: stepRef.current, round_trip: d.roundTrip ?? true });
         setDeparture(d.departure ?? null);
         setVenue(d.venue ?? null);
         setCheckin(d.checkin ?? "");
@@ -447,8 +455,10 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     if (!val.trim()) setVenueResults([]);
   };
 
-  const handlePickVenue = (v: Venue) => {
-    posthog.capture("venue_selected", { source: "search" });
+  const handlePickVenue = (v: Venue, source: VenuePickSource) => {
+    const provider = venueProvider(v.id);
+    venueMetaRef.current = { city: v.city, provider };
+    posthog.capture("venue_selected", { source, venue_provider: provider, city: v.city, has_date: Boolean(v.dateLabel) });
     setVenue({ id: v.id, name: v.name, coords: v.coords, type: "venue", address: v.address, startDate: v.startDate, endDate: v.endDate });
     setVenueSearch("");
     setVenueResults([]);
@@ -462,6 +472,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   };
 
   const handleClearVenue = () => {
+    venueMetaRef.current = null;
     setVenue(null);
     setVenueSearch("");
     setVenueResults([]);
@@ -484,6 +495,16 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     const changed = d.checkin !== dateOnly(checkin) || d.checkout !== dateOnly(checkout);
     const timesChanged =
       changed || d.arriveBy !== arriveBy || d.leaveAfter !== leaveAfter;
+    if (changed) {
+      const oneDay = isSameDayTrip(roundTrip, d.checkin, d.checkout);
+      posthog.capture("dates_selected", {
+        round_trip: roundTrip,
+        same_day: oneDay,
+        nights: roundTrip && d.checkout && !oneDay ? stayNights(d.checkin, d.checkout) : 0,
+        has_arrive_by: Boolean(d.arriveBy),
+        has_leave_after: Boolean(d.leaveAfter),
+      });
+    }
     setCheckin(d.checkin);
     setCheckout(d.checkout);
     setArriveBy(d.arriveBy);
@@ -648,6 +669,7 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
   );
 
   const canCompose = !!(departure && venue && checkin && (!roundTrip || checkout));
+  const total = tripTotal({ outbound, ret, hotel: selectedHotel, nights, roundTrip, withHotel });
 
   const handleCompose = useCallback(async () => {
     if (!canCompose) return;
@@ -659,15 +681,24 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     try {
       const snapshot = buildSnapshot();
       const id = await createBundle(snapshot);
-      posthog.capture("bundle_composed", { round_trip: roundTrip });
+      posthog.capture("bundle_composed", {
+        round_trip: roundTrip,
+        same_day: sameDay,
+        hotel_nights: withHotel ? nights : 0,
+        city: venueMetaRef.current?.city ?? null,
+        venue_provider: venueMetaRef.current?.provider ?? null,
+        outbound_mode: outbound?.mode ?? null,
+        return_mode: roundTrip ? ret?.mode ?? null : null,
+        preference,
+        estimated_total_eur: total.total > 0 ? Math.round(total.total) : null,
+      });
       rememberTrip(id);
       router.push(pathFor("trip", id));
     } catch {
       setComposing(false);
     }
-  }, [canCompose, uuid, go, buildSnapshot, rememberTrip, roundTrip, router, pathFor]);
+  }, [canCompose, uuid, go, buildSnapshot, rememberTrip, roundTrip, sameDay, withHotel, nights, outbound, ret, preference, total.total, router, pathFor]);
 
-  const total = tripTotal({ outbound, ret, hotel: selectedHotel, nights, roundTrip, withHotel });
   const pricesLoading = outPricesLoading || retPricesLoading;
 
   const trip: TripSummary = {
@@ -694,6 +725,8 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     pricesLoading,
     hotelLoading,
     hotelError,
+    arriveBy,
+    leaveAfter,
   };
 
   const openPanel = (p: PanelKind) => setPanel(p);
