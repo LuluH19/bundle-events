@@ -355,8 +355,13 @@ jobs:
           name: next-build
           path: .next
 
+      # Not `autorun`: its healthcheck warns "GitHub token not set", but reports
+      # go to the filesystem target, which never posts a GitHub status.
       - name: Run Lighthouse CI
-        run: npx --yes @lhci/cli@0.16.0 autorun
+        run: |
+          npx --yes @lhci/cli@0.16.0 collect
+          npx --yes @lhci/cli@0.16.0 assert
+          npx --yes @lhci/cli@0.16.0 upload
 
       - name: Extract scores
         id: scores
