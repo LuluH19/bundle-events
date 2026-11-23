@@ -15,3 +15,4 @@ export * from "./bus";
 export * from "./prices";
 export * from "./fare-conditions";
 export * from "./social";
+export * from "./bundles";

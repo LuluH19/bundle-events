@@ -12,7 +12,7 @@ Persistance via **Supabase** (PostgreSQL). Tables : **`bundles`**, plus **`api_c
 |---|---|---|
 | `uuid` | uuid | identifiant public (dans l'URL `/{uuid}/...`) |
 | `email` | text | email de sauvegarde (nullable) |
-| `data` | jsonb | `BundleSnapshot` |
+| `data` | jsonb | `BundleSnapshot`, validé avant écriture (`utils/bundle-validation.ts`, corps ≤ 2 Mo) |
 | `created_at` | timestamptz | date de création |
 | `updated_at` | timestamptz | date de mise à jour |
 | (id interne) | bigint | non exposé |
@@ -55,7 +55,7 @@ Le snapshot ne stocke **que** des noms de lieux + coordonnées + mode. Il ne per
 | `day` | date | jour UTC |
 | `calls` | integer | appels réels au fournisseur (hors cache) |
 
-Clé primaire `(provider, day)`. Incrémentée par `increment_api_usage(p_provider)` (renvoie le total du jour), qui sert aussi aux quotas `API_DAILY_LIMIT_*`. Pour suivre la consommation : `select * from api_usage order by day desc;`.
+Clé primaire `(provider, day)`. Incrémentée par `increment_api_usage(p_provider)` (renvoie le total du jour), qui sert aussi aux quotas `API_DAILY_LIMIT_*` et au total journalier de créations de bundles (ligne `bundles-create`, `BUNDLES_DAILY_CREATE_LIMIT`). Pour suivre la consommation : `select * from api_usage order by day desc;`.
 
 ## Accès & sécurité
 

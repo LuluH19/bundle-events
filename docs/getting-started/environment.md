@@ -18,10 +18,11 @@
 | `BREVO_API_KEY` | `lib/email.ts` | Envoi email via Brevo |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME` | `lib/email.ts` | Expéditeur (`Nom <email>` ou email brut) |
 | `API_DAILY_LIMIT_SNCF` / `_LITEAPI` / `_TRAVELPAYOUTS` / `_OVERPASS` / `_TICKETMASTER` / `_OPENAGENDA` / `_OPENDATA_IDF` / `_MAPBOX` / `_NOMINATIM` | `config/api-cache.ts` | Optionnels. Nombre max d'appels réels par jour (UTC) au fournisseur ; au-delà, seul le cache ou le repli répond. Vide = illimité (les appels restent comptés dans `api_usage`). `_MAPBOX` ne compte que la recherche de lieux côté serveur |
+| `BUNDLES_DAILY_CREATE_LIMIT` | `config/bundles.ts` | Optionnel. Nombre max de bundles créés par jour (UTC) sur tout le site, 5000 par défaut. Au-delà, `POST /api/bundles` renvoie 429 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env` uniquement | Présente mais non référencée dans le code |
 | `BREVO_SMTP_KEY` | `.env` uniquement | Non utilisée dans le code |
 
-`.env.example` liste : `SNCF_API_KEY, TRAVEL_PAYOUTS_API_KEY, NEXT_PUBLIC_MAPBOX_TOKEN, LITEAPI_KEY, TICKETMASTER_API_KEY, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL, POSTHOG_PROJECT_TOKEN, POSTHOG_HOST, TRAINLINE_LIVE_PRICES, API_DAILY_LIMIT_*`.
+`.env.example` liste : `SNCF_API_KEY, TRAVEL_PAYOUTS_API_KEY, NEXT_PUBLIC_MAPBOX_TOKEN, LITEAPI_KEY, TICKETMASTER_API_KEY, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL, POSTHOG_PROJECT_TOKEN, POSTHOG_HOST, TRAINLINE_LIVE_PRICES, API_DAILY_LIMIT_*, BUNDLES_DAILY_CREATE_LIMIT`.
 
 **PostHog** : renseigner les deux variables dans `.env.local` et dans Vercel, puis reconstruire/redéployer (`next.config.ts` les intègre au bundle navigateur lors du build via `env`, elles restent donc publiques malgré l'absence du préfixe `NEXT_PUBLIC_`). Sans token ou sans hôte, PostHog ne s'initialise pas. Pour tester, visiter le site puis naviguer entre les étapes et vérifier les événements `$pageview` dans PostHog. Utiliser un projet distinct pour les tests locaux si nécessaire.
 
