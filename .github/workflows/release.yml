@@ -1,0 +1,61 @@
+name: Release
+
+# Cuts a GitHub release when something lands on main (i.e. a dev -> main merge).
+# It tags main's HEAD, derives the version from the Conventional Commit types since
+# the last tag, and writes French notes. Publishing the release fires the Discord
+# ping in discord-notify.yml — but only when this job authenticates with a PAT
+# (RELEASE_PAT): a release created with the default GITHUB_TOKEN does NOT trigger
+# other workflows. Set RELEASE_PAT (a fine-grained token with contents: write) to
+# get the Discord notification; without it the release is still created.
+#
+# Opt out of a given push with "[skip release]" in the head commit message.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag and publish
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Compute next version and notes
+        id: plan
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: node .github/scripts/plan-release.mjs
+
+      - name: Create tag and GitHub release
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists; nothing to do."
+            exit 0
+          fi
+          gh release create "$VERSION" \
+            --target "$HEAD_SHA" \
+            --title "$VERSION" \
+            --notes-file release-notes.md
+          echo "Published $VERSION at $HEAD_SHA"
+
+      - name: Nothing to release
+        if: steps.plan.outputs.release != 'true'
+        run: echo "No shippable change since the last tag — no release."
