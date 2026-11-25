@@ -67,10 +67,10 @@ const next =
   bump === "major" ? `v${maj + 1}.0.0` : bump === "minor" ? `v${maj}.${min + 1}.0` : `v${maj}.${min}.${pat + 1}`;
 
 const HEADINGS = {
-  feat: "✨ Nouveautés",
-  fix: "🐛 Corrections",
-  perf: "⚡ Performances",
-  refactor: "🔧 Technique",
+  feat: "✨ Features",
+  fix: "🐛 Fixes",
+  perf: "⚡ Performance",
+  refactor: "🔧 Internal",
   revert: "⏪ Reverts",
 };
 
@@ -81,8 +81,8 @@ for (const key of ["feat", "fix", "perf", "refactor", "revert"]) {
   for (const item of groups[key]) notes += `- ${item}\n`;
   notes += "\n";
 }
-notes = notes.trim() || "Mise à jour.";
-if (lastTag) notes += `\n\n**Comparaison :** ${lastTag}...${next}`;
+notes = notes.trim() || "Update.";
+if (lastTag) notes += `\n\n**Compare:** ${lastTag}...${next}`;
 
 writeFileSync("release-notes.md", notes + "\n");
 out("release", "true");

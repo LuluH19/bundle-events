@@ -2,7 +2,7 @@ name: Release
 
 # Cuts a GitHub release when something lands on main (i.e. a dev -> main merge).
 # It tags main's HEAD, derives the version from the Conventional Commit types since
-# the last tag, and writes French notes. Publishing the release fires the Discord
+# the last tag, and writes English notes. Publishing the release fires the Discord
 # ping in discord-notify.yml — but only when this job authenticates with a PAT
 # (RELEASE_PAT): a release created with the default GITHUB_TOKEN does NOT trigger
 # other workflows. Set RELEASE_PAT (a fine-grained token with contents: write) to
