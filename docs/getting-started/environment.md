@@ -11,7 +11,7 @@
 | `TICKETMASTER_API_KEY` | `config/events.ts` | Événements Ticketmaster (serveur uniquement). Sans clé, la recherche passe à OpenAgenda |
 | `NEXT_PUBLIC_SUPABASE_URL` | `config/supabase.ts` | URL du projet Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | `config/supabase.ts` | Clé service-role **serveur uniquement** |
-| `NEXT_PUBLIC_SITE_URL` | `config/supabase.ts` | Base des liens de bundle (email). Défaut `http://localhost:3000` |
+| `NEXT_PUBLIC_SITE_URL` | `config/supabase.ts`, `config/site.ts` | Base des liens de bundle (email) et de toutes les URL absolues du référencement (canonical, sitemap, Open Graph, JSON-LD, `llms.txt`). Sans elle, `config/site.ts` prend `VERCEL_PROJECT_PRODUCTION_URL` (fournie par Vercel), puis `http://localhost:3000`. Voir [../features/seo.md](../features/seo.md) |
 | `POSTHOG_PROJECT_TOKEN` | `next.config.ts`, `instrumentation-client.ts`, `lib/posthog-logs.ts` | Token public du projet PostHog (pas une clé API personnelle) |
 | `POSTHOG_HOST` | `next.config.ts`, `instrumentation-client.ts`, `lib/posthog-logs.ts` | Hôte d'ingestion du projet PostHog : `https://eu.i.posthog.com` ou `https://us.i.posthog.com` selon la région. Sert de destination au reverse proxy `/ingest` (`next.config.ts`) |
 | `TRAINLINE_LIVE_PRICES` | `config/prices.ts` | Optionnel. `true` pour interroger Trainline `journey-search` avant les grilles SNCF dans `/api/prices/train`. Désactivé par défaut : DataDome renvoie 403 aux IP serveur (Vercel) |

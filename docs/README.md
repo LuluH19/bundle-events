@@ -46,6 +46,7 @@ docs/
 - [Liens de réservation](./features/booking-links.md)
 - [Sauvegarde & email](./features/save-and-email.md)
 - [Analytics PostHog](./features/analytics.md)
+- [Référencement web et IA](./features/seo.md)
 
 ### Contribution
 - [Conventions](./contributing/conventions.md)
