@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import BundleBuilder from "@/src/components/BundleBuilder";
 import { STEPS, type Step } from "@/src/types";
 import { isUuid } from "@/src/utils/uuid";
+
+export const metadata: Metadata = {
+  title: "Ton voyage",
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+};
 
 const LEGACY_SEGMENTS: Record<string, string> = {
   hotels: "voyage",

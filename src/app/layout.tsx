@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { siteConfig } from "@/src/config";
+import { buildJsonLd, serializeJsonLd } from "@/src/utils/seo";
 import "../styles/globals.css";
 
 const figtree = Figtree({
@@ -22,9 +24,26 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bundle Events — Ton trajet, ton hôtel et ton retour, au même endroit",
-  description:
-    "Ton trajet de porte à porte, ton hôtel près de la salle et ton retour, au même endroit. On te propose un voyage complet pour ton concert, ton match ou ton festival, tu modifies ce que tu veux.",
+  metadataBase: new URL(siteConfig.url),
+  title: { default: siteConfig.title, template: `%s · ${siteConfig.name}` },
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  keywords: siteConfig.keywords,
+  category: "travel",
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },
+  openGraph: {
+    type: "website",
+    locale: siteConfig.locale,
+    url: "/",
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
   icons: {
     icon: [
       { url: "/favicon/logo-star.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
@@ -36,7 +55,10 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180" }],
   },
-  manifest: "/favicon/site.webmanifest",
+};
+
+export const viewport: Viewport = {
+  themeColor: siteConfig.themeColor,
 };
 
 export default function RootLayout({
@@ -47,6 +69,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${figtree.variable} ${bricolage.variable} ${jetbrains.variable} h-full antialiased`}>
       <body className="min-h-full">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildJsonLd()) }} />
         {children}
         <Analytics />
       </body>
