@@ -5,7 +5,7 @@ import type { Step } from "./step";
 export type PanelKind = "outbound" | "return" | "hotel" | "dates";
 
 /** Where a venue was picked from, sent as `source` on the `venue_selected` analytics event. */
-export type VenuePickSource = "search" | "home_ideas";
+export type VenuePickSource = "search" | "home_ideas" | "events_page";
 
 export interface DepartureSuggestion {
   displayName: string;

@@ -17,7 +17,7 @@ Les événements automatiques du SDK sont décrits plus bas. Les événements ci
 | Événement | Fichier | Propriétés |
 |---|---|---|
 | `departure_selected` | `BundleBuilder.tsx` | `source` (`search`) |
-| `venue_selected` | `BundleBuilder.tsx` | `source` (`search` : champ de recherche, `home_ideas` : carte « Des idées de sortie »), `venue_provider` (`ticketmaster`, `mapbox`, `osm`, `opendata`), `city`, `has_date` |
+| `venue_selected` | `BundleBuilder.tsx` | `source` (`search` : champ de recherche, `home_ideas` : carte « Des idées de sortie », `events_page` : carte de la page `/evenements`), `venue_provider` (`ticketmaster`, `mapbox`, `osm`, `opendata`), `city`, `has_date` |
 | `event_ideas_filtered` | `views/HomeView.tsx` | `city` (ville choisie, ou `Toutes`) |
 | `dates_selected` | `BundleBuilder.tsx` | `round_trip`, `same_day`, `nights` (nuits entre l'aller et le retour, 0 en aller simple ou dans la journée), `has_arrive_by`, `has_leave_after`. Envoyé seulement si les dates changent. |
 | `bundle_composed` | `BundleBuilder.tsx` | `round_trip`, `same_day`, `hotel_nights`, `city`, `venue_provider`, `outbound_mode`, `return_mode`, `preference`, `estimated_total_eur` (arrondi, `null` si inconnu) |

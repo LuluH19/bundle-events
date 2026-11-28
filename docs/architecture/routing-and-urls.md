@@ -6,7 +6,8 @@ Tout est piloté par l'URL ; un seul composant client (`BundleBuilder`) est rend
 
 ## Pages
 
-- `src/app/page.tsx` → `/` → `<BundleBuilder step="home" />` (sans uuid).
+- `src/app/page.tsx` → `/` → `<BundleBuilder step="home" />` (sans uuid). Accepte un lien d'événement `/?evenement=…&lat=…&lng=…` (page Événements) : l'événement est présélectionné puis l'URL revient à `/` (voir [../features/news-and-events.md](../features/news-and-events.md)).
+- `src/app/evenements/page.tsx` → `/evenements` (serveur, régénéré toutes les 6 h) ; `src/app/actualites/page.tsx` → `/actualites` ; `src/app/actualites/[slug]/page.tsx` → `/actualites/{slug}` (statique, slug inconnu → 404). Ces routes statiques passent avant `[uuid]`.
 - `src/app/[uuid]/[[...step]]/page.tsx` → `/{uuid}/{segment?}` (catch-all optionnel) ; un `uuid` mal formé (`isUuid`, `src/utils/uuid.ts`) → `notFound()` :
   - vide → `home` (modifier la recherche d'un bundle existant)
   - `voyage` → `trip`

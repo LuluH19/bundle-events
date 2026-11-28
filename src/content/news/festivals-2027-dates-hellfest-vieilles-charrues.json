@@ -1,0 +1,54 @@
+{
+  "slug": "festivals-2027-dates-hellfest-vieilles-charrues",
+  "title": "Festivals 2027 : Hellfest et Vieilles Charrues, les dates connues",
+  "description": "Hellfest du 17 au 20 juin à Clisson, Vieilles Charrues du 15 au 18 juillet à Carhaix : les dates 2027 déjà annoncées et nos conseils pour y aller.",
+  "publishedAt": "2026-11-28",
+  "author": "Équipe Bundle Events",
+  "tags": ["festivals 2027", "Hellfest", "Vieilles Charrues", "Clisson", "Carhaix", "transport festival"],
+  "lead": "L'été 2027 se prépare déjà. Deux des plus gros festivals de France ont annoncé leurs dates : le Hellfest en juin à Clisson, les Vieilles Charrues en juillet à Carhaix. Voici ce qu'on sait, et comment t'organiser pour y aller sans stress.",
+  "blocks": [
+    { "type": "h2", "text": "Hellfest 2027 : du 17 au 20 juin à Clisson" },
+    {
+      "type": "p",
+      "text": "Le Hellfest fêtera sa 20e édition du jeudi 17 au dimanche 20 juin 2027 à Clisson, en Loire-Atlantique. Pour cet anniversaire, Sortiraparis annonce plus de 300 groupes répartis sur 10 scènes."
+    },
+    {
+      "type": "p",
+      "text": "Côté billets, la FAQ officielle du festival indique que tous les pass 4 jours sont déjà épuisés et renvoie vers la revente officielle. Les pass 1 jour doivent être mis en vente au premier trimestre 2027, uniquement sur la billetterie officielle : méfie-toi des sites de revente non officiels."
+    },
+    { "type": "h2", "text": "Vieilles Charrues 2027 : du 15 au 18 juillet à Carhaix" },
+    {
+      "type": "p",
+      "text": "Les Vieilles Charrues reviennent pour leur 35e édition du jeudi 15 au dimanche 18 juillet 2027, sur le site de Kerampuilh à Carhaix, dans le Finistère. Ces dates sont reprises par plusieurs calendriers de festivals. D'après Sortiraparis, Muse et Angèle font partie des premiers noms annoncés : vérifie la programmation complète sur le site officiel du festival."
+    },
+    { "type": "h2", "text": "Comment s'y rendre sans galérer" },
+    {
+      "type": "ul",
+      "items": [
+        "Pour le Hellfest, le plus simple est souvent de passer par Nantes, à une trentaine de kilomètres de Clisson, puis de finir en TER.",
+        "Pour les Vieilles Charrues, Carhaix se rejoint en train via Guingamp ; les liaisons des jours de festival se remplissent vite.",
+        "Les hébergements autour des sites partent des mois à l'avance : loger dans une grande ville voisine et faire l'aller-retour chaque jour est souvent plus facile.",
+        "Réserve l'aller et le retour en même temps, dès l'ouverture des ventes de train pour l'été."
+      ]
+    },
+    { "type": "h2", "text": "Préparer ton voyage avec Bundle Events" },
+    {
+      "type": "p",
+      "text": "Sur Bundle Events, indique d'où tu pars, le lieu du festival et tes dates : on te propose un trajet de porte à porte, un hôtel près du site et le retour, au même endroit. Tu peux ensuite partager le voyage avec ta bande en un lien."
+    }
+  ],
+  "sources": [
+    { "title": "Tickets Hellfest 2027 (FAQ)", "publisher": "Hellfest", "url": "https://hellfest.fr/en/faq/tickets-hellfest-2027" },
+    {
+      "title": "Hellfest 2027 : nouvelles scènes, prix du pass 4 jours, premiers détails de la 20e édition",
+      "publisher": "Sortiraparis",
+      "url": "https://www.sortiraparis.com/en/getaways-from-paris/northwest/articles/347744-hellfest-2027-new-stages-4-day-pass-price-first-details-around-the-20th-edition"
+    },
+    {
+      "title": "Les Vieilles Charrues : les dates de l'édition 2027",
+      "publisher": "Sortiraparis",
+      "url": "https://www.sortiraparis.com/en/getaways-from-paris/northwest/articles/50235-les-vieilles-charrues-here-are-the-dates-for-the-2027-edition"
+    },
+    { "title": "Festivals et grands événements 2027 en France : calendrier", "publisher": "Allovoyages", "url": "https://allovoyages.fr/mags/festivals-2027-calendrier/" }
+  ]
+}

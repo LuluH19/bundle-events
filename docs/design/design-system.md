@@ -55,6 +55,7 @@ Source unique : `MODE_COLOR` dans `src/utils/constants/transport.ts`, utilisée 
 - **`StudentProjectNotice.tsx`** — bouton « Projet étudiant » à droite de l’en-tête (pastille blanche, `ring-line`, pas le rouge `billet`). Il ouvre une fenêtre modale : le site est un projet étudiant, les réservations se font ailleurs, puis le bouton sombre « Donner mon avis » ouvre le formulaire Google dans un nouvel onglet.
 - **`DateRangePicker.tsx`** — calendrier en plage + heures facultatives : bascule aller-retour / aller simple (accueil seulement), cases Aller / Retour (case active encadrée `billet`), bande continue `billet-soft` entre les deux dates, aperçu au survol (bande `billet-soft/60`, jour de retour cerclé `billet`).
 - **`LoadingScreen.tsx`** / **`LogoLoader.tsx`** — écran d'attente : logo animé (étoile seule, sans orbite statique ni trait vers le centre) : un tracé orange part du pied gauche, passe en bas vers la droite, monte à droite, passe en haut, redescend à gauche et finit au centre de l'étoile, sa traînée s'effaçant derrière lui (3 couches `logo-trail-head/mid/tail`, dessinées au-dessus de l'étoile, dont l'épaisseur double progressivement) ; l'étoile pulse. Sans animation si `prefers-reduced-motion`. Titre et messages adaptés au voyage via `loadingCopy(roundTrip, withHotel)` (`src/utils/loading.ts`) : « On prépare ton aller-retour / aller simple », messages aller, hôtel, retour (retour seulement en aller-retour). Animations `logo-*` et `loading-bar` dans `globals.css`.
+- **`layout/PageShell.tsx`** / **`layout/SiteFooter.tsx`** — gabarit des pages de contenu (`/evenements`, `/actualites`) : `Header` inchangé, fil d'Ariane (`nav` « Fil d'Ariane », dernier élément `aria-current="page"` limité à une ligne), contenu sur fond `page`, pied de page commun (aussi sur l'accueil) avec les liens « Organiser un voyage », « Événements », « Actualités » et l'Instagram. Titres `font-display` 34/48 px, cartes blanches `ring-line` comme « Des idées de sortie ».
 - **`components/trip/`** — `Steps` (progression horizontale / verticale), `Leg` (faits, barre de modes, segments, horaires SNCF), `OptionList`, `HotelPicker`, `TripMap`, `TripPanels`.
 
 ## Cartes « Des idées de sortie »
@@ -65,7 +66,7 @@ Toutes les cartes d'une ligne ont la même hauteur. Le titre de la sortie est to
 
 Tout le contenu des pages suit le même axe : conteneur `mx-auto max-w-6xl` avec la marge **à l'intérieur** (`px-4 md:px-8`). Les fonds pleine largeur (hero, pied de page) portent la couleur ou l'image, et le conteneur à l'intérieur porte la marge. L'en-tête (logo) garde sa propre marge, sur toute la largeur.
 
-Le pied de page de l'accueil affiche le copyright et le lien vers le compte Instagram (`IconInstagram` + `@bundleevent`, ouvert dans un nouvel onglet). L'URL est dans `src/config/social.ts` (`socialConfig`).
+Le pied de page (`SiteFooter`, sur l'accueil et les pages de contenu) affiche le copyright, les liens internes « Organiser un voyage », « Événements », « Actualités », et le lien vers le compte Instagram (`IconInstagram` + `@bundleevent`, ouvert dans un nouvel onglet). L'URL est dans `src/config/social.ts` (`socialConfig`).
 
 ## Ton éditorial
 

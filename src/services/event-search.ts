@@ -104,3 +104,13 @@ export async function searchEventIdeas(cities: string[]): Promise<Venue[]> {
   const lists = await Promise.all(cities.map((c) => eventsInCity(c, perCity).catch(() => [])));
   return withTitle(dedupeVenues(interleave(lists, max)));
 }
+
+export interface CityEvents {
+  city: string;
+  events: Venue[];
+}
+
+export async function listCityEvents(cities: string[], perCity: number): Promise<CityEvents[]> {
+  const lists = await Promise.all(cities.map((c) => eventsInCity(c, perCity).catch(() => [] as Venue[])));
+  return cities.map((city, i) => ({ city, events: withTitle(dedupeVenues(lists[i])) }));
+}
