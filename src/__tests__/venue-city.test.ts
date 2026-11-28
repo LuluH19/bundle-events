@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Venue } from "@/src/types";
 import { isInCity } from "@/src/utils/algorithms/venue-dedupe";
+import { interleave } from "@/src/services/event-search";
 
 // event-search goes through the server-only API cache.
 vi.mock("server-only", () => ({}));
@@ -21,8 +22,7 @@ describe("isInCity", () => {
 });
 
 describe("interleave", () => {
-  it("alterne les villes pour que chacune soit représentée", async () => {
-    const { interleave } = await import("@/src/services/event-search");
+  it("alterne les villes pour que chacune soit représentée", () => {
     expect(interleave([["p1", "p2", "p3"], ["l1"], ["m1", "m2"]], 5)).toEqual(["p1", "l1", "m1", "p2", "m2"]);
     expect(interleave([[], ["a"]], 8)).toEqual(["a"]);
   });

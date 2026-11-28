@@ -2,11 +2,13 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import posthog from "posthog-js";
 import type { HomeViewProps, Venue } from "@/src/types";
 import { searchEventIdeas } from "@/src/services/events";
-import { socialConfig } from "@/src/config";
-import { IconCalendar, IconClose, IconInstagram, IconPin, IconSearch, IconShare, IconSliders, IconTicket } from "@/src/components/ui";
+import { cityAnchor, EVENT_CITIES } from "@/src/utils/constants/cities";
+import { SiteFooter } from "@/src/components/layout/SiteFooter";
+import { IconArrow, IconCalendar, IconClose, IconPin, IconSearch, IconShare, IconSliders, IconTicket } from "@/src/components/ui";
 
 interface Suggestion {
   key: string;
@@ -108,7 +110,7 @@ function SearchField({ id, label, icon, placeholder, selected, query, onQuery, s
   );
 }
 
-const CITIES = ["Paris", "Lyon", "Marseille", "Bordeaux", "Lille", "Toulouse", "Nantes"];
+const CITIES = EVENT_CITIES;
 const ALL_CITIES = "Toutes";
 
 function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
@@ -135,7 +137,15 @@ function CityIdeas({ onPick }: { onPick: (v: Venue) => void }) {
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-8">
-      <h2 className="font-display text-[26px] font-extrabold text-ink md:text-[32px]">Des idées de sortie</h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 className="font-display text-[26px] font-extrabold text-ink md:text-[32px]">Des idées de sortie</h2>
+        <Link
+          href={city ? `/evenements#${cityAnchor(city)}` : "/evenements"}
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] font-bold text-ink ring-1 ring-inset ring-line hover:bg-mist"
+        >
+          Voir tous les événements <IconArrow size={14} />
+        </Link>
+      </div>
       <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
         {chips.map((c) => {
           const active = c === key;
@@ -314,21 +324,7 @@ export function HomeView(props: HomeViewProps) {
 
       <CityIdeas onPick={(v) => onPickVenue(v, "home_ideas")} />
 
-      <footer className="border-t border-line py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-[13px] text-slate-500 sm:flex-row md:px-8">
-          <span>© 2026 Bundle Events</span>
-          <a
-            href={socialConfig.instagram.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Suivre Bundle Events sur ${socialConfig.instagram.label}`}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-ink transition-colors hover:bg-mist hover:text-billet"
-          >
-            <IconInstagram size={18} />
-            {socialConfig.instagram.handle}
-          </a>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

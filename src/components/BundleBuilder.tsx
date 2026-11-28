@@ -38,6 +38,7 @@ import { TripPanels, type Panel } from "@/src/components/trip/TripPanels";
 import { SaveBundleModal } from "@/src/components/SaveBundleModal";
 import { LoadingScreen } from "@/src/components/LoadingScreen";
 import { loadingCopy } from "@/src/utils/loading";
+import { parseVenueLink } from "@/src/utils/venue-link";
 import { readTripCache, writeTripCache, type TripCache } from "@/src/utils/trip-cache";
 import type { DateSelection } from "@/src/components/DateRangePicker";
 
@@ -468,6 +469,16 @@ export default function BundleBuilder({ uuid, step }: BundleBuilderProps) {
     setHotelFetching(withHotel);
     if (departure) setOptionsLoading(true);
   };
+
+  useEffect(() => {
+    if (step !== "home" || uuid) return;
+    const linked = parseVenueLink(window.location.search);
+    if (!linked) return;
+    window.history.replaceState(null, "", "/");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    handlePickVenue(linked, "events_page");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleClearVenue = () => {
     venueMetaRef.current = null;

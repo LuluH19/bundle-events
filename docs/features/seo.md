@@ -17,7 +17,7 @@ Le titre, la description, l'accroche, les mots-clés et les couleurs du site son
 | URL | Source | Rôle |
 | --- | --- | --- |
 | `/robots.txt` | `src/app/robots.ts` → `buildRobots` | Tout le site est ouvert, sauf `/api/` et `/auth/`. Un bloc autorise explicitement les robots des IA (`AI_CRAWLERS` : GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Google-Extended, Applebot-Extended, CCBot, Meta-ExternalAgent, MistralAI-User), `/llms.txt` compris. Pointe vers le sitemap. |
-| `/sitemap.xml` | `src/app/sitemap.ts` → `buildSitemap` | Seulement l'accueil : c'est la seule page publique. Les voyages partagés n'y figurent jamais. |
+| `/sitemap.xml` | `src/app/sitemap.ts` → `buildSitemap` | L'accueil, `/evenements`, `/actualites` et chaque article (`lastModified` = date de mise à jour de l'article). Les voyages partagés n'y figurent jamais. |
 | `/manifest.webmanifest` | `src/app/manifest.ts` → `buildManifest` | Nom « Bundle Events », langue `fr`, couleurs de la charte, icônes `/favicon/web-app-manifest-*.png` et l'étoile SVG. Remplace l'ancien `public/favicon/site.webmanifest` (qui s'appelait « MyWebSite » et pointait vers des icônes inexistantes). |
 | `/opengraph-image` | `src/app/opengraph-image.tsx` | Image de partage 1200×630 générée avec `ImageResponse` : étoile claire (`logo-star-light.svg`) sur fond `nuit`, accroche et nom du site. Sert aussi d'image Twitter/X. |
 | `/llms.txt` | `src/app/llms.txt/route.ts` → `buildLlmsTxt` | Résumé du site au format [llms.txt](https://llmstxt.org) pour les IA : ce que fait le site, la page publique, une FAQ, le contact. Statique (`force-static`). |
@@ -34,7 +34,7 @@ Le layout insère un `<script type="application/ld+json">` construit par `buildJ
 
 ## À maintenir
 
-- Une nouvelle page publique → l'ajouter à `buildSitemap`.
+- Une nouvelle page publique → l'ajouter à `buildSitemap`. Les articles s'y ajoutent seuls (voir [news-and-events.md](./news-and-events.md)).
 - Une fonctionnalité visible qui change (nouveau mode de transport, catégories d'événements, adresses dans le champ événement, comptes…) → mettre à jour le texte de `buildLlmsTxt`, qui décrit le site aux IA et ne doit décrire que ce qui existe en production.
 - Un nouveau robot d'IA à autoriser → l'ajouter à `AI_CRAWLERS`.
 - Après la mise en ligne : déclarer `https://<domaine>/sitemap.xml` dans Google Search Console et Bing Webmaster Tools.

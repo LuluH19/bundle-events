@@ -1,0 +1,59 @@
+{
+  "slug": "trains-noel-2026-vacances-billets-greves",
+  "title": "Trains de Noël 2026 : vacances, billets et grèves, le point",
+  "description": "Vacances du 19 décembre au 4 janvier, billets SNCF en vente depuis le 30 septembre, préavis de grève : ce qu'il faut savoir avant tes sorties des fêtes.",
+  "publishedAt": "2026-11-28",
+  "author": "Équipe Bundle Events",
+  "tags": ["vacances de Noël 2026", "SNCF", "billets de train", "grève SNCF", "concert fin d'année"],
+  "lead": "Un concert, un match ou un festival d'hiver pendant les fêtes ? Les vacances de Noël approchent et les trains vont être pleins. Dates des vacances, ouverture des ventes et risque de grève : on fait le point au 28 novembre 2026.",
+  "blocks": [
+    { "type": "h2", "text": "Quelles sont les dates des vacances de Noël 2026 ?" },
+    {
+      "type": "p",
+      "text": "En France métropolitaine, les vacances de Noël vont du samedi 19 décembre 2026 au lundi 4 janvier 2027, jour de la reprise des cours. Les dates sont les mêmes pour les zones A, B et C : les départs se concentreront donc sur les mêmes week-ends dans tout le pays."
+    },
+    { "type": "h2", "text": "Les billets de train sont en vente depuis le 30 septembre" },
+    {
+      "type": "p",
+      "text": "SNCF Voyageurs a ouvert le 30 septembre 2026 les ventes de TGV INOUI, OUIGO et Intercités pour les trajets du 13 décembre 2026 au 6 janvier 2027. Pour OUIGO, la réservation est même ouverte jusqu'au 2 juillet 2027. Les trains des week-ends autour de Noël et du jour de l'An partent en premier : si ton événement tombe pendant les fêtes, n'attends pas."
+    },
+    { "type": "h2", "text": "Faut-il craindre une grève pendant les fêtes ?" },
+    {
+      "type": "p",
+      "text": "À la date de publication, d'après la presse, aucun appel national à la grève ne vise la SNCF pendant les vacances de Noël. Un préavis de la CGT-Cheminots court jusqu'au 15 décembre, avant le début des vacances. La situation peut évoluer : vérifie l'état du trafic la veille de ton départ."
+    },
+    { "type": "h2", "text": "Nos conseils pour un concert ou un match pendant les fêtes" },
+    {
+      "type": "ul",
+      "items": [
+        "Réserve l'aller et le retour en même temps : les retours du dimanche et du 2 janvier sont souvent les plus demandés.",
+        "Si le concert finit tard, prévois une nuit sur place plutôt que de viser le dernier train.",
+        "Compare le train et le bus : sur certains trajets, FlixBus ou BlaBlaCar Bus restent disponibles quand les TGV sont complets.",
+        "Partage ton voyage avec tes amis pour réserver les mêmes trains."
+      ]
+    },
+    { "type": "h2", "text": "Préparer ton voyage avec Bundle Events" },
+    {
+      "type": "p",
+      "text": "Sur Bundle Events, une seule recherche te propose le trajet de porte à porte, un hôtel près de la salle et le retour. Chaque bouton « Réserver » ouvre directement le site du transporteur ou de l'hôtel, prérempli avec tes dates."
+    }
+  ],
+  "sources": [
+    {
+      "title": "Réservez vos billets pour les fêtes de fin d'année",
+      "publisher": "SNCF Voyageurs",
+      "url": "https://www.sncf-voyageurs.com/fr/voyagez-avec-nous/en-france/actualites/reservez-vos-billets-pour-les-fetes-de-fin-dannee/"
+    },
+    { "title": "Vacances scolaires : calendrier 2026-2027", "publisher": "Onisep", "url": "https://www.onisep.fr/vacances-scolaires-calendrier-2026-2027" },
+    {
+      "title": "Calendrier des vacances scolaires 2026-2027 en France métropolitaine",
+      "publisher": "franceinfo",
+      "url": "https://www.franceinfo.fr/societe/education/scolarite/calendrier-des-vacances-scolaires/calendrier-2026-2027-en-france-metropolitaine/"
+    },
+    {
+      "title": "Grève SNCF décembre 2026 : aucun appel après le 17 novembre",
+      "publisher": "Actu Alt Plus",
+      "url": "https://www.actu-alt-plus.com/idees-solutions/prochaine-greve-sncf-decembre-2026-noel-preavis/42679/"
+    }
+  ]
+}

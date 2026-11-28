@@ -21,9 +21,21 @@ describe("robots", () => {
 });
 
 describe("sitemap", () => {
-  it("ne liste que l'accueil, jamais un voyage partagé", () => {
-    const now = new Date("2026-11-27T00:00:00Z");
-    expect(buildSitemap(BASE, now)).toEqual([{ url: `${BASE}/`, lastModified: now, changeFrequency: "weekly", priority: 1 }]);
+  const now = new Date("2026-11-28T00:00:00Z");
+
+  it("liste les pages publiques, jamais un voyage partagé", () => {
+    const urls = buildSitemap(BASE, now).map((e) => e.url);
+    expect(urls).toEqual([`${BASE}/`, `${BASE}/evenements`, `${BASE}/actualites`]);
+  });
+
+  it("ajoute chaque article avec sa date de mise à jour", () => {
+    const entries = buildSitemap(BASE, now, [
+      { slug: "a", publishedAt: "2026-11-01" },
+      { slug: "b", publishedAt: "2026-11-10", updatedAt: "2026-11-20" },
+    ]);
+    expect(entries.find((e) => e.url === `${BASE}/actualites`)?.lastModified).toEqual(new Date("2026-11-20"));
+    expect(entries.find((e) => e.url === `${BASE}/actualites/b`)?.lastModified).toEqual(new Date("2026-11-20"));
+    expect(entries).toHaveLength(5);
   });
 });
 
@@ -57,6 +69,8 @@ describe("llms.txt", () => {
     const txt = buildLlmsTxt(BASE);
     expect(txt.startsWith("# Bundle Events\n\n> ")).toBe(true);
     expect(txt).toContain(`[Accueil et recherche](${BASE}/)`);
+    expect(txt).toContain(`[Événements à venir](${BASE}/evenements)`);
+    expect(txt).toContain(`[Actualités](${BASE}/actualites)`);
     expect(txt).toContain("## Questions fréquentes");
   });
 });

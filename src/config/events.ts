@@ -17,5 +17,6 @@ export const eventsConfig = {
   defaultLimit: 6,
   ideaKeywords: ["concert", "festival", "spectacle", "match"],
   ideasLimit: 8,
+  eventsPageLimit: 12,
   maxEventSpanDays: 31,
 } as const;

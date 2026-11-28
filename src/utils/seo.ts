@@ -29,8 +29,29 @@ export function buildRobots(baseUrl: string = siteConfig.url): MetadataRoute.Rob
   };
 }
 
-export function buildSitemap(baseUrl: string = siteConfig.url, now: Date = new Date()): MetadataRoute.Sitemap {
-  return [{ url: `${baseUrl}/`, lastModified: now, changeFrequency: "weekly", priority: 1 }];
+export interface SitemapArticle {
+  slug: string;
+  publishedAt: string;
+  updatedAt?: string;
+}
+
+export function buildSitemap(
+  baseUrl: string = siteConfig.url,
+  now: Date = new Date(),
+  articles: SitemapArticle[] = []
+): MetadataRoute.Sitemap {
+  const latest = articles.map((a) => a.updatedAt ?? a.publishedAt).sort().at(-1);
+  return [
+    { url: `${baseUrl}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: `${baseUrl}/evenements`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/actualites`, lastModified: latest ? new Date(latest) : now, changeFrequency: "daily", priority: 0.8 },
+    ...articles.map((a) => ({
+      url: `${baseUrl}/actualites/${a.slug}`,
+      lastModified: new Date(a.updatedAt ?? a.publishedAt),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
 }
 
 export function buildManifest(): MetadataRoute.Manifest {
@@ -115,7 +136,9 @@ ${siteConfig.name} est une application web gratuite, en français. Ce n'est pas 
 
 ## Pages
 
-- [Accueil et recherche](${baseUrl}/) : la seule page publique ; tout le parcours (recherche, ton voyage, réservation) part d'ici.
+- [Accueil et recherche](${baseUrl}/) : tout le parcours (recherche, ton voyage, réservation) part d'ici.
+- [Événements à venir](${baseUrl}/evenements) : concerts, festivals, spectacles et matchs à venir dans les grandes villes ; chaque événement ouvre la recherche de voyage.
+- [Actualités](${baseUrl}/actualites) : articles sur les dates de festivals, les billets de train, les grèves et l'organisation des sorties.
 - Les voyages partagés ont une adresse privée de la forme ${baseUrl}/<identifiant> : ils ne sont pas indexés.
 
 ## Questions fréquentes

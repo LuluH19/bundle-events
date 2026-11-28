@@ -47,6 +47,7 @@ docs/
 - [Sauvegarde & email](./features/save-and-email.md)
 - [Analytics PostHog](./features/analytics.md)
 - [Référencement web et IA](./features/seo.md)
+- [Actualités et page Événements](./features/news-and-events.md)
 
 ### Contribution
 - [Conventions](./contributing/conventions.md)
